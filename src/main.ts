@@ -1,5 +1,8 @@
 import './style.css'
-import './bPlusTreeAlgo'
+import { BPlusTreeAlgo } from './bPlusTreeAlgo'
+
+const bPlusTreeAlgo = new BPlusTreeAlgo(4)
+bPlusTreeAlgo.find()
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
