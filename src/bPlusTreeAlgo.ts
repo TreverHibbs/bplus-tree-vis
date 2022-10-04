@@ -11,15 +11,15 @@ export class BPlusTreeAlgo {
 
     /**
      * 
-     * @param node_size Determines how many pointers are contained
+     * @param nodeSize Determines how many pointers are contained
      * in each node of the B+tree.
      */
-    constructor(node_size: number) {
-        this.n = node_size
+    constructor(nodeSize: number) {
+        this.n = nodeSize
     }
 
-    find() {
-        console.log(this.n)
+    find(keyToFind: number) {
+        console.log(this.n, keyToFind)
     }
 
 }
