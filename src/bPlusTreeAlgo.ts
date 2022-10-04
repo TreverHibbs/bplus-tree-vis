@@ -32,4 +32,17 @@ export class BPlusTreeAlgo {
         return null
     }
 
+    /**
+     *
+     * Insert a number into the B+Tree if it is not already in the tree.
+     * 
+     * @param value A number to insert into the B+Tree.
+     * @returns 1 if insertion was successful and 0 otherwise.
+     */
+    insert(value: number) {
+        console.log("insert value", value)
+        return 1
+    }
+    
+    // private insert_in_leaf(node: BPlusTreeNode, value: number)
 }
