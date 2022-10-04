@@ -18,8 +18,18 @@ export class BPlusTreeAlgo {
         this.n = nodeSize
     }
 
+    /**
+     * 
+     * Find a numeric key in the B+Tree. Assumes that there are no duplicates.
+     * 
+     * @param keyToFind A number to locate in the B+Tree.
+     * 
+     * @returns A pointer to the record of the given search key or null if
+     * record does not exist.
+     */
     find(keyToFind: number) {
         console.log(this.n, keyToFind)
+        return null
     }
 
 }
