@@ -1,0 +1,1 @@
+export type bPlusTreeNode = [number|bPlusTreeNode]

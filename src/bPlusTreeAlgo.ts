@@ -1,3 +1,5 @@
+import { bPlusTreeNode } from "./types/bPlusTree"
+
 /**
  * 
  * This class implements a B+tree algorithm (as described in the Database System
@@ -8,6 +10,7 @@
 export class BPlusTreeAlgo {
     // Number of pointers in a node.
     readonly n: number
+    private bPlusTreeRoot: bPlusTreeNode|null
 
     /**
      * 
@@ -16,6 +19,7 @@ export class BPlusTreeAlgo {
      */
     constructor(nodeSize: number) {
         this.n = nodeSize
+        this.bPlusTreeRoot = null
     }
 
     /**
@@ -27,7 +31,7 @@ export class BPlusTreeAlgo {
      * @returns A pointer to the record of the given search key or null if
      * record does not exist.
      */
-    find(keyToFind: number) {
+    find(keyToFind: number): number|null {
         console.log(this.n, keyToFind)
         return null
     }
@@ -39,8 +43,10 @@ export class BPlusTreeAlgo {
      * @param value A number to insert into the B+Tree.
      * @returns 1 if insertion was successful and 0 otherwise.
      */
-    insert(value: number) {
-        console.log("insert value", value)
+    insert(value: number): number {
+        if (this.bPlusTreeRoot == null) {
+            this.bPlusTreeRoot = [value] 
+        }
         return 1
     }
     
