@@ -10,7 +10,7 @@ import { bPlusTreeNode } from "./types/bPlusTree"
 export class BPlusTreeAlgo {
     // Number of pointers in a node.
     readonly n: number
-    private bPlusTreeRoot: bPlusTreeNode|null
+    private bPlusTreeRoot: bPlusTreeNode | null
 
     /**
      * 
@@ -22,6 +22,7 @@ export class BPlusTreeAlgo {
         this.bPlusTreeRoot = null
     }
 
+    //TODO continue work on find but separate the key and the pointer array.
     /**
      * 
      * Find a numeric key in the B+Tree. Assumes that there are no duplicates.
@@ -31,9 +32,30 @@ export class BPlusTreeAlgo {
      * @returns A pointer to the record of the given search key or null if
      * record does not exist.
      */
-    find(keyToFind: number): number|null {
-        console.log(this.n, keyToFind)
-        return null
+    find(keyToFind: number): number | null {
+        if (this.bPlusTreeRoot == null) {
+            return null;
+        }
+
+        let currentNode = this.bPlusTreeRoot
+        while (currentNode && !currentNode.isLeaf) {
+            const smallestValidNum = Math.min(...currentNode.keys.filter((element) => { return keyToFind <= element }));
+            const smallestValidNumIndex = currentNode.keys.findIndex((element) => { smallestValidNum == element })
+            if (smallestValidNum == Infinity) {
+                currentNode = currentNode.pointers[currentNode.pointers.length - 1]
+            } else if (keyToFind == smallestValidNum) {
+                currentNode = currentNode.pointers[smallestValidNumIndex + 1]
+            } else {
+                // keyToFind < smallestValidNum
+                currentNode = currentNode.pointers[smallestValidNumIndex]
+            }
+        }
+        if (currentNode.keys.includes(keyToFind)) {
+            //TODO contemplate returning the node instead of just a number.
+            return currentNode.keys[currentNode.keys.indexOf(keyToFind)]
+        }else{
+            return null
+        }
     }
 
     /**
@@ -45,10 +67,10 @@ export class BPlusTreeAlgo {
      */
     insert(value: number): number {
         if (this.bPlusTreeRoot == null) {
-            this.bPlusTreeRoot = [value] 
+            this.bPlusTreeRoot = { array: [value], isLeaf: true }
         }
         return 1
     }
-    
+
     // private insert_in_leaf(node: BPlusTreeNode, value: number)
 }

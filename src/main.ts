@@ -2,6 +2,8 @@ import './style.css'
 import { BPlusTreeAlgo } from './bPlusTreeAlgo'
 
 const bPlusTreeAlgo = new BPlusTreeAlgo(4)
+bPlusTreeAlgo.insert(42)
+
 bPlusTreeAlgo.find(42)
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

@@ -1,1 +1,5 @@
-export type bPlusTreeNode = [number|bPlusTreeNode]
+export interface bPlusTreeNode {
+    pointers: bPlusTreeNode[]
+    keys: number[]
+    isLeaf: boolean
+}
