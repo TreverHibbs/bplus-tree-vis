@@ -22,7 +22,6 @@ export class BPlusTreeAlgo {
         this.bPlusTreeRoot = null
     }
 
-    //TODO continue work on find but separate the key and the pointer array.
     /**
      * 
      * Find a numeric key in the B+Tree. Assumes that there are no duplicates.
@@ -42,7 +41,12 @@ export class BPlusTreeAlgo {
             const smallestValidNum = Math.min(...currentNode.keys.filter((element) => { return keyToFind <= element }));
             const smallestValidNumIndex = currentNode.keys.findIndex((element) => { smallestValidNum == element })
             if (smallestValidNum == Infinity) {
-                currentNode = currentNode.pointers[currentNode.pointers.length - 1]
+                for(let i = currentNode.pointers.length-1; i >= 0; i--){
+                    if(currentNode.pointers[i]){
+                        currentNode = currentNode.pointers[i]
+                        break;
+                    }
+                }
             } else if (keyToFind == smallestValidNum) {
                 currentNode = currentNode.pointers[smallestValidNumIndex + 1]
             } else {
@@ -50,7 +54,7 @@ export class BPlusTreeAlgo {
                 currentNode = currentNode.pointers[smallestValidNumIndex]
             }
         }
-        if (currentNode.keys.includes(keyToFind)) {
+        if (currentNode.keys && currentNode.keys.includes(keyToFind)) {
             //TODO contemplate returning the node instead of just a number.
             return currentNode.keys[currentNode.keys.indexOf(keyToFind)]
         }else{
@@ -67,7 +71,7 @@ export class BPlusTreeAlgo {
      */
     insert(value: number): number {
         if (this.bPlusTreeRoot == null) {
-            this.bPlusTreeRoot = { array: [value], isLeaf: true }
+            this.bPlusTreeRoot = new bPlusTreeNode(true, [], [value])
         }
         return 1
     }
