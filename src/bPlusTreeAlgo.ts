@@ -10,7 +10,7 @@ import { bPlusTreeNode } from "./types/bPlusTree"
 export class BPlusTreeAlgo {
     // Number of pointers in a node.
     readonly n: number
-    private bPlusTreeRoot: bPlusTreeNode | null
+    private bPlusTreeRoot: bPlusTreeNode
 
     /**
      * 
@@ -19,7 +19,7 @@ export class BPlusTreeAlgo {
      */
     constructor(nodeSize: number) {
         this.n = nodeSize
-        this.bPlusTreeRoot = null
+        this.bPlusTreeRoot = new bPlusTreeNode(true)
     }
 
     /**
@@ -28,21 +28,18 @@ export class BPlusTreeAlgo {
      * 
      * @param keyToFind A number to locate in the B+Tree.
      * 
-     * @returns A pointer to the record of the given search key or null if
-     * record does not exist.
-     */
-    find(keyToFind: number): number | null {
-        if (this.bPlusTreeRoot == null) {
-            return null;
-        }
-
+     * @returns An object that contains a found boolean flag which indicates if
+     * the key was found. The bPlusTreeNode that should contain the key if it
+     * exists in the tree. And finally the index of the key if it has been found.
+    */
+    find(keyToFind: number): { found: boolean, node: bPlusTreeNode, index?: number } {
         let currentNode = this.bPlusTreeRoot
         while (currentNode && !currentNode.isLeaf) {
             const smallestValidNum = Math.min(...currentNode.keys.filter((element) => { return keyToFind <= element }));
             const smallestValidNumIndex = currentNode.keys.findIndex((element) => { smallestValidNum == element })
             if (smallestValidNum == Infinity) {
-                for(let i = currentNode.pointers.length-1; i >= 0; i--){
-                    if(currentNode.pointers[i]){
+                for (let i = currentNode.pointers.length - 1; i >= 0; i--) {
+                    if (currentNode.pointers[i]) {
                         currentNode = currentNode.pointers[i]
                         break;
                     }
@@ -55,10 +52,9 @@ export class BPlusTreeAlgo {
             }
         }
         if (currentNode.keys && currentNode.keys.includes(keyToFind)) {
-            //TODO contemplate returning the node instead of just a number.
-            return currentNode.keys[currentNode.keys.indexOf(keyToFind)]
-        }else{
-            return null
+            return { found: true, node: currentNode, index: currentNode.keys.indexOf(keyToFind) }
+        } else {
+            return { found: false, node: currentNode }
         }
     }
 
@@ -67,11 +63,66 @@ export class BPlusTreeAlgo {
      * Insert a number into the B+Tree if it is not already in the tree.
      * 
      * @param value A number to insert into the B+Tree.
+     *
      * @returns 1 if insertion was successful and 0 otherwise.
      */
     insert(value: number): number {
-        if (this.bPlusTreeRoot == null) {
-            this.bPlusTreeRoot = new bPlusTreeNode(true, [], [value])
+        let targetNode: bPlusTreeNode | null = null
+        if (this.bPlusTreeRoot.keys.length == 0) {
+            targetNode = this.bPlusTreeRoot
+        } else {
+            const { found, node } = this.find(value)
+            if (found) {
+                // Do not allow duplicates
+                return 0
+            } else {
+                targetNode = node
+            }
+        }
+        if (targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
+            this.insertInLeaf(targetNode, value)
+        }
+
+        return 1
+    }
+
+    /**
+     * 
+     * A subsidiary procedure for the insert method
+     * 
+     * @param targetNode The node to insert they key value into
+     * @param value The key value to insert
+     * @returns 1 if successful and 0 otherwise
+     */
+    private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
+        if (value < targetNode.keys[0]) {
+            // shift all values in keys to the right one spot.
+            for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
+                if (targetNode.keys[i]) {
+                    targetNode.keys[i + 1] = targetNode.keys[i]
+                }
+            }
+
+            targetNode.keys[0] = value
+        } else {
+            // insert value into targetNode.keys just after the value in
+            // targetNode.keys that is the highest value that is less than or
+            // equal to value.
+            for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
+                if (targetNode.keys[i] <= value) {
+                    for (let j = (targetNode.keys.length - 1); j >= i; j--) {
+                        if (targetNode.keys[j]) {
+                            if (i == j) {
+                                targetNode.keys[j] = value
+                                break;
+                            } else {
+                                targetNode.keys[j + 1] = targetNode.keys[j]
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
         }
         return 1
     }
