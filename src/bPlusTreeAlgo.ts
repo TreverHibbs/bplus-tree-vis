@@ -112,7 +112,7 @@ export class BPlusTreeAlgo {
      * @returns 1 if successful and 0 otherwise
      */
     private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
-        if (value < targetNode.keys[0]) {
+        if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
             // shift all values in keys to the right one spot.
             for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
                 if (targetNode.keys[i]) {
@@ -147,12 +147,9 @@ export class BPlusTreeAlgo {
     /**
      * 
      * A subsidiary procedure for the insert method
-     * 
      * @param leftNode A bPlusTreeNode to be placed to the left of the key value
      * @param value The key value to insert into parent node
      * @param rightNode A bPlusTreeNode to be placed to the right of the key value
-     * @param parentNode The parent of leftNode and rightNode if leftNode is not
-     * the root node
      * @returns 1 if successful and 0 otherwise
      */
     private insertInParent(leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode) {
