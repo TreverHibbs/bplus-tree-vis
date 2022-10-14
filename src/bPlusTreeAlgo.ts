@@ -30,15 +30,12 @@ export class BPlusTreeAlgo {
      * 
      * @returns An object that contains a found boolean flag which indicates if
      * the key was found. The bPlusTreeNode that should contain the key if it
-     * exists in the tree. The index of the key if it has been found. And
-     * finally the parent of the node where the key is or where the key should
-     * be if it were in the tree.
-    */
-    find(keyToFind: number): { found: boolean, node: bPlusTreeNode, index?: number, parent: bPlusTreeNode } {
-        let currentNodeParent = this.bPlusTreeRoot
+     * exists in the tree. The index of the key if it has been found.    
+     * 
+     * */
+    find(keyToFind: number): { found: boolean, node: bPlusTreeNode, index?: number } {
         let currentNode = this.bPlusTreeRoot
         while (currentNode && !currentNode.isLeaf) {
-            currentNodeParent = currentNode
             const smallestValidNum = Math.min(...currentNode.keys.filter((element) => { return keyToFind <= element }));
             const smallestValidNumIndex = currentNode.keys.findIndex((element) => { smallestValidNum == element })
             if (smallestValidNum == Infinity) {
@@ -56,9 +53,9 @@ export class BPlusTreeAlgo {
             }
         }
         if (currentNode.keys && currentNode.keys.includes(keyToFind)) {
-            return { found: true, node: currentNode, index: currentNode.keys.indexOf(keyToFind), parent: currentNodeParent }
+            return { found: true, node: currentNode, index: currentNode.keys.indexOf(keyToFind) }
         } else {
-            return { found: false, node: currentNode, parent: currentNodeParent }
+            return { found: false, node: currentNode }
         }
     }
 
@@ -72,12 +69,10 @@ export class BPlusTreeAlgo {
      */
     insert(value: number): number {
         let targetNode: bPlusTreeNode | null = null
-        let parentNode: bPlusTreeNode | null = null
         if (this.bPlusTreeRoot.keys.length == 0) {
             targetNode = this.bPlusTreeRoot
         } else {
-            const { found, node, parent } = this.find(value)
-            parentNode = parent
+            const { found, node } = this.find(value)
             if (found) {
                 // Do not allow duplicates
                 return 0
@@ -102,7 +97,7 @@ export class BPlusTreeAlgo {
             newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n - 1)
 
-            this.insertInParent(targetNode, newNode.keys[0], newNode, parentNode)
+            this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
 
         return 1
@@ -160,13 +155,20 @@ export class BPlusTreeAlgo {
      * the root node
      * @returns 1 if successful and 0 otherwise
      */
-    private insertInParent(leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode, parentNode: bPlusTreeNode | null) {
-        if (parentNode == null) {
+    private insertInParent(leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode) {
+        if (leftNode.parent == null) {
+            this.bPlusTreeRoot = new bPlusTreeNode(false)
             this.bPlusTreeRoot.isLeaf = false
             this.bPlusTreeRoot.pointers = [leftNode, rightNode]
             this.bPlusTreeRoot.keys = [value]
+
+            leftNode.parent = this.bPlusTreeRoot
+            rightNode.parent = this.bPlusTreeRoot
+
             return 1
         }
+
+        const parentNode = leftNode.parent
         const leftNodeIndex = parentNode.pointers.findIndex(element => element === leftNode)
         if (parentNode.pointers.filter(element => element).length < this.n) {
             parentNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
@@ -190,9 +192,7 @@ export class BPlusTreeAlgo {
 
             newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n)
             newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n - 1)
-            
-            // TODO Consider refactoring so that each node contains a pointer to
-            // its parent.
+
             this.insertInParent(parentNode, middleKey, newNode)
         }
         return 1
