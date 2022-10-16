@@ -1,3 +1,4 @@
+//TODO implement step history abstraction
 import { bPlusTreeNode } from "./types/bPlusTree"
 
 /**
@@ -32,7 +33,7 @@ export class BPlusTreeAlgo {
      * the key was found. The bPlusTreeNode that should contain the key if it
      * exists in the tree. The index of the key if it has been found.    
      * 
-     * */
+     */
     find(keyToFind: number): { found: boolean, node: bPlusTreeNode, index?: number } {
         let currentNode = this.bPlusTreeRoot
         while (currentNode && !currentNode.isLeaf) {
