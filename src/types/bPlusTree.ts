@@ -1,4 +1,7 @@
-//TODO add new property that contains SVG element
+/**
+ * Using this class the algo visualizer class can represent bplus tree nodes.
+ * Each instance of this class represents a Bplus Tree Node SVG element.
+ */
 export class bPlusTreeNode {
     pointers: bPlusTreeNode[] = []
     keys: number[] = []

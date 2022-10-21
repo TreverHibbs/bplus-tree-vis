@@ -22,10 +22,6 @@ export class AlgoVisualizer {
     private pointerRectWidth = 14
     private nodeWidth: number
 
-    //private pointerRectWidth = 14
-    //private rectHeight = 29
-    //private keyRectMinWidth = 42
-
     /**
      * 
      * @param nodeSize Determines how many pointers are contained
