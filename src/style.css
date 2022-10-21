@@ -1,8 +1,29 @@
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+html,
+body {
+  /*  background: no-repeat center url("images/map.png"); */
+  font-family: myFont, "Liberation Sans", sans-serif;
+  min-height: 100vh;
+  Padding: 0px;
+  margin: 0px;
+  border: 0px;
+  overflow: auto;
+}
+
+.container {
+  height: 100vh;
+
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  gap: 0px 0px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "main-svg";
+}
+
+.main-svg {
+  height: 100%;
+  width: 100%;
+
+  grid-area: main-svg;
 }

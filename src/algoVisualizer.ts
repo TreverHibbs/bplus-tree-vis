@@ -1,6 +1,8 @@
 //TODO implement step history abstraction
 import { bPlusTreeNode } from "./types/bPlusTree"
 
+export const SVG_NS = "http://www.w3.org/2000/svg"
+
 /**
  * 
  * This class implements a B+tree algorithm (as described in the Database System
@@ -8,10 +10,21 @@ import { bPlusTreeNode } from "./types/bPlusTree"
  * algorithm. By using this class a web UI can animate a B+tree. Each instance of
  * this class corresponds to a rendered B+tree algorithm.   
  */
-export class BPlusTreeAlgo {
+export class AlgoVisualizer {
     // Number of pointers in a node.
     readonly n: number
     private bPlusTreeRoot: bPlusTreeNode
+    private svgCanvas = document.querySelector('#main-svg')
+    private rootCanvasPos: [string, string] = ['0', '0']
+
+    private keyRectWidth = 42
+    private nodeHeight = 29
+    private pointerRectWidth = 14
+    private nodeWidth: number
+
+    //private pointerRectWidth = 14
+    //private rectHeight = 29
+    //private keyRectMinWidth = 42
 
     /**
      * 
@@ -21,6 +34,21 @@ export class BPlusTreeAlgo {
     constructor(nodeSize: number) {
         this.n = nodeSize
         this.bPlusTreeRoot = new bPlusTreeNode(true)
+
+        // The following finds the center of the svg canvas
+        if (this.svgCanvas != null) {
+            const viewboxArray = this.svgCanvas?.getAttributeNS(null, 'viewBox')?.split(' ')
+            if (viewboxArray) {
+                const midXCord = Number(viewboxArray[2]) / 2
+                this.rootCanvasPos = [String(midXCord), '20']
+            } else {
+                console.error('viewbox attribute on svg canvas was undefined')
+            }
+        } else {
+            console.error('svg canvas could not be selected')
+        }
+
+        this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * this.n + this.pointerRectWidth
     }
 
     /**
@@ -107,7 +135,6 @@ export class BPlusTreeAlgo {
     /**
      * 
      * A subsidiary procedure for the insert method
-     * 
      * @param targetNode The node to insert they key value into
      * @param value The key value to insert
      * @returns 1 if successful and 0 otherwise
@@ -119,6 +146,17 @@ export class BPlusTreeAlgo {
                 if (targetNode.keys[i]) {
                     targetNode.keys[i + 1] = targetNode.keys[i]
                 }
+            }
+
+            // This create the first bplus tree node svg element
+            if (targetNode.svgElement == null) {
+                const rootCanvasXCord = Number(this.rootCanvasPos[0])-(this.nodeWidth/2)
+                targetNode.svgElement = this.createNodeSvgElement(String(rootCanvasXCord), this.rootCanvasPos[1])
+                const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
+                if (keyTextElement) {
+                    keyTextElement.innerHTML = String(value)
+                }
+                this.svgCanvas?.appendChild(targetNode.svgElement)
             }
 
             targetNode.keys[0] = value
@@ -194,5 +232,70 @@ export class BPlusTreeAlgo {
             this.insertInParent(parentNode, middleKey, newNode)
         }
         return 1
+    }
+
+    /**
+     * 
+     * Creates a HTML element that represents one bplus tree node. This method
+     * exists to keep all styling of bplus tree nodes in one spot. The origin of
+     * the node is at its top left corner.
+     * @dependency this.n The size of a bplus tree node.
+     * @param x
+     * @param y
+     * @returns A g element the children of which are the elements that make up
+    the new bplus tree node visual.
+     */
+    private createNodeSvgElement(x = '0', y = '0'): SVGGElement {
+        // TODO this function has't to deal with placing the node elements in
+        // the correct location relative to the nodes size.
+        const nodeFillColor = '#C7EBFC'
+        const nodeStrokeColor = 'black'
+
+        const svgNodeG = document.createElementNS(SVG_NS, 'g')
+        svgNodeG.setAttributeNS(null, 'transform', `translate(${x}, ${y})`)
+
+
+        // Each iteration of this loop creates the svg elements that correspond
+        // to one pointer key pair in the node
+        for (let i = 0; i < this.n; i++) {
+            const currentXCordOrigin = i * (this.pointerRectWidth + this.keyRectWidth)
+
+            const pointerRect = document.createElementNS(SVG_NS, 'rect')
+            pointerRect.setAttributeNS(null, 'x', String(currentXCordOrigin))
+            pointerRect.setAttributeNS(null, 'y', '0')
+            pointerRect.setAttributeNS(null, 'width', String(this.pointerRectWidth))
+            pointerRect.setAttributeNS(null, 'height', String(this.nodeHeight))
+            pointerRect.setAttributeNS(null, 'fill', nodeFillColor)
+            pointerRect.setAttributeNS(null, 'stroke', nodeStrokeColor)
+            svgNodeG.appendChild(pointerRect)
+
+            const keyRect = document.createElementNS(SVG_NS, 'rect')
+            keyRect.setAttributeNS(null, 'x', String(this.pointerRectWidth + currentXCordOrigin))
+            keyRect.setAttributeNS(null, 'y', '0')
+            keyRect.setAttributeNS(null, 'width', String(this.keyRectWidth))
+            keyRect.setAttributeNS(null, 'height', String(this.nodeHeight))
+            keyRect.setAttributeNS(null, 'fill', nodeFillColor)
+            keyRect.setAttributeNS(null, 'stroke', nodeStrokeColor)
+            svgNodeG.appendChild(keyRect)
+
+            const keyText = document.createElementNS(SVG_NS, 'text')
+            keyText.setAttributeNS(null, 'x', String((this.keyRectWidth / 2) + this.pointerRectWidth + currentXCordOrigin))
+            keyText.setAttributeNS(null, 'y', String(this.nodeHeight / 2))
+            keyText.setAttributeNS(null, 'dominant-baseline', 'middle')
+            keyText.setAttributeNS(null, 'text-anchor', 'middle')
+            keyText.setAttributeNS(null, 'id', 'key-text')
+            svgNodeG.appendChild(keyText)
+        }
+
+        const pointerRect = document.createElementNS(SVG_NS, 'rect')
+        pointerRect.setAttributeNS(null, 'x', String(this.n * (this.pointerRectWidth + this.keyRectWidth)))
+        pointerRect.setAttributeNS(null, 'y', '0')
+        pointerRect.setAttributeNS(null, 'width', String(this.pointerRectWidth))
+        pointerRect.setAttributeNS(null, 'height', String(this.nodeHeight))
+        pointerRect.setAttributeNS(null, 'fill', nodeFillColor)
+        pointerRect.setAttributeNS(null, 'stroke', nodeStrokeColor)
+        svgNodeG.appendChild(pointerRect)
+
+        return svgNodeG
     }
 }
