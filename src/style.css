@@ -10,20 +10,42 @@ body {
 }
 
 .container {
-  height: 100vh;
-
   display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
-  gap: 0px 0px;
-  grid-auto-flow: row;
-  grid-template-areas:
-    "main-svg";
+  grid-auto-columns: 1fr;
+  grid-auto-rows: 1fr;
+  grid-template-columns: 0.1fr 1.2fr 2.4fr 1.3fr 0.1fr;
+  grid-template-rows: 2.6fr 0.2fr 0.9fr 0.3fr;
+  gap: px 0px;
+  width: 100%;
+  height: 100vh;
 }
 
 .main-svg {
-  height: 100%;
+  grid-area: 1 / 2 / 4 / 5;
   width: 100%;
+  height: 100%;
+}
 
-  grid-area: main-svg;
+.algo-step-button {
+  grid-area: 2 / 5 / 3 / 6;
+}
+
+.sudo-code-button {
+  grid-area: 3 / 5 / 4 / 6;
+}
+
+.algo-step {
+  grid-area: 2 / 4 / 3 / 5;
+}
+
+.sudo-code {
+  grid-area: 3 / 4 / 4 / 5;
+}
+
+.control-button {
+  grid-area: 3 / 1 / 4 / 2;
+}
+
+.controls {
+  grid-area: 3 / 2 / 4 / 3;
 }
