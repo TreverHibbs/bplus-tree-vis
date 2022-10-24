@@ -1,5 +1,7 @@
-//TODO implement step history abstraction
+//TODO implement all animations of find and insert
+//TODO implement undoable versions of find and insert
 import { bPlusTreeNode } from "./types/bPlusTree"
+import { AlgoStep, AlgoStepHistory } from "./stepHistory"
 
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -9,6 +11,9 @@ export const SVG_NS = "http://www.w3.org/2000/svg"
  * Concepts 7th edition) and generates functions that can animate that
  * algorithm. By using this class a web UI can animate a B+tree. Each instance of
  * this class corresponds to a rendered B+tree algorithm.   
+ * 
+ * @dependency For this class to function there must be a specific html
+ * structure in the dom. This structure is defined in index.html.
  */
 export class AlgoVisualizer {
     // Number of pointers in a node.
@@ -16,6 +21,7 @@ export class AlgoVisualizer {
     private bPlusTreeRoot: bPlusTreeNode
     private svgCanvas = document.querySelector('#main-svg')
     private rootCanvasPos: [string, string] = ['0', '0']
+    private algoStepHistory = new AlgoStepHistory()
 
     private keyRectWidth = 42
     private nodeHeight = 29
@@ -90,7 +96,7 @@ export class AlgoVisualizer {
      * 
      * @param value A number to insert into the B+Tree.
      *
-     * @returns 1 if insertion was successful and 0 otherwise.
+     * @returns anime.js animation object if successful and null if not.
      */
     insert(value: number): number {
         let targetNode: bPlusTreeNode | null = null
@@ -133,7 +139,7 @@ export class AlgoVisualizer {
      * A subsidiary procedure for the insert method
      * @param targetNode The node to insert they key value into
      * @param value The key value to insert
-     * @returns 1 if successful and 0 otherwise
+     * @returns anime.js Animation object if successful and null otherwise
      */
     private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
         if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
@@ -242,8 +248,6 @@ export class AlgoVisualizer {
     the new bplus tree node visual.
      */
     private createNodeSvgElement(x = '0', y = '0'): SVGGElement {
-        // TODO this function has't to deal with placing the node elements in
-        // the correct location relative to the nodes size.
         const nodeFillColor = '#C7EBFC'
         const nodeStrokeColor = 'black'
 
