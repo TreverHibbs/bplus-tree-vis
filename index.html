@@ -4,27 +4,56 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto Mono">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vite App</title>
 </head>
 
 <!-- my grid layout -->
-<!-- https://grid.layoutit.com/?id=FWuablq -->
+<!-- grid.layoutit.com?id=KikjoL7 -->
+
 <body>
-<!--   
+  <!--   
   The following div defines the dom structure necessary for the algo Visualizer
   javascript component to function properly.
 -->
   <div class="container">
     <svg id="main-svg" class="main-svg" viewbox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"></svg>
-    <div class="algo-step-button"></div>
-    <div class="sudo-code-button"></div>
-    <div class="algo-step"></div>
-    <div class="sudo-code"></div>
-    <div class="control-button"></div>
-    <div class="controls"></div>
+    <div class="bottom-row flex-container">
+      <div class="bottom-row-items"></div>
+      <div class="bottom-row-items"></div>
+      <div id="sudo-code" class="bottom-row-items">
+      </div>
+    </div>
+    <div class="middle-row"></div>
+    <div class="top-row"></div>
+    <div class="right-middle-row"></div>
+    <div class="right-bottom-row"></div>
+    <div class="left-bottom-row"></div>
+    <div class="left-middle-row"></div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
+
+<template id="insert-sudo-code">
+  <!-- TODO finish creating insert sudo code -->
+  <b>procedure</b> insert(value K, pointer P)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which is also the
+  root<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value K<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math display="inline">
+    <mn>1</mn>
+    <mo>-</mo>
+    <mi>n</mi>
+  </math>. key values)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node L<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
+    <mn>1</mn>
+    <mo>-</mo>
+    <mi>n</mi>
+  </math> already, split it<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Insert in parent<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+</template>
 
 </html>
