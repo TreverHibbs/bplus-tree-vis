@@ -2,7 +2,8 @@
 //TODO implement undoable versions of find and insert
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStep, AlgoStepHistory } from "./stepHistory"
-
+import "animejs"
+import anime from "animejs"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 /**
@@ -92,13 +93,23 @@ export class AlgoVisualizer {
 
     /**
      *
-     * Insert a number into the B+Tree if it is not already in the tree.
+     * Insert a number into the B+Tree if it is not already in the tree. And
+     * generate an animation for that insertion.
      * 
      * @param value A number to insert into the B+Tree.
      *
      * @returns anime.js animation object if successful and null if not.
      */
     insert(value: number): number {
+        // Initialize animation
+        anime({
+            targets: 'div',
+            translateX: 250,
+            rotate: '1turn',
+            backgroundColor: '#FFF',
+            duration: 800
+        });
+
         let targetNode: bPlusTreeNode | null = null
         if (this.bPlusTreeRoot.keys.length == 0) {
             targetNode = this.bPlusTreeRoot
@@ -152,7 +163,7 @@ export class AlgoVisualizer {
 
             // This create the first bplus tree node svg element
             if (targetNode.svgElement == null) {
-                const rootCanvasXCord = Number(this.rootCanvasPos[0])-(this.nodeWidth/2)
+                const rootCanvasXCord = Number(this.rootCanvasPos[0]) - (this.nodeWidth / 2)
                 targetNode.svgElement = this.createNodeSvgElement(String(rootCanvasXCord), this.rootCanvasPos[1])
                 const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
                 if (keyTextElement) {

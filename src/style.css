@@ -91,3 +91,7 @@ body {
   background-color: #C7EBFC;
   /* font-family: Roboto Mono; */
 }
+
+.highlighted-text {
+  background-color: #ffed99;
+}

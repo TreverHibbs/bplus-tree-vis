@@ -35,9 +35,13 @@
   <script type="module" src="/src/main.ts"></script>
 </body>
 
+<!-- 
+The following templates define the sudo code that is used by the algoVisualizer
+class to indicate what step of the algorithm it is currently visualizing. It
+does this by highlighting the corresponding line of sudo code.
+-->
 <template id="insert-sudo-code">
-  <!-- TODO finish creating insert sudo code -->
-  <b>procedure</b> insert(value K, pointer P)<br>
+  <span id="insert-line-1"><b>procedure</b> insert(value K, pointer P)<br></span>
   &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which is also the
   root<br>
   &nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value K<br>
@@ -51,8 +55,36 @@
     <mn>1</mn>
     <mo>-</mo>
     <mi>n</mi>
-  </math> already, split it<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Insert in parent<br>
+  </math> already, split it into L and L'<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
+  be the smallest key-value in L'<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(L,
+  K', L')<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+</template>
+
+<template id="insert-in-parent-sudo-code">
+  <b>procedure</b> insert_in_parent(node N, value K', node N')<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (N is the root of the tree)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then begin</b><br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create a new node R containing N, K', N' /* N
+  and N' are pointers */<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Make R the root of the tree<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>return</b><br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+  &nbsp;&nbsp;&nbsp;&nbsp;Let <math display="inline">
+    <mi>P</mi>
+    <mo>=</mo>
+    <mi>parent(N)</mi>
+  </math><br>
+  &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (P has less than n pointers)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> insert (K', N') in P just after N<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> Split P into
+  P and P'<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let
+  K'' be the smallest key-value in P'<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(P,
+  K'', P')<br>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
 </template>
 
