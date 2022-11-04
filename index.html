@@ -20,7 +20,13 @@
   <div class="container">
     <svg id="main-svg" class="main-svg" viewbox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"></svg>
     <div class="bottom-row flex-container">
-      <div class="bottom-row-items"></div>
+      <div id="operations" class="bottom-row-items">
+        <!-- TODO create either a flex box ui layout for the operation forms -->
+        <button id="insert-button" class="operation">insert</button>
+        <button id="delete-button" class="operation">delete</button>
+        <button id="find-button" class="operation">find</button>
+        <input type="text" name="number-input" id="number-input">
+      </div>
       <div class="bottom-row-items"></div>
       <div id="sudo-code" class="bottom-row-items">
       </div>
@@ -31,6 +37,11 @@
     <div class="right-bottom-row"></div>
     <div class="left-bottom-row"></div>
     <div class="left-middle-row"></div>
+    <div class="nav">
+      <button id="play-button">play</button>
+      <input type="range" id="timeline-input" name="timeline-input" min="0"
+      max="1" value="0" step="1">
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
@@ -41,7 +52,7 @@ class to indicate what step of the algorithm it is currently visualizing. It
 does this by highlighting the corresponding line of sudo code.
 -->
 <template id="insert-sudo-code">
-  <span id="insert-line-1"><b>procedure</b> insert(value K, pointer P)<br></span>
+  <span id="insert-line1"><b>procedure</b> insert(value K, pointer P)<br></span>
   &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which is also the
   root<br>
   &nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value K<br>

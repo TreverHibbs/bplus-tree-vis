@@ -3,14 +3,17 @@
 
 LAYOUT_WITH_LEGEND()
 
+Person(User, "User", "web browser")
+
 Container_Boundary(webApp, "Bplus Tree Visualizer") {
-    Component(UI, "UI", "HTML/TypeScript", "Get user input")
-    Component(algoVis, "Algorithm Visualizer", "TypeScript Class, anime.js library, and html", "The logic that implements the Bplus Tree Algorithm and generates svg/html animation based on that algorithm.")
+    Component(UI, "UI", "HTML and TypeScript", "Get user input and control algoVis animation")
+    Component(algoVis, "Algorithm Visualizer", "TypeScript Class, anime.js library, d3 tree layout library, and HTML", "The logic that implements the Bplus Tree Algorithm and generates svg/html animation based on that algorithm.")
     ' Component(animationManager, "Animation Manager", "TypeScript Class/anime.js", "Keeps track of svg animation state and provides building blocks for animating a bplus tree.")
     Component(algoStepsHistory, "Algorithm Steps History", "TypeScript Class", "Defines and interface that can be used to keep track of algorithm steps and move forward and backward through them.")
 }
 
 Rel(UI, algoVis, "Uses");
+Rel(User, UI, "Uses");
 ' Rel(algoVis, animationManager, "Uses");
 Rel(algoVis, algoStepsHistory, "Uses");
 

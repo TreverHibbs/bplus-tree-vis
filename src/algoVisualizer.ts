@@ -3,7 +3,7 @@
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStep, AlgoStepHistory } from "./stepHistory"
 import "animejs"
-import anime from "animejs"
+import anime, { AnimeTimelineInstance } from "animejs"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 /**
@@ -13,21 +13,29 @@ export const SVG_NS = "http://www.w3.org/2000/svg"
  * algorithm. By using this class a web UI can animate a B+tree. Each instance of
  * this class corresponds to a rendered B+tree algorithm.   
  * 
- * @dependency For this class to function there must be a specific html
- * structure in the dom. This structure is defined in index.html.
+ * @dependency For this class to function correctly there must be a blank svg element with
+ * the id "main-svg", a blank div with the id "sudo-code", and three template
+ * elements with a specific structure in the dom. These elements are defined in index.html.
  */
 export class AlgoVisualizer {
     // Number of pointers in a node.
     readonly n: number
     private bPlusTreeRoot: bPlusTreeNode
-    private svgCanvas = document.querySelector('#main-svg')
     private rootCanvasPos: [string, string] = ['0', '0']
     private algoStepHistory = new AlgoStepHistory()
+
+
+    private sudoCodeContainer = document.querySelector("#sudo-code")
+    private svgCanvas = document.querySelector('#main-svg')
 
     private keyRectWidth = 42
     private nodeHeight = 29
     private pointerRectWidth = 14
     private nodeWidth: number
+    // in milliseconds
+    readonly animationDuration = 2000
+    //Some array to store the durations of animations
+    readonly animations: anime.AnimeTimelineInstance[] = []
 
     /**
      * 
@@ -98,17 +106,26 @@ export class AlgoVisualizer {
      * 
      * @param value A number to insert into the B+Tree.
      *
-     * @returns anime.js animation object if successful and null if not.
+     * @returns the algoVis instance
      */
-    insert(value: number): number {
+    insert(value: number): AlgoVisualizer {
         // Initialize animation
-        anime({
-            targets: 'div',
-            translateX: 250,
-            rotate: '1turn',
-            backgroundColor: '#FFF',
-            duration: 800
+        const returnTimeline = anime.timeline({
+            duration: 1,
+            endDelay: this.animationDuration - 1,
+            autoplay: false,
+            easing: 'linear'
         });
+
+        const insertSudoCode = document.querySelector("#insert-sudo-code")
+        if (this.sudoCodeContainer?.innerHTML && insertSudoCode?.innerHTML) {
+            this.sudoCodeContainer.innerHTML = insertSudoCode?.innerHTML
+        }
+
+        returnTimeline.add({
+            targets: '#insert-line1',
+            backgroundColor: '#ffed99'
+        })
 
         let targetNode: bPlusTreeNode | null = null
         if (this.bPlusTreeRoot.keys.length == 0) {
@@ -117,17 +134,17 @@ export class AlgoVisualizer {
             const { found, node } = this.find(value)
             if (found) {
                 // Do not allow duplicates
-                return 0
+                return this
             } else {
                 targetNode = node
             }
         }
         if (targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
-            this.insertInLeaf(targetNode, value)
+            this.insertInLeaf(targetNode, value, returnTimeline)
         } else { //targetNode has n - 1 key values already, split it
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true, targetNode.pointers.slice(0, this.n - 2), targetNode.keys.slice(0, this.n - 2))
-            this.insertInLeaf(tempNode, value)
+            this.insertInLeaf(tempNode, value, returnTimeline)
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
@@ -142,7 +159,7 @@ export class AlgoVisualizer {
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
 
-        return 1
+        return this
     }
 
     /**
@@ -150,9 +167,12 @@ export class AlgoVisualizer {
      * A subsidiary procedure for the insert method
      * @param targetNode The node to insert they key value into
      * @param value The key value to insert
+     * @param returnTimeline The animejs timeline object that is generated and
+     * returned by the insert method
      * @returns anime.js Animation object if successful and null otherwise
+     * @sideEffects adds animations to the returnTimeline object
      */
-    private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
+    private insertInLeaf(targetNode: bPlusTreeNode, value: number, returnTimeline: anime.AnimeTimelineInstance) {
         if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
             // shift all values in keys to the right one spot.
             for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
@@ -165,12 +185,17 @@ export class AlgoVisualizer {
             if (targetNode.svgElement == null) {
                 const rootCanvasXCord = Number(this.rootCanvasPos[0]) - (this.nodeWidth / 2)
                 targetNode.svgElement = this.createNodeSvgElement(String(rootCanvasXCord), this.rootCanvasPos[1])
+                targetNode.svgElement.setAttribute('opacity', '0')
                 const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
                 if (keyTextElement) {
                     keyTextElement.innerHTML = String(value)
                 }
                 this.svgCanvas?.appendChild(targetNode.svgElement)
             }
+            returnTimeline.add({
+                targets: targetNode.svgElement,
+                opacity: 1
+            })
 
             targetNode.keys[0] = value
         } else {
@@ -308,5 +333,34 @@ export class AlgoVisualizer {
         svgNodeG.appendChild(pointerRect)
 
         return svgNodeG
+    }
+
+
+
+    // Animation Interface Section //
+    /**
+     * Starts the animation from current time (in milliseconds).
+     */
+    public play() {
+        return null
+    }
+
+
+    /**
+     * Pauses the animation at current time (in milliseconds).
+     */
+    public pause() {
+        return null
+    }
+
+
+    /**
+     * Jump to specific time (in milliseconds)
+     *
+     * @param time The time to jump to in milliseconds
+     * @return this algoVisualizer instance
+     */
+    public seek(time: number) {
+        return this
     }
 }
