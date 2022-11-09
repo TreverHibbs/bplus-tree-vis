@@ -15,7 +15,7 @@
     "noImplicitReturns": true,
     "skipLibCheck": true,
     "noImplicitAny": true,
-    "useDefineForClassFields": true,
+    "useDefineForClassFields": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/*.spec.ts"]

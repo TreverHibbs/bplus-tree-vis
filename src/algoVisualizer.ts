@@ -110,7 +110,7 @@ export class AlgoVisualizer {
      */
     insert(value: number): AlgoVisualizer {
         // Initialize animation
-        const returnTimeline = anime.timeline({
+        const timeline = anime.timeline({
             duration: 1,
             endDelay: this.animationDuration - 1,
             autoplay: false,
@@ -122,7 +122,7 @@ export class AlgoVisualizer {
             this.sudoCodeContainer.innerHTML = insertSudoCode?.innerHTML
         }
 
-        returnTimeline.add({
+        timeline.add({
             targets: '#insert-line1',
             backgroundColor: '#ffed99'
         })
@@ -134,17 +134,18 @@ export class AlgoVisualizer {
             const { found, node } = this.find(value)
             if (found) {
                 // Do not allow duplicates
+                this.animations.push(timeline)
                 return this
             } else {
                 targetNode = node
             }
         }
         if (targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
-            this.insertInLeaf(targetNode, value, returnTimeline)
+            this.insertInLeaf(targetNode, value, timeline)
         } else { //targetNode has n - 1 key values already, split it
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true, targetNode.pointers.slice(0, this.n - 2), targetNode.keys.slice(0, this.n - 2))
-            this.insertInLeaf(tempNode, value, returnTimeline)
+            this.insertInLeaf(tempNode, value, timeline)
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
@@ -159,6 +160,7 @@ export class AlgoVisualizer {
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
 
+        this.animations.push(timeline)
         return this
     }
 
@@ -342,6 +344,7 @@ export class AlgoVisualizer {
      * Starts the animation from current time (in milliseconds).
      */
     public play() {
+        this.animations[this.animations.length-1].play()
         return null
     }
 
