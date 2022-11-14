@@ -4,6 +4,8 @@ import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStep, AlgoStepHistory } from "./stepHistory"
 import "animejs"
 import anime, { AnimeTimelineInstance } from "animejs"
+import { tree, hierarchy } from "d3-hierarchy"
+import { select } from "d3-selection"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 /**
@@ -20,8 +22,8 @@ export const SVG_NS = "http://www.w3.org/2000/svg"
 export class AlgoVisualizer {
     // Number of pointers in a node.
     readonly n: number
-    private bPlusTreeRoot: bPlusTreeNode
-    private rootCanvasPos: [string, string] = ['0', '0']
+    // null when tree is empty
+    private bPlusTreeRoot: bPlusTreeNode | null
     private algoStepHistory = new AlgoStepHistory()
 
 
@@ -37,6 +39,9 @@ export class AlgoVisualizer {
     //Some array to store the durations of animations
     readonly animations: anime.AnimeTimelineInstance[] = []
 
+    //Used to get the x y coords of the trees nodes on the canvas.
+    private d3TreeLayout = tree()
+
     /**
      * 
      * @param nodeSize Determines how many pointers are contained
@@ -44,22 +49,11 @@ export class AlgoVisualizer {
      */
     constructor(nodeSize: number) {
         this.n = nodeSize
-        this.bPlusTreeRoot = new bPlusTreeNode(true)
-
-        // The following finds the center of the svg canvas
-        if (this.svgCanvas != null) {
-            const viewboxArray = this.svgCanvas?.getAttributeNS(null, 'viewBox')?.split(' ')
-            if (viewboxArray) {
-                const midXCord = Number(viewboxArray[2]) / 2
-                this.rootCanvasPos = [String(midXCord), '20']
-            } else {
-                console.error('viewbox attribute on svg canvas was undefined')
-            }
-        } else {
-            console.error('svg canvas could not be selected')
-        }
+        //this.bPlusTreeRoot = new bPlusTreeNode(true)
 
         this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * this.n + this.pointerRectWidth
+
+        this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight])
     }
 
     /**
@@ -128,8 +122,29 @@ export class AlgoVisualizer {
         })
 
         let targetNode: bPlusTreeNode | null = null
-        if (this.bPlusTreeRoot.keys.length == 0) {
+        if (this.bPlusTreeRoot == null || this.bPlusTreeRoot.keys.length == 0) {
             targetNode = this.bPlusTreeRoot
+
+            // // Offset root node position so that the svg node is centered. This
+            // // must be done because the origin onf the svg element is at its
+            // // lop left corner
+            // const rootSvgNodeXCord = Number(this.rootCanvasPos[0]) - (this.nodeWidth / 2)
+            // targetNode.svgElement = this.createNodeSvgElement(String(rootSvgNodeXCord), this.rootCanvasPos[1])
+            // targetNode.svgElement.setAttribute('opacity', '0')
+            // const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
+            // if (keyTextElement) {
+            //     keyTextElement.innerHTML = String(value)
+            // }
+            // this.svgCanvas?.appendChild(targetNode.svgElement)
+
+            // returnTimeline.add({
+            //     targets: targetNode.svgElement,
+            //     opacity: 1
+            // })
+
+            // timeline.add({
+
+            // })
         } else {
             const { found, node } = this.find(value)
             if (found) {
@@ -140,7 +155,7 @@ export class AlgoVisualizer {
                 targetNode = node
             }
         }
-        if (targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
+        if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
             this.insertInLeaf(targetNode, value, timeline)
         } else { //targetNode has n - 1 key values already, split it
             const newNode = new bPlusTreeNode(true)
@@ -174,8 +189,21 @@ export class AlgoVisualizer {
      * @returns anime.js Animation object if successful and null otherwise
      * @sideEffects adds animations to the returnTimeline object
      */
-    private insertInLeaf(targetNode: bPlusTreeNode, value: number, returnTimeline: anime.AnimeTimelineInstance) {
-        if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
+    private insertInLeaf(targetNode: bPlusTreeNode | null, value: number, returnTimeline: anime.AnimeTimelineInstance) {
+        if (targetNode == null) {
+            // create first node in the tree
+            targetNode = new bPlusTreeNode(true)
+
+            //TODO finish this
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy(targetNode, (node) => { return node.pointers }))
+            select("#main-svg").selectAll("g").data(rootHierarchyNode)
+
+            returnTimeline.add({
+                targets: targetNode.svgElement,
+                opacity: 1
+            })
+
+        } else if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
             // shift all values in keys to the right one spot.
             for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
                 if (targetNode.keys[i]) {
@@ -184,20 +212,16 @@ export class AlgoVisualizer {
             }
 
             // This create the first bplus tree node svg element
-            if (targetNode.svgElement == null) {
-                const rootCanvasXCord = Number(this.rootCanvasPos[0]) - (this.nodeWidth / 2)
-                targetNode.svgElement = this.createNodeSvgElement(String(rootCanvasXCord), this.rootCanvasPos[1])
-                targetNode.svgElement.setAttribute('opacity', '0')
-                const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
-                if (keyTextElement) {
-                    keyTextElement.innerHTML = String(value)
-                }
-                this.svgCanvas?.appendChild(targetNode.svgElement)
-            }
-            returnTimeline.add({
-                targets: targetNode.svgElement,
-                opacity: 1
-            })
+            // if (targetNode.svgElement == null) {
+            //     const rootCanvasXCord = Number(this.rootCanvasPos[0]) - (this.nodeWidth / 2)
+            //     targetNode.svgElement = this.createNodeSvgElement(String(rootCanvasXCord), this.rootCanvasPos[1])
+            //     targetNode.svgElement.setAttribute('opacity', '0')
+            //     const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
+            //     if (keyTextElement) {
+            //         keyTextElement.innerHTML = String(value)
+            //     }
+            //     this.svgCanvas?.appendChild(targetNode.svgElement)
+            // }
 
             targetNode.keys[0] = value
         } else {
@@ -344,7 +368,7 @@ export class AlgoVisualizer {
      * Starts the animation from current time (in milliseconds).
      */
     public play() {
-        this.animations[this.animations.length-1].play()
+        this.animations[this.animations.length - 1].play()
         return null
     }
 

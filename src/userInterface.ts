@@ -8,7 +8,6 @@ import { AlgoVisualizer } from './algoVisualizer'
  * structure in the dom. This structure is defined in index.html.
  */
 export const userInterface = () => {
-    // TODO make this get input from html ui and execute insert and control
     // animation afterwards.
     console.debug("init user interface")
     const algoVisualizer = new AlgoVisualizer(4)
@@ -18,7 +17,6 @@ export const userInterface = () => {
     insertButton?.addEventListener('click', () => {
         const numberInput = <HTMLInputElement>document.querySelector('#number-input')
         if (numberInput?.value) {
-            //TODO have this return an animation and use it in this ui component.
             algoVisualizer.insert(Number(numberInput.value))
             updateTimelineInput()
         }
@@ -48,8 +46,6 @@ export const userInterface = () => {
      * Manipulates the range input dom element for controlling animations so
      * that the current animejs animation can be controlled correctly. Should be
      * called every time that the currentAnimation global is reassigned.
-     * TODO this function will eventually have to take into account the use of
-     * the step history component.
      * 
      * @returns 1 if successful and 0 if not
      */
