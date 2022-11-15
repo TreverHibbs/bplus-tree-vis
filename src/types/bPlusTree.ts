@@ -1,16 +1,17 @@
 /**
  * Using this class the algo visualizer class can represent bplus tree nodes.
- * Each instance of this class represents a Bplus Tree Node SVG element.
+ * Each instance of this class represents a Bplus Tree Node.
  */
 export class bPlusTreeNode {
     pointers: bPlusTreeNode[] = []
     keys: number[] = []
     isLeaf: boolean
     parent: bPlusTreeNode | null = null
-    svgElement: SVGGElement | null = null
+    id: number
 
-    constructor(initIsLeaf: boolean, initPointers?: bPlusTreeNode[], initKeys?: number[], initParent?: bPlusTreeNode, initSvgElement?: SVGGElement) {
+    constructor(initIsLeaf: boolean, id: number, initPointers?: bPlusTreeNode[], initKeys?: number[], initParent?: bPlusTreeNode) {
         this.isLeaf = initIsLeaf
+        this.id = id
         if (initKeys) {
             this.keys = initKeys
         }
@@ -19,9 +20,6 @@ export class bPlusTreeNode {
         }
         if (initParent) {
             this.parent = initParent
-        }
-        if (initSvgElement) {
-            this.svgElement = initSvgElement
         }
     }
 }

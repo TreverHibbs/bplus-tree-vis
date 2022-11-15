@@ -7,6 +7,7 @@ import anime, { AnimeTimelineInstance } from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 import { transform } from "typescript"
+import { HierarchyPointNode } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 /**
@@ -195,15 +196,15 @@ export class AlgoVisualizer {
     private insertInLeaf(targetNode: bPlusTreeNode | null, value: number, returnTimeline: anime.AnimeTimelineInstance) {
         if (targetNode == null) {
             // create first node in the tree
-            targetNode = new bPlusTreeNode(true)
+            targetNode = new bPlusTreeNode(true, this.nodeId++)
             targetNode.keys[0] = value
 
-            //TODO finish this
-            //Add new svg element for new node
+            //TODO create animation that selects the corresponding sudo code.
+
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
             const nodeSelection = select("#main-svg")
                 .selectAll("g.node")
-                .data(rootHierarchyNode, () => this.nodeId++)
+                .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
 
             const nodeEnterSelection = nodeSelection.enter()
             const newSVGGElement = this.createNodeSvgElement(nodeEnterSelection)
