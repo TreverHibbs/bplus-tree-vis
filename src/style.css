@@ -126,6 +126,17 @@ body {
   background-color: #ffed99;
 }
 
+.node {
+  fill: #C7EBFC;
+  stroke: black;
+}
+.node-key-text {
+  dominant-baseline: middle;
+  text-anchor: middle;
+  fill: black;
+  stroke: none;
+}
+
 /* 
 triadic colors
 maybe use these in ui

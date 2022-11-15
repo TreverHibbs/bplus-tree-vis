@@ -6,6 +6,7 @@ import "animejs"
 import anime, { AnimeTimelineInstance } from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
+import { transform } from "typescript"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 /**
@@ -40,7 +41,9 @@ export class AlgoVisualizer {
     readonly animations: anime.AnimeTimelineInstance[] = []
 
     //Used to get the x y coords of the trees nodes on the canvas.
-    private d3TreeLayout = tree()
+    private d3TreeLayout = tree<bPlusTreeNode>()
+    //Used to mach B+ tree node to corresponding svg element.
+    private nodeId = 0
 
     /**
      * 
@@ -193,13 +196,21 @@ export class AlgoVisualizer {
         if (targetNode == null) {
             // create first node in the tree
             targetNode = new bPlusTreeNode(true)
+            targetNode.keys[0] = value
 
             //TODO finish this
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy(targetNode, (node) => { return node.pointers }))
-            select("#main-svg").selectAll("g").data(rootHierarchyNode)
+            //Add new svg element for new node
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
+            const nodeSelection = select("#main-svg")
+                .selectAll("g.node")
+                .data(rootHierarchyNode, () => this.nodeId++)
 
+            const nodeEnterSelection = nodeSelection.enter()
+            const newSVGGElement = this.createNodeSvgElement(nodeEnterSelection)
+
+            // create animation that reveals new node
             returnTimeline.add({
-                targets: targetNode.svgElement,
+                targets: newSVGGElement,
                 opacity: 1
             })
 
@@ -210,18 +221,6 @@ export class AlgoVisualizer {
                     targetNode.keys[i + 1] = targetNode.keys[i]
                 }
             }
-
-            // This create the first bplus tree node svg element
-            // if (targetNode.svgElement == null) {
-            //     const rootCanvasXCord = Number(this.rootCanvasPos[0]) - (this.nodeWidth / 2)
-            //     targetNode.svgElement = this.createNodeSvgElement(String(rootCanvasXCord), this.rootCanvasPos[1])
-            //     targetNode.svgElement.setAttribute('opacity', '0')
-            //     const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
-            //     if (keyTextElement) {
-            //         keyTextElement.innerHTML = String(value)
-            //     }
-            //     this.svgCanvas?.appendChild(targetNode.svgElement)
-            // }
 
             targetNode.keys[0] = value
         } else {
@@ -302,63 +301,57 @@ export class AlgoVisualizer {
      * 
      * Creates a HTML element that represents one bplus tree node. This method
      * exists to keep all styling of bplus tree nodes in one spot. The origin of
-     * the node is at its top left corner.
-     * @dependency this.n The size of a bplus tree node.
-     * @param x
-     * @param y
-     * @returns A g element the children of which are the elements that make up
-    the new bplus tree node visual.
+     * the node is at its top left corner. All nodes are made invisible when created
+     * so that they can later be revealed in an animation.
+     * @dependency this.n The size of a bplus tree node
+     * @param nodeEnterSelection A selection containing newly added BPlus tree nodes.
+     * @return SVGGElement The first SVGGElement that was created or null if no
+     * element was created.
      */
-    private createNodeSvgElement(x = '0', y = '0'): SVGGElement {
-        const nodeFillColor = '#C7EBFC'
-        const nodeStrokeColor = 'black'
+    private createNodeSvgElement(nodeEnterSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>): SVGGElement | null {
+        const newGElementSelection = nodeEnterSelection.append("g")
+            .attr("class", "node")
+            .attr("transform-origin", "center")
+            .attr("transform", d => { return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")" })
+            .attr("opacity", 0)
 
-        const svgNodeG = document.createElementNS(SVG_NS, 'g')
-        svgNodeG.setAttributeNS(null, 'transform', `translate(${x}, ${y})`)
-
-
-        // Each iteration of this loop creates the svg elements that correspond
-        // to one pointer key pair in the node
         for (let i = 0; i < this.n; i++) {
             const currentXCordOrigin = i * (this.pointerRectWidth + this.keyRectWidth)
 
-            const pointerRect = document.createElementNS(SVG_NS, 'rect')
-            pointerRect.setAttributeNS(null, 'x', String(currentXCordOrigin))
-            pointerRect.setAttributeNS(null, 'y', '0')
-            pointerRect.setAttributeNS(null, 'width', String(this.pointerRectWidth))
-            pointerRect.setAttributeNS(null, 'height', String(this.nodeHeight))
-            pointerRect.setAttributeNS(null, 'fill', nodeFillColor)
-            pointerRect.setAttributeNS(null, 'stroke', nodeStrokeColor)
-            svgNodeG.appendChild(pointerRect)
+            newGElementSelection.append('rect')
+                .attr("class", "node-rect")
+                .attr("width", this.pointerRectWidth)
+                .attr("height", this.nodeHeight)
+                .attr("x", currentXCordOrigin)
+                .attr("y", 0)
 
-            const keyRect = document.createElementNS(SVG_NS, 'rect')
-            keyRect.setAttributeNS(null, 'x', String(this.pointerRectWidth + currentXCordOrigin))
-            keyRect.setAttributeNS(null, 'y', '0')
-            keyRect.setAttributeNS(null, 'width', String(this.keyRectWidth))
-            keyRect.setAttributeNS(null, 'height', String(this.nodeHeight))
-            keyRect.setAttributeNS(null, 'fill', nodeFillColor)
-            keyRect.setAttributeNS(null, 'stroke', nodeStrokeColor)
-            svgNodeG.appendChild(keyRect)
+            newGElementSelection.append('rect')
+                .attr("class", "node-rect")
+                .attr("width", this.keyRectWidth)
+                .attr("height", this.nodeHeight)
+                .attr("x", currentXCordOrigin + this.pointerRectWidth)
+                .attr("y", 0)
 
-            const keyText = document.createElementNS(SVG_NS, 'text')
-            keyText.setAttributeNS(null, 'x', String((this.keyRectWidth / 2) + this.pointerRectWidth + currentXCordOrigin))
-            keyText.setAttributeNS(null, 'y', String(this.nodeHeight / 2))
-            keyText.setAttributeNS(null, 'dominant-baseline', 'middle')
-            keyText.setAttributeNS(null, 'text-anchor', 'middle')
-            keyText.setAttributeNS(null, 'id', 'key-text')
-            svgNodeG.appendChild(keyText)
+            newGElementSelection.append('text')
+                .attr("class", "node-key-text")
+                .attr("x", (this.keyRectWidth / 2) + this.pointerRectWidth + currentXCordOrigin)
+                .attr("y", this.nodeHeight / 2)
+                .html(d => {
+                    if (d.data.keys[i]) {
+                        return String(d.data.keys[i])
+                    }
+                    return ""
+                })
+
         }
+        newGElementSelection.append('rect')
+            .attr("class", "node-rect")
+            .attr("width", this.pointerRectWidth)
+            .attr("height", this.nodeHeight)
+            .attr("x", this.n * (this.pointerRectWidth + this.keyRectWidth))
+            .attr("y", 0)
 
-        const pointerRect = document.createElementNS(SVG_NS, 'rect')
-        pointerRect.setAttributeNS(null, 'x', String(this.n * (this.pointerRectWidth + this.keyRectWidth)))
-        pointerRect.setAttributeNS(null, 'y', '0')
-        pointerRect.setAttributeNS(null, 'width', String(this.pointerRectWidth))
-        pointerRect.setAttributeNS(null, 'height', String(this.nodeHeight))
-        pointerRect.setAttributeNS(null, 'fill', nodeFillColor)
-        pointerRect.setAttributeNS(null, 'stroke', nodeStrokeColor)
-        svgNodeG.appendChild(pointerRect)
-
-        return svgNodeG
+        return newGElementSelection.node()
     }
 
 
