@@ -3,23 +3,14 @@
  * Each instance of this class represents a Bplus Tree Node.
  */
 export class bPlusTreeNode {
-    pointers: bPlusTreeNode[] = []
-    keys: number[] = []
-    isLeaf: boolean
-    parent: bPlusTreeNode | null = null
+    public pointers: bPlusTreeNode[] = []
+    public keys: number[] = []
+    public isLeaf: boolean
+    public parent: bPlusTreeNode | null = null
     id: number
 
-    constructor(initIsLeaf: boolean, id: number, initPointers?: bPlusTreeNode[], initKeys?: number[], initParent?: bPlusTreeNode) {
+    constructor(initIsLeaf: boolean, id: number) {
         this.isLeaf = initIsLeaf
         this.id = id
-        if (initKeys) {
-            this.keys = initKeys
-        }
-        if (initPointers) {
-            this.pointers = initPointers
-        }
-        if (initParent) {
-            this.parent = initParent
-        }
     }
 }

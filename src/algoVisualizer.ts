@@ -207,6 +207,7 @@ export class AlgoVisualizer {
                 .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
 
             const nodeEnterSelection = nodeSelection.enter()
+            //TODO look into using d3 to loop over key array in this function call
             const newSVGGElement = this.createNodeSvgElement(nodeEnterSelection)
 
             // create animation that reveals new node
