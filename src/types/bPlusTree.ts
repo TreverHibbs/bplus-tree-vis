@@ -5,16 +5,21 @@ let nodeId = 0
  * Each instance of this class represents a Bplus Tree Node.
  */
 export class bPlusTreeNode {
+    /** initialized to empty array */
     public pointers: (bPlusTreeNode)[] = []
+    /** initialized to empty array */
     public keys: (number)[] = []
+    /** initialized by constructor parameter */
     public isLeaf: boolean
+    /** initialized to null */
     public parent: bPlusTreeNode | null = null
-    id: number = nodeId++
+    /** incrementing id */
+    public id: number = nodeId++
 
     /**
      * Initialize properties in new B+ tree node
+     *
      * @param initIsLeaf sets isLeaf property
-     * @param id sets id property
      */
     constructor(initIsLeaf: boolean) {
         this.isLeaf = initIsLeaf
