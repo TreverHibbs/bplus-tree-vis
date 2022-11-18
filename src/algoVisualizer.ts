@@ -7,7 +7,7 @@ import anime, { AnimeTimelineInstance } from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 import { transform } from "typescript"
-import { HierarchyPointNode } from "d3"
+import { HierarchyPointNode, text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 /**
@@ -22,12 +22,11 @@ export const SVG_NS = "http://www.w3.org/2000/svg"
  * elements with a specific structure in the dom. These elements are defined in index.html.
  */
 export class AlgoVisualizer {
-    // Number of pointers in a node.
+    /* number of pointers in a node */
     readonly n: number
-    // null when tree is empty
+    /** null when tree is empty */
     private bPlusTreeRoot: bPlusTreeNode | null
     private algoStepHistory = new AlgoStepHistory()
-
 
     private sudoCodeContainer = document.querySelector("#sudo-code")
     private svgCanvas = document.querySelector('#main-svg')
@@ -37,15 +36,13 @@ export class AlgoVisualizer {
     private nodeHeight = 29
     private pointerRectWidth = 14
     private nodeWidth: number
-    // in milliseconds
+    /* in milliseconds */
     readonly animationDuration = 1000
-    //Some array to store the durations of animations
+    //array to store the durations of animations
     readonly animations: anime.AnimeTimelineInstance[] = []
 
-    //Used to get the x y coords of the trees nodes on the canvas.
+    /** used to get the x y coords of the trees nodes on the canvas */
     private d3TreeLayout = tree<bPlusTreeNode>()
-    //Used to mach B+ tree node to corresponding svg element.
-    private nodeId = 0
 
     /**
      * 
@@ -132,8 +129,15 @@ export class AlgoVisualizer {
         let targetNode: bPlusTreeNode | null = null
         if (this.bPlusTreeRoot == null || this.bPlusTreeRoot.keys.length == 0) {
             targetNode = this.bPlusTreeRoot
-            targetNode = new bPlusTreeNode(true, this.nodeId++)
-            targetNode.keys[0] = value
+            targetNode = new bPlusTreeNode(true)
+
+
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
+            const nodeSelection = select("#main-svg")
+                .selectAll("g.node")
+                .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
+            const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
+
 
             timeline.add({
                 targets: '#insert-line2',
@@ -141,6 +145,11 @@ export class AlgoVisualizer {
                 complete: (anim) => {
                     anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
                 }
+            })
+            // create animation that reveals new node
+            timeline.add({
+                targets: newSVGGElement,
+                opacity: 1
             })
         } else {
             const { found, node } = this.find(value)
@@ -194,34 +203,27 @@ export class AlgoVisualizer {
      * @returns anime.js Animation object if successful and null otherwise
      * @sideEffects adds animations to the returnTimeline object
      */
-    private insertInLeaf(targetNode: bPlusTreeNode | null, value: number, returnTimeline: anime.AnimeTimelineInstance) {
-        if (targetNode == null) {
-            // create first node in the tree
-            targetNode = new bPlusTreeNode(true)
-            targetNode.keys[0] = value
-
-            //TODO create animation that selects the corresponding sudo code.
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
-            const nodeSelection = select("#main-svg")
-                .selectAll("g.node")
-                .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
-            const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
-
-            // create animation that reveals new node
-            returnTimeline.add({
-                targets: newSVGGElement,
-                opacity: 1
-            })
-
-        } else if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
+    private insertInLeaf(targetNode: bPlusTreeNode, value: number, returnTimeline: anime.AnimeTimelineInstance) {
+        if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
             // shift all values in keys to the right one spot.
             for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
                 if (targetNode.keys[i]) {
                     targetNode.keys[i + 1] = targetNode.keys[i]
                 }
             }
-
             targetNode.keys[0] = value
+
+            // TODO make it so that highlights mach up better with revealing
+            // corresponding dom elements maybe
+            const textSelection = select("#node-id-" + String(targetNode.id))
+                .selectAll("text")
+                .data(targetNode.keys)
+            const textElementSelection = this.createNewNodeText(textSelection.enter().append("text"), true)
+
+            returnTimeline.add({
+                targets: textElementSelection.nodes(),
+                opacity: 1
+            })
         } else {
             // insert value into targetNode.keys just after the value in
             // targetNode.keys that is the highest value that is less than or
@@ -296,6 +298,64 @@ export class AlgoVisualizer {
         return 1
     }
 
+
+
+    // Animation Interface Section //
+    /**
+     * Starts the animation from current time (in milliseconds).
+     */
+    public play() {
+        this.animations[this.animations.length - 1].play()
+        return null
+    }
+
+
+    /**
+     * Pauses the animation at current time (in milliseconds).
+     */
+    public pause() {
+        return null
+    }
+
+
+    /**
+     * Jump to specific time (in milliseconds)
+     *
+     * @param time The time to jump to in milliseconds
+     * @return this algoVisualizer instance
+     */
+    public seek(time: number) {
+        return this
+    }
+
+
+
+    // helper functions //
+    /**
+     * creates a new set of text dom elements for a B+ Tree node
+     * 
+     * @param newTextSelection A selection of text dom elements that correspond
+     * to a B+ Tree keys array.
+     * @param isTransparent toggles wether or not text element is transparent
+     * initially. This exists so that text reveal can be animated.
+     * @return textElementSelection the selection of newly created text elements
+     */
+    private createNewNodeText(newTextSelection: d3.Selection<SVGTextElement, number, d3.BaseType, unknown>, isTransparent = false): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
+        let textElementSelection = newTextSelection.attr("class", "node-key-text")
+            // Calculate the x coordinate of the text based on its index in the
+            // key array.
+            .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * this.keyRectWidth })
+            .attr("y", this.nodeHeight / 2)
+            .html(d => { return d ? String(d) : "" })
+
+        if (isTransparent) {
+            textElementSelection = textElementSelection.attr("opacity", 0)
+        }
+
+        return textElementSelection
+    }
+
+
     /**
      * 
      * Creates a HTML element that represents one bplus tree node. This method
@@ -310,6 +370,7 @@ export class AlgoVisualizer {
     private createNodeSvgElement(nodeEnterSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>): SVGGElement | null {
         const newGElementSelection = nodeEnterSelection.append("g")
             .attr("class", "node")
+            .attr("id", d => { return "node-id-" + String(d.data.id) })
             .attr("transform-origin", "center")
             .attr("transform", d => { return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")" })
             .attr("opacity", 0)
@@ -353,44 +414,8 @@ export class AlgoVisualizer {
         const textEnterSelection = newGElementSelection.selectAll("text.node-key-text")
             .data((d) => d.data.keys).enter()
 
-        textEnterSelection.append("text")
-            .attr("class", "node-key-text")
-            // Calculate the x coordinate of the text based on its index in the
-            // key array.
-            .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * this.keyRectWidth })
-            .attr("y", this.nodeHeight / 2)
-            .html(d => { return d ? String(d) : "" })
+        this.createNewNodeText(textEnterSelection.append("text"))
 
         return newGElementSelection.node()
-    }
-
-
-
-    // Animation Interface Section //
-    /**
-     * Starts the animation from current time (in milliseconds).
-     */
-    public play() {
-        this.animations[this.animations.length - 1].play()
-        return null
-    }
-
-
-    /**
-     * Pauses the animation at current time (in milliseconds).
-     */
-    public pause() {
-        return null
-    }
-
-
-    /**
-     * Jump to specific time (in milliseconds)
-     *
-     * @param time The time to jump to in milliseconds
-     * @return this algoVisualizer instance
-     */
-    public seek(time: number) {
-        return this
     }
 }
