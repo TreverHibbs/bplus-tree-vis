@@ -32,12 +32,13 @@ export class AlgoVisualizer {
     private sudoCodeContainer = document.querySelector("#sudo-code")
     private svgCanvas = document.querySelector('#main-svg')
 
+    private HIGHLIGHTCOLOR = "#ffed99"
     private keyRectWidth = 42
     private nodeHeight = 29
     private pointerRectWidth = 14
     private nodeWidth: number
     // in milliseconds
-    readonly animationDuration = 2000
+    readonly animationDuration = 1000
     //Some array to store the durations of animations
     readonly animations: anime.AnimeTimelineInstance[] = []
 
@@ -122,33 +123,25 @@ export class AlgoVisualizer {
 
         timeline.add({
             targets: '#insert-line1',
-            backgroundColor: '#ffed99'
+            backgroundColor: this.HIGHLIGHTCOLOR,
+            complete: (anim) => {
+                anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
+            }
         })
 
         let targetNode: bPlusTreeNode | null = null
         if (this.bPlusTreeRoot == null || this.bPlusTreeRoot.keys.length == 0) {
             targetNode = this.bPlusTreeRoot
+            targetNode = new bPlusTreeNode(true, this.nodeId++)
+            targetNode.keys[0] = value
 
-            // // Offset root node position so that the svg node is centered. This
-            // // must be done because the origin onf the svg element is at its
-            // // lop left corner
-            // const rootSvgNodeXCord = Number(this.rootCanvasPos[0]) - (this.nodeWidth / 2)
-            // targetNode.svgElement = this.createNodeSvgElement(String(rootSvgNodeXCord), this.rootCanvasPos[1])
-            // targetNode.svgElement.setAttribute('opacity', '0')
-            // const keyTextElement = targetNode.svgElement.children.namedItem('key-text')
-            // if (keyTextElement) {
-            //     keyTextElement.innerHTML = String(value)
-            // }
-            // this.svgCanvas?.appendChild(targetNode.svgElement)
-
-            // returnTimeline.add({
-            //     targets: targetNode.svgElement,
-            //     opacity: 1
-            // })
-
-            // timeline.add({
-
-            // })
+            timeline.add({
+                targets: '#insert-line2',
+                backgroundColor: this.HIGHLIGHTCOLOR,
+                complete: (anim) => {
+                    anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
+                }
+            })
         } else {
             const { found, node } = this.find(value)
             if (found) {
@@ -160,6 +153,14 @@ export class AlgoVisualizer {
             }
         }
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
+            timeline.add({
+                targets: '#insert-line5',
+                backgroundColor: this.HIGHLIGHTCOLOR,
+                complete: (anim) => {
+                    anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
+                }
+            })
+
             this.insertInLeaf(targetNode, value, timeline)
         } else { //targetNode has n - 1 key values already, split it
             const newNode = new bPlusTreeNode(true)
@@ -196,19 +197,15 @@ export class AlgoVisualizer {
     private insertInLeaf(targetNode: bPlusTreeNode | null, value: number, returnTimeline: anime.AnimeTimelineInstance) {
         if (targetNode == null) {
             // create first node in the tree
-            targetNode = new bPlusTreeNode(true, this.nodeId++)
+            targetNode = new bPlusTreeNode(true)
             targetNode.keys[0] = value
 
             //TODO create animation that selects the corresponding sudo code.
-
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
             const nodeSelection = select("#main-svg")
                 .selectAll("g.node")
                 .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
-
-            const nodeEnterSelection = nodeSelection.enter()
-            //TODO look into using d3 to loop over key array in this function call
-            const newSVGGElement = this.createNodeSvgElement(nodeEnterSelection)
+            const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
 
             // create animation that reveals new node
             returnTimeline.add({
@@ -334,16 +331,16 @@ export class AlgoVisualizer {
                 .attr("x", currentXCordOrigin + this.pointerRectWidth)
                 .attr("y", 0)
 
-            newGElementSelection.append('text')
-                .attr("class", "node-key-text")
-                .attr("x", (this.keyRectWidth / 2) + this.pointerRectWidth + currentXCordOrigin)
-                .attr("y", this.nodeHeight / 2)
-                .html(d => {
-                    if (d.data.keys[i]) {
-                        return String(d.data.keys[i])
-                    }
-                    return ""
-                })
+            // newGElementSelection.append('text')
+            //     .attr("class", "node-key-text")
+            //     .attr("x", (this.keyRectWidth / 2) + this.pointerRectWidth + currentXCordOrigin)
+            //     .attr("y", this.nodeHeight / 2)
+            //     .html(d => {
+            //         if (d.data.keys[i]) {
+            //             return String(d.data.keys[i])
+            //         }
+            //         return ""
+            //     })
 
         }
         newGElementSelection.append('rect')
@@ -352,6 +349,17 @@ export class AlgoVisualizer {
             .attr("height", this.nodeHeight)
             .attr("x", this.n * (this.pointerRectWidth + this.keyRectWidth))
             .attr("y", 0)
+
+        const textEnterSelection = newGElementSelection.selectAll("text.node-key-text")
+            .data((d) => d.data.keys).enter()
+
+        textEnterSelection.append("text")
+            .attr("class", "node-key-text")
+            // Calculate the x coordinate of the text based on its index in the
+            // key array.
+            .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * this.keyRectWidth })
+            .attr("y", this.nodeHeight / 2)
+            .html(d => { return d ? String(d) : "" })
 
         return newGElementSelection.node()
     }
