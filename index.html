@@ -40,7 +40,7 @@
     <div class="nav">
       <button id="play-button">play</button>
       <input type="range" id="timeline-input" name="timeline-input" min="0"
-      max="1" value="0" step="1">
+      max="1" value="0" step="0.01">
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
@@ -56,16 +56,16 @@ does this by highlighting the corresponding line of sudo code.
   <span id="insert-line2">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which is also the
   root<br></span>
   &nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value K<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math display="inline">
-    <mn>1</mn>
+  <span id="insert-line4">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math display="inline">
+    <mn>n</mn>
     <mo>-</mo>
-    <mi>n</mi>
-  </math>. key values)<br>
+    <mi>1</mi>
+  </math>. key values)<br></span>
   <span id="insert-line5">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node L<br></span> 
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
-    <mn>1</mn>
+    <mn>n</mn>
     <mo>-</mo>
-    <mi>n</mi>
+    <mi>1</mi>
   </math> already, split it into L and L'<br>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
   be the smallest key-value in L'<br>

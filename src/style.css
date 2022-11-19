@@ -1,3 +1,11 @@
+:root {
+  /* color config */
+  --highlighted-text: #ffed99;
+  --light-blue: #C7EBFC;
+  --pink: #fcc7eb;
+  --black: black;
+}
+
 html,
 body {
   /*  background: no-repeat center url("images/map.png"); */
@@ -95,12 +103,12 @@ body {
 
 #sudo-code {
   padding: 1em;
-  background-color: #C7EBFC;
+  background-color: var(--light-blue);
 }
 
 #operations {
   padding: 1em;
-  background-color: #fcc7eb;
+  background-color: var(--pink);
 
   display: flex;
   flex-direction: column;
@@ -123,17 +131,17 @@ body {
 }
 
 .highlighted-text {
-  background-color: #ffed99;
+  background-color: var(--highlighted-text);
 }
 
 .node {
-  fill: #C7EBFC;
-  stroke: black;
+  fill: var(--light-blue);
+  stroke: var(--black);
 }
 .node-key-text {
   dominant-baseline: middle;
   text-anchor: middle;
-  fill: black;
+  fill: var(--black);
   stroke: none;
 }
 

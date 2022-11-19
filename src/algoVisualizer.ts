@@ -23,26 +23,25 @@ export const SVG_NS = "http://www.w3.org/2000/svg"
  */
 export class AlgoVisualizer {
     /* number of pointers in a node */
-    readonly n: number
+    private readonly n: number
     /** null when tree is empty */
-    private bPlusTreeRoot: bPlusTreeNode | null
-    private algoStepHistory = new AlgoStepHistory()
-
-    private sudoCodeContainer = document.querySelector("#sudo-code")
-    private svgCanvas = document.querySelector('#main-svg')
-
-    private HIGHLIGHTCOLOR = "#ffed99"
-    private keyRectWidth = 42
-    private nodeHeight = 29
-    private pointerRectWidth = 14
-    private nodeWidth: number
+    private bPlusTreeRoot: bPlusTreeNode | null = null
+    private readonly algoStepHistory = new AlgoStepHistory()
+    private readonly sudoCodeContainer = document.querySelector("#sudo-code")
+    private readonly svgCanvas = document.querySelector('#main-svg')
+    /** this is initialized using the color config defined in the :root pseudo
+     * class rule of the style.css file*/
+    private readonly HIGHLIGHTCOLOR: string
+    private readonly keyRectWidth = 42
+    private readonly nodeHeight = 29
+    private readonly pointerRectWidth = 14
+    private readonly nodeWidth: number
     /* in milliseconds */
     readonly animationDuration = 1000
     //array to store the durations of animations
     readonly animations: anime.AnimeTimelineInstance[] = []
-
     /** used to get the x y coords of the trees nodes on the canvas */
-    private d3TreeLayout = tree<bPlusTreeNode>()
+    private readonly d3TreeLayout = tree<bPlusTreeNode>()
 
     /**
      * 
@@ -51,11 +50,18 @@ export class AlgoVisualizer {
      */
     constructor(nodeSize: number) {
         this.n = nodeSize
-        //this.bPlusTreeRoot = new bPlusTreeNode(true)
 
         this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * this.n + this.pointerRectWidth
 
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight])
+
+        const rootElement = document.querySelector("html")
+        if (rootElement) {
+            this.HIGHLIGHTCOLOR = getComputedStyle(rootElement).getPropertyValue("--highlighted-text")
+        } else {
+            console.warn("Text highlight color could not be accessed defaulting to #ffed99")
+            this.HIGHLIGHTCOLOR = "#ffed99"
+        }
     }
 
     /**
@@ -107,8 +113,8 @@ export class AlgoVisualizer {
     insert(value: number): AlgoVisualizer {
         // Initialize animation
         const timeline = anime.timeline({
-            duration: 1,
-            endDelay: this.animationDuration - 1,
+            duration: 0.1,
+            endDelay: this.animationDuration - 0.1,
             autoplay: false,
             easing: 'linear'
         });
@@ -117,14 +123,6 @@ export class AlgoVisualizer {
         if (this.sudoCodeContainer?.innerHTML && insertSudoCode?.innerHTML) {
             this.sudoCodeContainer.innerHTML = insertSudoCode?.innerHTML
         }
-
-        timeline.add({
-            targets: '#insert-line1',
-            backgroundColor: this.HIGHLIGHTCOLOR,
-            complete: (anim) => {
-                anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
-            }
-        })
 
         let targetNode: bPlusTreeNode | null = null
         if (this.bPlusTreeRoot == null || this.bPlusTreeRoot.keys.length == 0) {
@@ -150,7 +148,7 @@ export class AlgoVisualizer {
             timeline.add({
                 targets: newSVGGElement,
                 opacity: 1
-            })
+            }, "-=" + String(this.animationDuration))
         } else {
             const { found, node } = this.find(value)
             if (found) {
@@ -161,7 +159,17 @@ export class AlgoVisualizer {
                 targetNode = node
             }
         }
+
+        timeline.add({
+            targets: '#insert-line4',
+            backgroundColor: this.HIGHLIGHTCOLOR,
+            complete: (anim) => {
+                anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
+            }
+        })
+
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
+
             timeline.add({
                 targets: '#insert-line5',
                 backgroundColor: this.HIGHLIGHTCOLOR,
@@ -194,8 +202,8 @@ export class AlgoVisualizer {
     }
 
     /**
-     * 
-     * A subsidiary procedure for the insert method
+     * A sub procedure for the insert method
+     *
      * @param targetNode The node to insert they key value into
      * @param value The key value to insert
      * @param returnTimeline The animejs timeline object that is generated and
@@ -213,8 +221,6 @@ export class AlgoVisualizer {
             }
             targetNode.keys[0] = value
 
-            // TODO make it so that highlights mach up better with revealing
-            // corresponding dom elements maybe
             const textSelection = select("#node-id-" + String(targetNode.id))
                 .selectAll("text")
                 .data(targetNode.keys)
@@ -223,7 +229,7 @@ export class AlgoVisualizer {
             returnTimeline.add({
                 targets: textElementSelection.nodes(),
                 opacity: 1
-            })
+            }, "-=" + String(this.animationDuration))
         } else {
             // insert value into targetNode.keys just after the value in
             // targetNode.keys that is the highest value that is less than or
@@ -330,7 +336,7 @@ export class AlgoVisualizer {
 
 
 
-    // helper functions //
+    // Helper Methods Section //
     /**
      * creates a new set of text dom elements for a B+ Tree node
      * 
@@ -377,32 +383,18 @@ export class AlgoVisualizer {
 
         for (let i = 0; i < this.n; i++) {
             const currentXCordOrigin = i * (this.pointerRectWidth + this.keyRectWidth)
-
             newGElementSelection.append('rect')
                 .attr("class", "node-rect")
                 .attr("width", this.pointerRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin)
                 .attr("y", 0)
-
             newGElementSelection.append('rect')
                 .attr("class", "node-rect")
                 .attr("width", this.keyRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin + this.pointerRectWidth)
                 .attr("y", 0)
-
-            // newGElementSelection.append('text')
-            //     .attr("class", "node-key-text")
-            //     .attr("x", (this.keyRectWidth / 2) + this.pointerRectWidth + currentXCordOrigin)
-            //     .attr("y", this.nodeHeight / 2)
-            //     .html(d => {
-            //         if (d.data.keys[i]) {
-            //             return String(d.data.keys[i])
-            //         }
-            //         return ""
-            //     })
-
         }
         newGElementSelection.append('rect')
             .attr("class", "node-rect")
