@@ -1,13 +1,11 @@
 //TODO implement all animations of find and insert
 //TODO implement undoable versions of find and insert
 import { bPlusTreeNode } from "./types/bPlusTree"
-import { AlgoStep, AlgoStepHistory } from "./stepHistory"
+import { AlgoStepHistory } from "./stepHistory"
 import "animejs"
-import anime, { AnimeTimelineInstance } from "animejs"
+import anime from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
-import { transform } from "typescript"
-import { HierarchyPointNode, text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 /**
@@ -28,10 +26,9 @@ export class AlgoVisualizer {
     private bPlusTreeRoot: bPlusTreeNode | null = null
     private readonly algoStepHistory = new AlgoStepHistory()
     private readonly sudoCodeContainer = document.querySelector("#sudo-code")
-    private readonly svgCanvas = document.querySelector('#main-svg')
     /** this is initialized using the color config defined in the :root pseudo
      * class rule of the style.css file*/
-    private readonly HIGHLIGHTCOLOR: string
+    private readonly highlightColor: string
     private readonly keyRectWidth = 42
     private readonly nodeHeight = 29
     private readonly pointerRectWidth = 14
@@ -57,10 +54,10 @@ export class AlgoVisualizer {
 
         const rootElement = document.querySelector("html")
         if (rootElement) {
-            this.HIGHLIGHTCOLOR = getComputedStyle(rootElement).getPropertyValue("--highlighted-text")
+            this.highlightColor = getComputedStyle(rootElement).getPropertyValue("--highlighted-text")
         } else {
             console.warn("Text highlight color could not be accessed defaulting to #ffed99")
-            this.HIGHLIGHTCOLOR = "#ffed99"
+            this.highlightColor = "#ffed99"
         }
     }
 
@@ -125,10 +122,9 @@ export class AlgoVisualizer {
         }
 
         let targetNode: bPlusTreeNode | null = null
-        if (this.bPlusTreeRoot == null || this.bPlusTreeRoot.keys.length == 0) {
-            targetNode = this.bPlusTreeRoot
+        if (this.bPlusTreeRoot == null) {
             targetNode = new bPlusTreeNode(true)
-
+            this.bPlusTreeRoot = targetNode
 
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
             const nodeSelection = select("#main-svg")
@@ -136,14 +132,7 @@ export class AlgoVisualizer {
                 .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
             const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
 
-
-            timeline.add({
-                targets: '#insert-line2',
-                backgroundColor: this.HIGHLIGHTCOLOR,
-                complete: (anim) => {
-                    anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
-                }
-            })
+            this.addHighlightTextAnimation(timeline, 2)
             // create animation that reveals new node
             timeline.add({
                 targets: newSVGGElement,
@@ -151,6 +140,8 @@ export class AlgoVisualizer {
             }, "-=" + String(this.animationDuration))
         } else {
             const { found, node } = this.find(value)
+
+            this.addHighlightTextAnimation(timeline, 3)
             if (found) {
                 // Do not allow duplicates
                 this.animations.push(timeline)
@@ -160,23 +151,11 @@ export class AlgoVisualizer {
             }
         }
 
-        timeline.add({
-            targets: '#insert-line4',
-            backgroundColor: this.HIGHLIGHTCOLOR,
-            complete: (anim) => {
-                anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
-            }
-        })
+        this.addHighlightTextAnimation(timeline, 4)
 
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
 
-            timeline.add({
-                targets: '#insert-line5',
-                backgroundColor: this.HIGHLIGHTCOLOR,
-                complete: (anim) => {
-                    anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
-                }
-            })
+            this.addHighlightTextAnimation(timeline, 5)
 
             this.insertInLeaf(targetNode, value, timeline)
         } else { //targetNode has n - 1 key values already, split it
@@ -231,24 +210,27 @@ export class AlgoVisualizer {
                 opacity: 1
             }, "-=" + String(this.animationDuration))
         } else {
-            // insert value into targetNode.keys just after the value in
-            // targetNode.keys that is the highest value that is less than or
-            // equal to value.
-            for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
-                if (targetNode.keys[i] <= value) {
-                    for (let j = (targetNode.keys.length - 1); j >= i; j--) {
-                        if (targetNode.keys[j]) {
-                            if (i == j) {
-                                targetNode.keys[j] = value
-                                break;
-                            } else {
-                                targetNode.keys[j + 1] = targetNode.keys[j]
-                            }
-                        }
-                    }
-                    break;
-                }
+            // insert value into targetNode.keys just after the 
+            // highest number that is less than or equal to value.
+            const highestNumberIndex = targetNode.keys.findIndex(element => element >= value) - 1
+            // if find Index returns -1 then the last number in keys must be the
+            // greatest number that is less than or equal to value.
+            if (highestNumberIndex < 0) {
+                targetNode.keys.push(value)
+            } else {
+                targetNode.keys[highestNumberIndex] = value
             }
+
+            //TODO put this code in a reusable method of some form.
+            const textSelection = select("#node-id-" + String(targetNode.id))
+                .selectAll("text")
+                .data(targetNode.keys)
+            const textElementSelection = this.createNewNodeText(textSelection.enter().append("text"), true)
+
+            returnTimeline.add({
+                targets: textElementSelection.nodes(),
+                opacity: 1
+            }, "-=" + String(this.animationDuration))
         }
         return 1
     }
@@ -324,6 +306,7 @@ export class AlgoVisualizer {
     }
 
 
+    //TODO implement basic seek functionality with current implement insertion functionality.
     /**
      * Jump to specific time (in milliseconds)
      *
@@ -350,7 +333,7 @@ export class AlgoVisualizer {
         let textElementSelection = newTextSelection.attr("class", "node-key-text")
             // Calculate the x coordinate of the text based on its index in the
             // key array.
-            .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * this.keyRectWidth })
+            .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * (this.keyRectWidth + this.pointerRectWidth) })
             .attr("y", this.nodeHeight / 2)
             .html(d => { return d ? String(d) : "" })
 
@@ -409,5 +392,16 @@ export class AlgoVisualizer {
         this.createNewNodeText(textEnterSelection.append("text"))
 
         return newGElementSelection.node()
+    }
+
+
+    private addHighlightTextAnimation(timeline: anime.AnimeTimelineInstance, lineNumber: number) {
+        timeline.add({
+            targets: '#insert-line' + String(lineNumber),
+            backgroundColor: this.highlightColor,
+            complete: (anim) => {
+                anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
+            }
+        })
     }
 }
