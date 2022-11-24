@@ -28,19 +28,20 @@ export interface AlgoStep {
 export class AlgoStepHistory {
     private steps: AlgoStep[] = []
     // Indicates what step in the this.steps array was most recently executed.
-    private previousStepIndex = 0
+    private currentStepIndex = 0
 
     /**
-     * Add a AlgoStep to the history
+     * Add a AlgoStep to the history. Assumes that that AlgoStep was the last
+     * one to be executed.
      */
     public addAlgoStep(step: AlgoStep) {
         // Get rid of algo steps that are no longer valid because new algo step
         // is being added before.
-        if (this.steps[this.previousStepIndex + 1]) {
-            this.steps = this.steps.slice(0, this.previousStepIndex + 1)
+        if (this.steps[this.currentStepIndex + 1]) {
+            this.steps = this.steps.slice(0, this.currentStepIndex + 1)
         }
 
-        this.steps[this.previousStepIndex + 1] = step
+        this.steps[this.currentStepIndex] = step
         return
     }
 
@@ -50,8 +51,8 @@ export class AlgoStepHistory {
      * @returns indicates success
      */
     public stepForwards() {
-        this.steps[this.previousStepIndex + 1].do()
-        this.previousStepIndex++
+        this.steps[this.currentStepIndex].do()
+        this.currentStepIndex++
         return true
     }
 
@@ -62,8 +63,8 @@ export class AlgoStepHistory {
      * @returns indicates success
      */
     public stepBackwards() {
-        this.steps[this.previousStepIndex].undo()
-        this.previousStepIndex--
+        this.steps[this.currentStepIndex].undo()
+        this.currentStepIndex--
         return true
     }
 }

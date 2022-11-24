@@ -35,7 +35,6 @@ export class AlgoVisualizer {
     private readonly n: number
     /** null when tree is empty */
     private bPlusTreeRoot: bPlusTreeNode | null = null
-    private readonly algoStepHistory = new AlgoStepHistory()
     private readonly sudoCodeContainer = document.querySelector("#sudo-code")
     /** this is initialized using the color config defined in the :root pseudo
      * class rule of the style.css file*/
@@ -51,6 +50,15 @@ export class AlgoVisualizer {
     private currentAnimationIndex = 0
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
+
+    //TODO consider just passing the do and undo methods to the user of this class
+    /**
+     * allows control of the algorithm visualization. By calling the do and undo
+     * methods of this object a user of this class can navigate the algorithm
+     * visualization. Users of this class should not call the addAlgoStep method
+     * of this object.
+     */
+    public readonly algoStepHistory = new AlgoStepHistory()
 
     /**
      * 
@@ -313,12 +321,10 @@ export class AlgoVisualizer {
      * @param value the number to insert, duplicates can't be added to the tree.
      *   
      * @sideEffect adds and AlgoStep object corresponding to this insert to this.algoStepHistory
-     * @sideEffect executes this.insert method, please refer to that methods
-     * side effects
      */
     public undoableInsert(value: number) {
-
         const currentBPlusTreeRoot = this.bPlusTreeRoot
+        //TODO implement this for the current functionality of the insertDo function
         /**
          * Undoes the operations of the corresponding insert method call, which
          * is defined in the insertDo function definition. All state including
@@ -338,7 +344,75 @@ export class AlgoVisualizer {
          */
         const insertDo = () => {
             //TODO consider moving insert method to here
-            this.insert(value, true)
+            // Initialize animation
+            const timeline = anime.timeline({
+                duration: 0.1,
+                endDelay: this.animationDuration - 0.1,
+                autoplay: true,
+                easing: 'linear'
+            });
+
+            const insertSudoCode = document.querySelector("#insert-sudo-code")
+            if (this.sudoCodeContainer?.innerHTML && insertSudoCode?.innerHTML) {
+                this.sudoCodeContainer.innerHTML = insertSudoCode?.innerHTML
+            }
+
+            let targetNode: bPlusTreeNode | null = null
+            if (this.bPlusTreeRoot == null) {
+                targetNode = new bPlusTreeNode(true)
+                this.bPlusTreeRoot = targetNode
+
+                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
+                const nodeSelection = select("#main-svg")
+                    .selectAll("g.node")
+                    .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
+                const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
+
+                this.addHighlightTextAnimation(timeline, 2)
+                // create animation that reveals new node
+                timeline.add({
+                    targets: newSVGGElement,
+                    opacity: 1
+                }, "-=" + String(this.animationDuration))
+            } else {
+                const { found, node } = this.find(value)
+
+                this.addHighlightTextAnimation(timeline, 3)
+                if (found) {
+                    // Do not allow duplicates
+                    //this.animations.push(timeline)
+                    return true
+                } else {
+                    targetNode = node
+                }
+            }
+
+            this.addHighlightTextAnimation(timeline, 4)
+
+            if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
+
+                this.addHighlightTextAnimation(timeline, 5)
+
+                this.insertInLeaf(targetNode, value, timeline)
+            } else { //targetNode has n - 1 key values already, split it
+                const newNode = new bPlusTreeNode(true)
+                const tempNode = new bPlusTreeNode(true, targetNode.pointers.slice(0, this.n - 2), targetNode.keys.slice(0, this.n - 2))
+                this.insertInLeaf(tempNode, value, timeline)
+
+                const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
+
+                targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2) - 1)
+                targetNode.pointers[this.n - 1] = newNode
+                targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2) - 1)
+
+                newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n - 1)
+                newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
+                newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n - 1)
+
+                this.insertInParent(targetNode, newNode.keys[0], newNode)
+            }
+
+            this.animations.push(timeline)
             return true
         }
 
@@ -346,9 +420,11 @@ export class AlgoVisualizer {
             do: insertDo,
             undo: insertUndo
         }
-        this.algoStepHistory.addAlgoStep(insertAlgoStep)
         
-        insertDo()
+        // Must execute the do method before it is added, because addAlgoStep
+        // assumes that that algo step was the last algo step executed.
+        insertAlgoStep.do()
+        this.algoStepHistory.addAlgoStep(insertAlgoStep)
 
         return
     }
@@ -392,7 +468,6 @@ export class AlgoVisualizer {
     public seek(time: number) {
         return this
     }
-
 
 
     // Helper Methods Section //
