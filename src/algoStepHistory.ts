@@ -1,3 +1,7 @@
+/**
+ * This interface defines a object that is used to store one atomic step of a algorithm
+ * so that that step can be undone and redone.
+ */
 export interface AlgoStep {
     /**
      * Implementation of this method should execute a atomic series of algorithm
@@ -25,18 +29,18 @@ export class AlgoStepHistory {
     private steps: AlgoStep[] = []
     // Indicates what step in the this.steps array was most recently executed.
     private previousStepIndex = 0
-    
+
     /**
      * Add a AlgoStep to the history
      */
-    public addAlgoStep(step: AlgoStep){
+    public addAlgoStep(step: AlgoStep) {
         // Get rid of algo steps that are no longer valid because new algo step
         // is being added before.
-        if(this.steps[this.previousStepIndex+1]){
-            this.steps = this.steps.slice(0, this.previousStepIndex+1)
+        if (this.steps[this.previousStepIndex + 1]) {
+            this.steps = this.steps.slice(0, this.previousStepIndex + 1)
         }
 
-        this.steps[this.previousStepIndex+1] = step
+        this.steps[this.previousStepIndex + 1] = step
         return
     }
 
@@ -46,7 +50,7 @@ export class AlgoStepHistory {
      * @returns indicates success
      */
     public stepForwards() {
-        this.steps[this.previousStepIndex+1].do()
+        this.steps[this.previousStepIndex + 1].do()
         this.previousStepIndex++
         return true
     }

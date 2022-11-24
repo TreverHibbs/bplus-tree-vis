@@ -17,7 +17,7 @@ export const userInterface = () => {
     insertButton?.addEventListener('click', () => {
         const numberInput = <HTMLInputElement>document.querySelector('#number-input')
         if (numberInput?.value) {
-            algoVisualizer.insert(Number(numberInput.value))
+            algoVisualizer.undoableInsert(Number(numberInput.value))
             updateTimelineInput()
         }
     })

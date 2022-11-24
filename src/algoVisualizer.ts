@@ -1,12 +1,23 @@
 //TODO implement all animations of find and insert
 //TODO implement undoable versions of find and insert
 import { bPlusTreeNode } from "./types/bPlusTree"
-import { AlgoStepHistory } from "./stepHistory"
+import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import "animejs"
 import anime from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 export const SVG_NS = "http://www.w3.org/2000/svg"
+
+// DESIGN NOTES TODO consider removing //
+/**
+ * ----------------
+ * DOM manipulation
+ * ----------------
+ * When the dom is manipulated and then that DOM is animated it is essential
+ * that all DOM elements that were apart of that animation remain in the DOM. This
+ * is because if a DOM element is removed it will break the saved animation that
+ * require that DOM element. 
+ */
 
 /**
  * 
@@ -37,6 +48,7 @@ export class AlgoVisualizer {
     readonly animationDuration = 1000
     //array to store the durations of animations
     readonly animations: anime.AnimeTimelineInstance[] = []
+    private currentAnimationIndex = 0
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
 
@@ -103,16 +115,19 @@ export class AlgoVisualizer {
      * Insert a number into the B+Tree if it is not already in the tree. And
      * generate an animation for that insertion.
      * 
-     * @param value A number to insert into the B+Tree.
+     * @param value a number to insert into the B+Tree.
+     * @param autoplay determines weather or not the animation plays when
+     * function is called.
      *
      * @returns the algoVis instance
+     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation
      */
-    insert(value: number): AlgoVisualizer {
+    insert(value: number, autoplay: boolean = true): AlgoVisualizer {
         // Initialize animation
         const timeline = anime.timeline({
             duration: 0.1,
             endDelay: this.animationDuration - 0.1,
-            autoplay: false,
+            autoplay: autoplay,
             easing: 'linear'
         });
 
@@ -144,7 +159,7 @@ export class AlgoVisualizer {
             this.addHighlightTextAnimation(timeline, 3)
             if (found) {
                 // Do not allow duplicates
-                this.animations.push(timeline)
+                //this.animations.push(timeline)
                 return this
             } else {
                 targetNode = node
@@ -288,13 +303,74 @@ export class AlgoVisualizer {
 
 
 
+    // Undoable Methods Section //
+    /**
+     * 
+     * Inserts a value into the BPlus Tree and animates it. Also allows for the
+     * redoing undoing of that insert. Making sure that state is remembered for
+     * proper restoring.
+     * 
+     * @param value the number to insert, duplicates can't be added to the tree.
+     *   
+     * @sideEffect adds and AlgoStep object corresponding to this insert to this.algoStepHistory
+     * @sideEffect executes this.insert method, please refer to that methods
+     * side effects
+     */
+    public undoableInsert(value: number) {
+
+        const currentBPlusTreeRoot = this.bPlusTreeRoot
+        /**
+         * Undoes the operations of the corresponding insert method call, which
+         * is defined in the insertDo function definition. All state including
+         * the DOM should be returned to exactly how it was.
+         * 
+         * @returns indicates success or failure
+         */
+        const insertUndo = () => {
+            return true
+        }
+
+        /**
+         * Executes an insert that can be undone later so that all sate
+         * including the DOM is returned to its sate from before the method call.
+         * 
+         * @returns indicates success or failure
+         */
+        const insertDo = () => {
+            //TODO consider moving insert method to here
+            this.insert(value, true)
+            return true
+        }
+
+        const insertAlgoStep: AlgoStep = {
+            do: insertDo,
+            undo: insertUndo
+        }
+        this.algoStepHistory.addAlgoStep(insertAlgoStep)
+        
+        insertDo()
+
+        return
+    }
+
+
+
     // Animation Interface Section //
+    //TODO Do design work on how these function will utilize the above functions.
     /**
      * Starts the animation from current time (in milliseconds).
      */
     public play() {
-        this.animations[this.animations.length - 1].play()
-        return null
+        let result = this.animations[0].finished
+        for (let i = 1; i < this.animations.length; i++) {
+            result = result.then(() => {
+                console.debug("playing next animation")
+                this.animations[i].play()
+            })
+
+        }
+        result.catch((reason) => console.error(reason))
+        this.animations[0].play()
     }
 
 
@@ -306,7 +382,7 @@ export class AlgoVisualizer {
     }
 
 
-    //TODO implement basic seek functionality with current implement insertion functionality.
+    //TODO consider getting rid of this
     /**
      * Jump to specific time (in milliseconds)
      *
