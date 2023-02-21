@@ -45,13 +45,14 @@ export class AlgoVisualizer {
     private readonly nodeWidth: number
     /* in milliseconds */
     readonly animationDuration = 1000
+    //TODO replace this with current animation
     //array to store the durations of animations
     readonly animations: anime.AnimeTimelineInstance[] = []
     private currentAnimationIndex = 0
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
 
-    //TODO consider just passing the do and undo methods to the user of this class
+    //TODO pass the do and undo methods to the user of this class
     /**
      * allows control of the algorithm visualization. By calling the do and undo
      * methods of this object a user of this class can navigate the algorithm
@@ -59,6 +60,8 @@ export class AlgoVisualizer {
      * of this object.
      */
     public readonly algoStepHistory = new AlgoStepHistory()
+    // TODO pass the seek animation method of the current timeline object to the
+    // user of this class. As well as the play and pause methods
 
     /**
      * 
@@ -130,7 +133,7 @@ export class AlgoVisualizer {
      * @returns the algoVis instance
      * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation
      */
-    insert(value: number, autoplay: boolean = true): AlgoVisualizer {
+    private insert(value: number, autoplay = true): AlgoVisualizer {
         // Initialize animation
         const timeline = anime.timeline({
             duration: 0.1,
@@ -321,6 +324,8 @@ export class AlgoVisualizer {
      * @param value the number to insert, duplicates can't be added to the tree.
      *   
      * @sideEffect adds and AlgoStep object corresponding to this insert to this.algoStepHistory
+     * @sideEffect any currently animating algorithm step will be interrupted
+     * and a new one corresponding to this method will begin.
      */
     public undoableInsert(value: number) {
         const currentBPlusTreeRoot = this.bPlusTreeRoot
@@ -343,76 +348,8 @@ export class AlgoVisualizer {
          * @returns indicates success or failure
          */
         const insertDo = () => {
-            //TODO consider moving insert method to here
-            // Initialize animation
-            const timeline = anime.timeline({
-                duration: 0.1,
-                endDelay: this.animationDuration - 0.1,
-                autoplay: true,
-                easing: 'linear'
-            });
+            this.insert(value)
 
-            const insertSudoCode = document.querySelector("#insert-sudo-code")
-            if (this.sudoCodeContainer?.innerHTML && insertSudoCode?.innerHTML) {
-                this.sudoCodeContainer.innerHTML = insertSudoCode?.innerHTML
-            }
-
-            let targetNode: bPlusTreeNode | null = null
-            if (this.bPlusTreeRoot == null) {
-                targetNode = new bPlusTreeNode(true)
-                this.bPlusTreeRoot = targetNode
-
-                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
-                const nodeSelection = select("#main-svg")
-                    .selectAll("g.node")
-                    .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
-                const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
-
-                this.addHighlightTextAnimation(timeline, 2)
-                // create animation that reveals new node
-                timeline.add({
-                    targets: newSVGGElement,
-                    opacity: 1
-                }, "-=" + String(this.animationDuration))
-            } else {
-                const { found, node } = this.find(value)
-
-                this.addHighlightTextAnimation(timeline, 3)
-                if (found) {
-                    // Do not allow duplicates
-                    //this.animations.push(timeline)
-                    return true
-                } else {
-                    targetNode = node
-                }
-            }
-
-            this.addHighlightTextAnimation(timeline, 4)
-
-            if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
-
-                this.addHighlightTextAnimation(timeline, 5)
-
-                this.insertInLeaf(targetNode, value, timeline)
-            } else { //targetNode has n - 1 key values already, split it
-                const newNode = new bPlusTreeNode(true)
-                const tempNode = new bPlusTreeNode(true, targetNode.pointers.slice(0, this.n - 2), targetNode.keys.slice(0, this.n - 2))
-                this.insertInLeaf(tempNode, value, timeline)
-
-                const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
-
-                targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2) - 1)
-                targetNode.pointers[this.n - 1] = newNode
-                targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2) - 1)
-
-                newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n - 1)
-                newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
-                newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n - 1)
-
-                this.insertInParent(targetNode, newNode.keys[0], newNode)
-            }
-
-            this.animations.push(timeline)
             return true
         }
 
@@ -431,6 +368,7 @@ export class AlgoVisualizer {
 
 
 
+    //TODO git rid of this section new design does'nt need it.
     // Animation Interface Section //
     //TODO Do design work on how these function will utilize the above functions.
     /**
