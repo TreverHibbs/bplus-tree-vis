@@ -11,17 +11,31 @@ export const userInterface = () => {
     // animation afterwards.
     console.debug("init user interface")
     const algoVisualizer = new AlgoVisualizer(4)
+    
+    const animationToggle = <HTMLInputElement>document.querySelector('#animation-toggle')
+    const setAnimationToggle = () => {
+        console.debug('animation toggle event fired')
+        if(!algoVisualizer) return
 
+        if (animationToggle?.checked) {
+            algoVisualizer.animationDuration = 0.2
+        }else{
+            algoVisualizer.animationDuration = 1000
+        }
+    }
 
     const insertButton = document.querySelector('#insert-button');
     insertButton?.addEventListener('click', () => {
         const numberInput = <HTMLInputElement>document.querySelector('#number-input')
+
+        //make sure that the right animation duration is used
+        setAnimationToggle()
+
         if (numberInput?.value) {
             algoVisualizer.undoableInsert(Number(numberInput.value))
             updateTimelineInput()
         }
     })
-
 
     const playButton = document.querySelector('#play-button')
     playButton?.addEventListener('click', () => {
@@ -32,7 +46,6 @@ export const userInterface = () => {
         }
     })
 
-
     const timelineInput = <HTMLInputElement>document.querySelector('#timeline-input')
     timelineInput?.addEventListener('input', () => {
         console.debug('input event fired')
@@ -40,6 +53,8 @@ export const userInterface = () => {
             algoVisualizer.seek(timelineInput.valueAsNumber * algoVisualizer.animationDuration)
         }
     })
+
+    animationToggle?.addEventListener('input', setAnimationToggle)
 
 
     /**

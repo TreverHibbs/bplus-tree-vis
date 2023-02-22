@@ -8,7 +8,7 @@ import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
-// DESIGN NOTES TODO consider removing //
+// DESIGN NOTES TODO consider removing
 /**
  * ----------------
  * DOM manipulation
@@ -44,11 +44,10 @@ export class AlgoVisualizer {
     private readonly pointerRectWidth = 14
     private readonly nodeWidth: number
     /* in milliseconds */
-    readonly animationDuration = 1000
+    public animationDuration = 1000 //must not be any less than 0.2
     //TODO replace this with current animation
     //array to store the durations of animations
     readonly animations: anime.AnimeTimelineInstance[] = []
-    private currentAnimationIndex = 0
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
 
@@ -71,7 +70,7 @@ export class AlgoVisualizer {
     constructor(nodeSize: number) {
         this.n = nodeSize
 
-        this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * this.n + this.pointerRectWidth
+        this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * (this.n - 1) + this.pointerRectWidth
 
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight])
 
@@ -152,11 +151,12 @@ export class AlgoVisualizer {
             targetNode = new bPlusTreeNode(true)
             this.bPlusTreeRoot = targetNode
 
+            // create a new svg element for the root node for animation
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
             const nodeSelection = select("#main-svg")
                 .selectAll("g.node")
                 .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
-            const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
+            const newSVGGElement = this.createNodeSvgElements(nodeSelection.enter())
 
             this.addHighlightTextAnimation(timeline, 2)
             // create animation that reveals new node
@@ -180,26 +180,65 @@ export class AlgoVisualizer {
         this.addHighlightTextAnimation(timeline, 4)
 
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
-
+            //insert in leaf
             this.addHighlightTextAnimation(timeline, 5)
 
             this.insertInLeaf(targetNode, value, timeline)
-        } else { //targetNode has n - 1 key values already, split it
+        } else { //leaf node targetNode has n - 1 key values already, split it
             const newNode = new bPlusTreeNode(true)
-            const tempNode = new bPlusTreeNode(true, targetNode.pointers.slice(0, this.n - 2), targetNode.keys.slice(0, this.n - 2))
+            const tempNode = new bPlusTreeNode(true)
+            tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
+            tempNode.keys = targetNode.keys.slice(0, this.n - 1)
             this.insertInLeaf(tempNode, value, timeline)
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
-            targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2) - 1)
-            targetNode.pointers[this.n - 1] = newNode
-            targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2) - 1)
+            targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2))
+            //targetNode.pointers[this.n - 1] = newNode
+            targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2))
 
-            newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n - 1)
-            newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
-            newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n - 1)
+            newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n)
+            if (targetNodeOriginalLastNode) {
+                newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
+            }
+            newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
 
             this.insertInParent(targetNode, newNode.keys[0], newNode)
+
+
+            // create svg elements for the new bplus tree nodes created by the
+            // split.
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
+                if (node.isLeaf) {
+                    return []
+                } else {
+                    return node.pointers
+                }
+            }))
+            //render root rootHierarchyNode with d3
+            const nodeSelection = select("#main-svg")
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+                .data(rootHierarchyNode, (d) => (d).data.id)
+            const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
+
+            // reveal newSVGGElement
+            timeline.add({
+                targets: newSVGGElements,
+                opacity: 1
+            }, "-=" + String(this.animationDuration))
+
+            const updatedSVGGElements = nodeSelection.nodes()
+            const updatedNodesData = nodeSelection.data()
+            
+            //move update nodes
+            timeline.add({
+                targets: updatedSVGGElements,
+                transform: (_: SVGGElement, i: number) => {
+                    return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
+                }
+            }, "-=" + String(this.animationDuration))
+            
+            //TODO update text of updated nodes
         }
 
         this.animations.push(timeline)
@@ -357,7 +396,7 @@ export class AlgoVisualizer {
             do: insertDo,
             undo: insertUndo
         }
-        
+
         // Must execute the do method before it is added, because addAlgoStep
         // assumes that that algo step was the last algo step executed.
         insertAlgoStep.do()
@@ -442,45 +481,44 @@ export class AlgoVisualizer {
      * so that they can later be revealed in an animation.
      * @dependency this.n The size of a bplus tree node
      * @param nodeEnterSelection A selection containing newly added BPlus tree nodes.
-     * @return SVGGElement The first SVGGElement that was created or null if no
-     * element was created.
+     * @return SVGGElement[] The SVGGElements that were created
      */
-    private createNodeSvgElement(nodeEnterSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>): SVGGElement | null {
-        const newGElementSelection = nodeEnterSelection.append("g")
+    private createNodeSvgElements(nodeEnterSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>): SVGGElement[] {
+        const newGElementsSelection = nodeEnterSelection.append("g")
             .attr("class", "node")
             .attr("id", d => { return "node-id-" + String(d.data.id) })
             .attr("transform-origin", "center")
             .attr("transform", d => { return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")" })
             .attr("opacity", 0)
 
-        for (let i = 0; i < this.n; i++) {
+        for (let i = 0; i < (this.n - 1); i++) {
             const currentXCordOrigin = i * (this.pointerRectWidth + this.keyRectWidth)
-            newGElementSelection.append('rect')
+            newGElementsSelection.append('rect')
                 .attr("class", "node-rect")
                 .attr("width", this.pointerRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin)
                 .attr("y", 0)
-            newGElementSelection.append('rect')
+            newGElementsSelection.append('rect')
                 .attr("class", "node-rect")
                 .attr("width", this.keyRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin + this.pointerRectWidth)
                 .attr("y", 0)
         }
-        newGElementSelection.append('rect')
+        newGElementsSelection.append('rect')
             .attr("class", "node-rect")
             .attr("width", this.pointerRectWidth)
             .attr("height", this.nodeHeight)
-            .attr("x", this.n * (this.pointerRectWidth + this.keyRectWidth))
+            .attr("x", (this.n - 1) * (this.pointerRectWidth + this.keyRectWidth))
             .attr("y", 0)
 
-        const textEnterSelection = newGElementSelection.selectAll("text.node-key-text")
+        const textEnterSelection = newGElementsSelection.selectAll("text.node-key-text")
             .data((d) => d.data.keys).enter()
 
         this.createNewNodeText(textEnterSelection.append("text"))
 
-        return newGElementSelection.node()
+        return newGElementsSelection.nodes()
     }
 
 
