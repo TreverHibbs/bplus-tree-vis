@@ -21,37 +21,46 @@ export interface AlgoStep {
 }
 
 /**
- * This class keeps track of a list of algorithm steps and provides methods to
- * move forward and backward through them. A instance of this class represents a
+ * This class keeps track of a list of executed algorithm steps and provides methods
+ * to undo and redo them. A instance of this class represents a
  * archive of a algorithm visualizations steps.
  */
 export class AlgoStepHistory {
     private steps: AlgoStep[] = []
-    // Indicates what step in the this.steps array was most recently executed.
-    private currentStepIndex = 0
+    // The index of the algorithm step that is being currently animated
+    private currentStepIndex = -1 // -1 indicates that there are no steps
 
     /**
-     * Add a AlgoStep to the history. Assumes that that AlgoStep was the last
-     * one to be executed.
+     * Add a AlgoStep to the AlgoStep array at the currentStepIndex.
+     * 
+     * @param step The AlgoStep to add to the history. Must have already been executed.
+     * @sideEffect AlgoSteps after the current step index are removed from
+     * the AlgoStep array.
+     *
      */
     public addAlgoStep(step: AlgoStep) {
-        // Get rid of algo steps that are no longer valid because new algo step
-        // is being added before.
+        if (this.currentStepIndex === -1) {
+            this.steps[++this.currentStepIndex] = step
+            return
+        }
+
         if (this.steps[this.currentStepIndex + 1]) {
             this.steps = this.steps.slice(0, this.currentStepIndex + 1)
         }
 
-        this.steps[this.currentStepIndex] = step
+        this.steps[++this.currentStepIndex] = step
         return
     }
 
     /**
      * Executes the next algo step
      *
-     * @returns indicates success
+     * @returns boolean indicates success
      */
     public stepForwards() {
-        this.steps[this.currentStepIndex].do()
+        if (this.steps[this.currentStepIndex + 1] === undefined) return false // no next step
+
+        this.steps[this.currentStepIndex + 1].do()
         this.currentStepIndex++
         return true
     }
@@ -60,9 +69,11 @@ export class AlgoStepHistory {
      * Returns the application to its state from before the last algo step
      * execution.
      *
-     * @returns indicates success
+     * @returns boolean indicates success
      */
     public stepBackwards() {
+        if (this.steps[this.currentStepIndex] === undefined) return false // oldest step
+
         this.steps[this.currentStepIndex].undo()
         this.currentStepIndex--
         return true

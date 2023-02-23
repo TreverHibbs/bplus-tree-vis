@@ -39,6 +39,7 @@ export class AlgoVisualizer {
     /** this is initialized using the color config defined in the :root pseudo
      * class rule of the style.css file*/
     private readonly highlightColor: string
+    private readonly sudoCodeBackgroundColor: string
     private readonly keyRectWidth = 42
     private readonly nodeHeight = 29
     private readonly pointerRectWidth = 14
@@ -47,9 +48,13 @@ export class AlgoVisualizer {
     public animationDuration = 1000 //must not be any less than 0.2
     //TODO replace this with current animation
     //array to store the durations of animations
-    readonly animations: anime.AnimeTimelineInstance[] = []
+    private readonly animations: anime.AnimeTimelineInstance[] = []
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
+    // used to store d3 selections that will be removed at the start of a new animation.
+
+    private exitSelections: d3.Selection<SVGTextElement, unknown,
+        SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>[] = []
 
     //TODO pass the do and undo methods to the user of this class
     /**
@@ -61,6 +66,7 @@ export class AlgoVisualizer {
     public readonly algoStepHistory = new AlgoStepHistory()
     // TODO pass the seek animation method of the current timeline object to the
     // user of this class. As well as the play and pause methods
+
 
     /**
      * 
@@ -77,11 +83,15 @@ export class AlgoVisualizer {
         const rootElement = document.querySelector("html")
         if (rootElement) {
             this.highlightColor = getComputedStyle(rootElement).getPropertyValue("--highlighted-text")
+            this.sudoCodeBackgroundColor = getComputedStyle(rootElement).getPropertyValue("--light-blue")
         } else {
             console.warn("Text highlight color could not be accessed defaulting to #ffed99")
             this.highlightColor = "#ffed99"
+            console.warn("Text highlight color could not be accessed defaulting to #c7ebfc")
+            this.sudoCodeBackgroundColor = "#c7ebfc"
         }
     }
+
 
     /**
      * 
@@ -119,6 +129,7 @@ export class AlgoVisualizer {
             return { found: false, node: currentNode }
         }
     }
+
 
     /**
      *
@@ -229,7 +240,15 @@ export class AlgoVisualizer {
 
             const updatedSVGGElements = nodeSelection.nodes()
             const updatedNodesData = nodeSelection.data()
-            
+
+            const textExitSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
+                .data((d) => d.data.keys).exit()
+            this.exitSelections.push(textExitSelection)
+            timeline.add({
+                targets: textExitSelection.nodes(),
+                opacity: 0
+            }, "-=" + String(this.animationDuration))
+
             //move update nodes
             timeline.add({
                 targets: updatedSVGGElements,
@@ -237,8 +256,6 @@ export class AlgoVisualizer {
                     return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
                 }
             }, "-=" + String(this.animationDuration))
-            
-            //TODO update text of updated nodes
         }
 
         this.animations.push(timeline)
@@ -385,8 +402,14 @@ export class AlgoVisualizer {
          * including the DOM is returned to its sate from before the method call.
          * 
          * @returns indicates success or failure
+         * @sideEffect all exit selections stored in this.exitSelection will
+         * be removed from the DOM.
          */
         const insertDo = () => {
+            //remove all selection in this.exitSelections
+            this.exitSelections.forEach(selection => {
+                selection.remove()
+            })
             this.insert(value)
 
             return true
@@ -406,45 +429,17 @@ export class AlgoVisualizer {
     }
 
 
-
-    //TODO git rid of this section new design does'nt need it.
-    // Animation Interface Section //
-    //TODO Do design work on how these function will utilize the above functions.
     /**
-     * Starts the animation from current time (in milliseconds).
-     */
-    public play() {
-        let result = this.animations[0].finished
-        for (let i = 1; i < this.animations.length; i++) {
-            result = result.then(() => {
-                console.debug("playing next animation")
-                this.animations[i].play()
-            })
-
-        }
-        result.catch((reason) => console.error(reason))
-        this.animations[0].play()
-    }
-
-
-    /**
-     * Pauses the animation at current time (in milliseconds).
-     */
-    public pause() {
-        return null
-    }
-
-
-    //TODO consider getting rid of this
-    /**
-     * Jump to specific time (in milliseconds)
+     * return the currently animating animation timeline object.
      *
-     * @param time The time to jump to in milliseconds
-     * @return this algoVisualizer instance
+     * @returns anime.AnimeTimelineInstance A animejs timeline instance that can
+     * be used to control the current animation. Or undefined if there is no current
+     * animation.
      */
-    public seek(time: number) {
-        return this
+    public getCurrentAnimation(): anime.AnimeTimelineInstance | undefined {
+        return this.animations[this.animations.length - 1]
     }
+
 
 
     // Helper Methods Section //
@@ -526,9 +521,15 @@ export class AlgoVisualizer {
         timeline.add({
             targets: '#insert-line' + String(lineNumber),
             backgroundColor: this.highlightColor,
-            complete: (anim) => {
-                anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
-            }
+            //complete: (anim) => {
+            //    anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
+            //}
+        })
+
+        timeline.add({
+            targets: '#insert-line' + String(lineNumber),
+            backgroundColor: this.sudoCodeBackgroundColor,
+            endDelay: 0,
         })
     }
 }

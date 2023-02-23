@@ -11,15 +11,15 @@ export const userInterface = () => {
     // animation afterwards.
     console.debug("init user interface")
     const algoVisualizer = new AlgoVisualizer(4)
-    
+
     const animationToggle = <HTMLInputElement>document.querySelector('#animation-toggle')
     const setAnimationToggle = () => {
         console.debug('animation toggle event fired')
-        if(!algoVisualizer) return
+        if (!algoVisualizer) return
 
         if (animationToggle?.checked) {
             algoVisualizer.animationDuration = 0.2
-        }else{
+        } else {
             algoVisualizer.animationDuration = 1000
         }
     }
@@ -39,8 +39,9 @@ export const userInterface = () => {
 
     const playButton = document.querySelector('#play-button')
     playButton?.addEventListener('click', () => {
-        if (algoVisualizer) {
-            algoVisualizer.play()
+        const currentlyAnimationTimeline = algoVisualizer.getCurrentAnimation()
+        if (currentlyAnimationTimeline) {
+            currentlyAnimationTimeline.play()
         } else {
             console.log('no animation to play')
         }
@@ -49,10 +50,23 @@ export const userInterface = () => {
     const timelineInput = <HTMLInputElement>document.querySelector('#timeline-input')
     timelineInput?.addEventListener('input', () => {
         console.debug('input event fired')
-        if (algoVisualizer) {
-            algoVisualizer.seek(timelineInput.valueAsNumber * algoVisualizer.animationDuration)
+        const currentlyAnimationTimeline = algoVisualizer.getCurrentAnimation()
+        if (currentlyAnimationTimeline) {
+            currentlyAnimationTimeline.seek(timelineInput.valueAsNumber * currentlyAnimationTimeline.duration)
+            console.debug(timelineInput.valueAsNumber * currentlyAnimationTimeline.duration)
         }
     })
+
+    //when animejs 4.0 comes out this will be possible
+/*     const speedInput = <HTMLInputElement>document.querySelector('#speed-input')
+    speedInput?.addEventListener('input', () => {
+        console.debug('speed input event fired')
+        const currentlyAnimationTimeline = algoVisualizer.getCurrentAnimation()
+        if (currentlyAnimationTimeline) {
+            currentlyAnimationTimeline.duration = speedInput.valueAsNumber * 2000
+        }
+    }) 
+*/
 
     animationToggle?.addEventListener('input', setAnimationToggle)
 
