@@ -33,9 +33,10 @@ export const SVG_NS = "http://www.w3.org/2000/svg"
 export class AlgoVisualizer {
     /* number of pointers in a node */
     private readonly n: number
-    /** null when tree is empty */
-    private bPlusTreeRoot: bPlusTreeNode | null = null
     private readonly sudoCodeContainer = document.querySelector("#sudo-code")
+    /* When the Bplus tree is empty it contains a bplus tree node with an empty
+    keys array */
+    private bPlusTreeRoot: bPlusTreeNode = new bPlusTreeNode(true)
     /** this is initialized using the color config defined in the :root pseudo
      * class rule of the style.css file*/
     private readonly highlightColor: string
@@ -157,10 +158,10 @@ export class AlgoVisualizer {
             this.sudoCodeContainer.innerHTML = insertSudoCode?.innerHTML
         }
 
-        let targetNode: bPlusTreeNode | null = null
-        if (this.bPlusTreeRoot == null) {
-            targetNode = new bPlusTreeNode(true)
-            this.bPlusTreeRoot = targetNode
+        let targetNode: bPlusTreeNode
+        if (this.bPlusTreeRoot.keys.length == 0) {
+            //targetNode = new bPlusTreeNode(true)
+            targetNode = this.bPlusTreeRoot
 
             // create a new svg element for the root node for animation
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
@@ -398,31 +399,23 @@ export class AlgoVisualizer {
          * @returns indicates success or failure
          */
         const insertUndo = () => {
-            currentBPlusTreeRoot
             //TODO write the case for when the currentBPlusTreeRoot is null
-            let rootHierarchyNode = null
-            if (currentBPlusTreeRoot != null) {
-                rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(currentBPlusTreeRoot, (node) => {
-                    if (node.isLeaf) {
-                        return []
-                    } else {
-                        return node.pointers
-                    }
-                }))
-            }
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(currentBPlusTreeRoot, (node) => {
+                if (node.isLeaf) {
+                    return []
+                } else {
+                    return node.pointers
+                }
+            }))
 
-            let nodeSelection: d3.Selection<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown> |
-                d3.Selection<SVGGElement, never, d3.BaseType, unknown> = select("#main-svg")
-                    .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+            const nodeSelection = select("#main-svg")
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
 
-            if (rootHierarchyNode != null) {
-                nodeSelection = nodeSelection.data(rootHierarchyNode, (d) => (d).data.id)
-            } else {
-                nodeSelection = nodeSelection.data([], (d) => (d).data.id)
-            }
+            nodeSelection.data(rootHierarchyNode, (d) => (d).data.id)
 
             nodeSelection.exit().remove()
             this.createNodeSvgElements(nodeSelection.enter(), false)
+            nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
             nodeSelection.attr("transform", (d) => "translate(" + String(d.x) + "," + String(d.y) + ")")
             this.bPlusTreeRoot = currentBPlusTreeRoot
 
