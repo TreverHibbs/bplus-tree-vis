@@ -47,6 +47,18 @@ export const userInterface = () => {
         }
     })
 
+    const backButton = document.querySelector('#back-button')
+    backButton?.addEventListener('click', () => {
+        console.debug("pressed back button")
+        algoVisualizer.algoStepHistory.stepBackwards()
+    })
+
+    const forwardButton = document.querySelector('#forward-button')
+    forwardButton?.addEventListener('click', () => {
+        console.debug("pressed forward button")
+        algoVisualizer.algoStepHistory.stepForwards()
+    })
+
     const timelineInput = <HTMLInputElement>document.querySelector('#timeline-input')
     timelineInput?.addEventListener('input', () => {
         console.debug('input event fired')

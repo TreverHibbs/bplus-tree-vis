@@ -384,7 +384,11 @@ export class AlgoVisualizer {
      * and a new one corresponding to this method will begin.
      */
     public undoableInsert(value: number) {
-        const currentBPlusTreeRoot = this.bPlusTreeRoot
+        const currentBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
+
+        //create a function that deep copies this.bPlusTreeRoot
+
+
         //TODO implement this for the current functionality of the insertDo function
         /**
          * Undoes the operations of the corresponding insert method call, which
@@ -394,6 +398,34 @@ export class AlgoVisualizer {
          * @returns indicates success or failure
          */
         const insertUndo = () => {
+            currentBPlusTreeRoot
+            //TODO write the case for when the currentBPlusTreeRoot is null
+            let rootHierarchyNode = null
+            if (currentBPlusTreeRoot != null) {
+                rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(currentBPlusTreeRoot, (node) => {
+                    if (node.isLeaf) {
+                        return []
+                    } else {
+                        return node.pointers
+                    }
+                }))
+            }
+
+            let nodeSelection: d3.Selection<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown> |
+                d3.Selection<SVGGElement, never, d3.BaseType, unknown> = select("#main-svg")
+                    .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+
+            if (rootHierarchyNode != null) {
+                nodeSelection = nodeSelection.data(rootHierarchyNode, (d) => (d).data.id)
+            } else {
+                nodeSelection = nodeSelection.data([], (d) => (d).data.id)
+            }
+
+            nodeSelection.exit().remove()
+            this.createNodeSvgElements(nodeSelection.enter(), false)
+            nodeSelection.attr("transform", (d) => "translate(" + String(d.x) + "," + String(d.y) + ")")
+            this.bPlusTreeRoot = currentBPlusTreeRoot
+
             return true
         }
 
@@ -426,6 +458,7 @@ export class AlgoVisualizer {
         this.algoStepHistory.addAlgoStep(insertAlgoStep)
 
         return
+
     }
 
 
@@ -472,19 +505,26 @@ export class AlgoVisualizer {
      * 
      * Creates a HTML element that represents one bplus tree node. This method
      * exists to keep all styling of bplus tree nodes in one spot. The origin of
-     * the node is at its top left corner. All nodes are made invisible when created
+     * the node is at its top left corner. By default all nodes are made invisible when created
      * so that they can later be revealed in an animation.
-     * @dependency this.n The size of a bplus tree node
      * @param nodeEnterSelection A selection containing newly added BPlus tree nodes.
+     * @param boolean Toggles wether or not the node is transparent. Defaults to true.
+     *
+     * @dependency this.n The size of a bplus tree node
      * @return SVGGElement[] The SVGGElements that were created
      */
-    private createNodeSvgElements(nodeEnterSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>): SVGGElement[] {
+    private createNodeSvgElements(nodeEnterSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>, isTransparent = true): SVGGElement[] {
+        let transparencyValue = 0
+        if (isTransparent == false) {
+            transparencyValue = 1
+        }
+
         const newGElementsSelection = nodeEnterSelection.append("g")
             .attr("class", "node")
             .attr("id", d => { return "node-id-" + String(d.data.id) })
             .attr("transform-origin", "center")
             .attr("transform", d => { return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")" })
-            .attr("opacity", 0)
+            .attr("opacity", transparencyValue)
 
         for (let i = 0; i < (this.n - 1); i++) {
             const currentXCordOrigin = i * (this.pointerRectWidth + this.keyRectWidth)
