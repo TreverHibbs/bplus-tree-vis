@@ -39,11 +39,6 @@ export class AlgoStepHistory {
      *
      */
     public addAlgoStep(step: AlgoStep) {
-        if (this.currentStepIndex === -1) {
-            this.steps[++this.currentStepIndex] = step
-            return
-        }
-
         if (this.steps[this.currentStepIndex + 1]) {
             this.steps = this.steps.slice(0, this.currentStepIndex + 1)
         }

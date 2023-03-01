@@ -143,6 +143,8 @@ export class AlgoVisualizer {
      *
      * @returns the algoVis instance
      * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation
+     * @sideEffects adds d3 selections to the exitSelections array for removal
+     * at before the next insertion animation is generated.
      */
     private insert(value: number, autoplay = true): AlgoVisualizer {
         // Initialize animation
@@ -385,7 +387,7 @@ export class AlgoVisualizer {
      * and a new one corresponding to this method will begin.
      */
     public undoableInsert(value: number) {
-        const currentBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
+        let BPlusTreeRootStateBeforeInsert: bPlusTreeNode
 
         //create a function that deep copies this.bPlusTreeRoot
 
@@ -396,11 +398,13 @@ export class AlgoVisualizer {
          * is defined in the insertDo function definition. All state including
          * the DOM should be returned to exactly how it was.
          * 
-         * @returns indicates success or failure
+         * @returns boolean indicates success or failure
+         * @sideEffect Remove Dom elements that were added by the insertDo function
+         * @sideEffect Restore the state of this.bPlusTreeRoot to what it was before
+         * the corresponding insertDo function was called.
          */
         const insertUndo = () => {
-            //TODO write the case for when the currentBPlusTreeRoot is null
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(currentBPlusTreeRoot, (node) => {
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeRootStateBeforeInsert, (node) => {
                 if (node.isLeaf) {
                     return []
                 } else {
@@ -410,15 +414,20 @@ export class AlgoVisualizer {
 
             const nodeSelection = select("#main-svg")
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
-
             nodeSelection.data(rootHierarchyNode, (d) => (d).data.id)
 
+            //TODO add undo functionality for the basic split case.
             nodeSelection.exit().remove()
-            this.createNodeSvgElements(nodeSelection.enter(), false)
+            //this.createNodeSvgElements(nodeSelection.enter(), false)
             nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
-            nodeSelection.attr("transform", (d) => "translate(" + String(d.x) + "," + String(d.y) + ")")
-            this.bPlusTreeRoot = currentBPlusTreeRoot
+            //nodeSelection.attr("transform", this.getNodeTransformString)
 
+            const textSelection = nodeSelection.selectAll("text.node-key-text")
+                .data((d) => d.data.keys)
+            textSelection.exit().remove()
+            
+
+            this.bPlusTreeRoot = BPlusTreeRootStateBeforeInsert
             return true
         }
 
@@ -431,6 +440,7 @@ export class AlgoVisualizer {
          * be removed from the DOM.
          */
         const insertDo = () => {
+            BPlusTreeRootStateBeforeInsert = structuredClone(this.bPlusTreeRoot)
             //remove all selection in this.exitSelections
             this.exitSelections.forEach(selection => {
                 selection.remove()
@@ -496,6 +506,21 @@ export class AlgoVisualizer {
 
     /**
      * 
+     * Returns the string that represents the svg transform attribute for a
+     * B+ Tree node. This function exists to keep the logic for calculating a
+     * nodes placement in one spot.
+     *
+     * @param d3.HierarchyPointNode<bPlusTreeNode> The node to generate the transform string for.
+     * @dependency this.nodeWidth The width of a bplus tree node
+     * @return String The string meant to be used as the transform attribute
+     */
+    private getNodeTransformString = (d: d3.HierarchyPointNode<bPlusTreeNode>) => {
+        return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")"
+    }
+
+
+    /**
+     * 
      * Creates a HTML element that represents one bplus tree node. This method
      * exists to keep all styling of bplus tree nodes in one spot. The origin of
      * the node is at its top left corner. By default all nodes are made invisible when created
@@ -516,7 +541,7 @@ export class AlgoVisualizer {
             .attr("class", "node")
             .attr("id", d => { return "node-id-" + String(d.data.id) })
             .attr("transform-origin", "center")
-            .attr("transform", d => { return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")" })
+            .attr("transform", this.getNodeTransformString)
             .attr("opacity", transparencyValue)
 
         for (let i = 0; i < (this.n - 1); i++) {
