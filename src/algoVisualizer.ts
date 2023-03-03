@@ -7,6 +7,10 @@ import anime from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 import { linkVertical } from "d3-shape"
+//import d3 link generator
+import { link } from "d3-shape"
+//import bezierCurveTo
+import { path as d3Path} from "d3"
 //import { text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -252,14 +256,22 @@ export class AlgoVisualizer {
                 .data(rootHierarchyNode, (d) => (d).data.id)
             const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
 
+            // TODO make it so that the x and y positions of the edges are
+            // determined by the index of a given node in the pointers array.
             const edgeSelection = select("#main-svg")
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
                 .data(rootHierarchyNode.links())
                 .join("path")
                 .attr("class", "edge")
-                .attr("d", linkVertical<d3.HierarchyPointLink<bPlusTreeNode>, d3.HierarchyPointNode<bPlusTreeNode>>()
-                    .x((d) => d.x)
-                    .y((d) => d.y))
+                .attr("d", (d) => {
+                    //User bezierCurveTo to create a curve between the two nodes
+                    const path = d3Path()
+                    // use path.bezierCurveTo to create a curve between the two
+                    // nodes
+                    path.moveTo(d.source.x, d.source.y)
+                    path.bezierCurveTo(d.source.x, d.source.y+50, d.target.x, d.target.y-50, d.target.x, d.target.y)
+                    return path.toString()
+                })
                 .attr("fill", "none")
                 .attr("stroke", "black")
             //const newSVGPathElements = this.createEdgeSvgElements(edgeSelection.enter())
