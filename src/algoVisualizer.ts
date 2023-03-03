@@ -46,6 +46,8 @@ export class AlgoVisualizer {
     private readonly nodeHeight = 29
     private readonly pointerRectWidth = 14
     private readonly nodeWidth: number
+    private readonly nodeSiblingsGap = 1.1
+    private readonly nodeChildrenGap = 50
     /* in milliseconds */
     public animationDuration = 1000 //must not be any less than 0.2
     //TODO replace this with current animation
@@ -82,7 +84,15 @@ export class AlgoVisualizer {
 
         this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * (this.n - 1) + this.pointerRectWidth
 
-        this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight])
+        this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight+this.nodeChildrenGap])
+        this.d3TreeLayout.separation((a, b) => { 
+            //if the nodes are siblings then the separation is 1
+            if (a.parent == b.parent) {
+                return this.nodeSiblingsGap
+            } else {
+                return 2
+            }
+         })
 
         const rootElement = document.querySelector("html")
         if (rootElement) {
@@ -428,14 +438,14 @@ export class AlgoVisualizer {
             //this.createNodeSvgElements(nodeSelection.enter(), false)
             nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
             //nodeSelection.attr("transform", this.getNodeTransformString)
-            
+
             nodeSelection.attr("transform", this.getNodeTransformString)
 
             const textSelection = nodeSelection.selectAll("text.node-key-text")
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
             this.createNewNodeText(textSelection.enter().append("text"), false)
-            
+
 
             this.bPlusTreeRoot = BPlusTreeRootStateBeforeInsert
             return true
