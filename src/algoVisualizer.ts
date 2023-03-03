@@ -6,6 +6,7 @@ import "animejs"
 import anime from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
+//import { text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 // DESIGN NOTES TODO consider removing
@@ -49,7 +50,9 @@ export class AlgoVisualizer {
     public animationDuration = 1000 //must not be any less than 0.2
     //TODO replace this with current animation
     //array to store the durations of animations
-    private readonly animations: anime.AnimeTimelineInstance[] = []
+    //private readonly animations: anime.AnimeTimelineInstance[] = []
+    //private readonly currentAnimation: anime.AnimeTimelineInstance
+    public currentAnimation = anime.timeline()
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
     // used to store d3 selections that will be removed at the start of a new animation.
@@ -144,7 +147,8 @@ export class AlgoVisualizer {
      * @returns the algoVis instance
      * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation
      * @sideEffects adds d3 selections to the exitSelections array for removal
-     * at before the next insertion animation is generated.
+     * at before the next insertion animation is generated. Or before the
+     * insertion is undone.
      */
     private insert(value: number, autoplay = true): AlgoVisualizer {
         // Initialize animation
@@ -168,8 +172,8 @@ export class AlgoVisualizer {
             // create a new svg element for the root node for animation
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
             const nodeSelection = select("#main-svg")
-                .selectAll("g.node")
-                .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+                .data(rootHierarchyNode, (d) => d.data.id)
             const newSVGGElement = this.createNodeSvgElements(nodeSelection.enter())
 
             this.addHighlightTextAnimation(timeline, 2)
@@ -261,7 +265,7 @@ export class AlgoVisualizer {
             }, "-=" + String(this.animationDuration))
         }
 
-        this.animations.push(timeline)
+        this.currentAnimation = timeline
         return this
     }
 
@@ -373,6 +377,7 @@ export class AlgoVisualizer {
 
 
 
+    // TODO add edges to the visualization
     // Undoable Methods Section //
     /**
      * 
@@ -392,7 +397,6 @@ export class AlgoVisualizer {
         //create a function that deep copies this.bPlusTreeRoot
 
 
-        //TODO implement this for the current functionality of the insertDo function
         /**
          * Undoes the operations of the corresponding insert method call, which
          * is defined in the insertDo function definition. All state including
@@ -404,6 +408,10 @@ export class AlgoVisualizer {
          * the corresponding insertDo function was called.
          */
         const insertUndo = () => {
+            this.exitSelections.forEach(selection => {
+                selection.remove()
+            })
+
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeRootStateBeforeInsert, (node) => {
                 if (node.isLeaf) {
                     return []
@@ -414,17 +422,19 @@ export class AlgoVisualizer {
 
             const nodeSelection = select("#main-svg")
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
-            nodeSelection.data(rootHierarchyNode, (d) => (d).data.id)
+                .data(rootHierarchyNode, (d) => d.data.id)
 
-            //TODO add undo functionality for the basic split case.
             nodeSelection.exit().remove()
             //this.createNodeSvgElements(nodeSelection.enter(), false)
             nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
             //nodeSelection.attr("transform", this.getNodeTransformString)
+            
+            nodeSelection.attr("transform", this.getNodeTransformString)
 
             const textSelection = nodeSelection.selectAll("text.node-key-text")
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
+            this.createNewNodeText(textSelection.enter().append("text"), false)
             
 
             this.bPlusTreeRoot = BPlusTreeRootStateBeforeInsert
@@ -462,18 +472,6 @@ export class AlgoVisualizer {
 
         return
 
-    }
-
-
-    /**
-     * return the currently animating animation timeline object.
-     *
-     * @returns anime.AnimeTimelineInstance A animejs timeline instance that can
-     * be used to control the current animation. Or undefined if there is no current
-     * animation.
-     */
-    public getCurrentAnimation(): anime.AnimeTimelineInstance | undefined {
-        return this.animations[this.animations.length - 1]
     }
 
 

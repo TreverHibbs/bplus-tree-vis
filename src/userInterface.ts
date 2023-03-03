@@ -39,7 +39,7 @@ export const userInterface = () => {
 
     const playButton = document.querySelector('#play-button')
     playButton?.addEventListener('click', () => {
-        const currentlyAnimationTimeline = algoVisualizer.getCurrentAnimation()
+        const currentlyAnimationTimeline = algoVisualizer.currentAnimation
         if (currentlyAnimationTimeline) {
             currentlyAnimationTimeline.play()
         } else {
@@ -62,7 +62,7 @@ export const userInterface = () => {
     const timelineInput = <HTMLInputElement>document.querySelector('#timeline-input')
     timelineInput?.addEventListener('input', () => {
         console.debug('input event fired')
-        const currentlyAnimationTimeline = algoVisualizer.getCurrentAnimation()
+        const currentlyAnimationTimeline = algoVisualizer.currentAnimation
         if (currentlyAnimationTimeline) {
             currentlyAnimationTimeline.seek(timelineInput.valueAsNumber * currentlyAnimationTimeline.duration)
             console.debug(timelineInput.valueAsNumber * currentlyAnimationTimeline.duration)
