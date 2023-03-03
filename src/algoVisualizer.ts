@@ -6,6 +6,7 @@ import "animejs"
 import anime from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
+import { linkVertical } from "d3-shape"
 //import { text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -46,7 +47,9 @@ export class AlgoVisualizer {
     private readonly nodeHeight = 29
     private readonly pointerRectWidth = 14
     private readonly nodeWidth: number
+    //multiplied by node width to get gap value
     private readonly nodeSiblingsGap = 1.1
+    //added to the node size height to create a gap between parents and children.
     private readonly nodeChildrenGap = 50
     /* in milliseconds */
     public animationDuration = 1000 //must not be any less than 0.2
@@ -84,15 +87,15 @@ export class AlgoVisualizer {
 
         this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * (this.n - 1) + this.pointerRectWidth
 
-        this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight+this.nodeChildrenGap])
-        this.d3TreeLayout.separation((a, b) => { 
+        this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight + this.nodeChildrenGap])
+        this.d3TreeLayout.separation((a, b) => {
             //if the nodes are siblings then the separation is 1
             if (a.parent == b.parent) {
                 return this.nodeSiblingsGap
             } else {
                 return 2
             }
-         })
+        })
 
         const rootElement = document.querySelector("html")
         if (rootElement) {
@@ -248,6 +251,18 @@ export class AlgoVisualizer {
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
                 .data(rootHierarchyNode, (d) => (d).data.id)
             const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
+
+            const edgeSelection = select("#main-svg")
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
+                .data(rootHierarchyNode.links())
+                .join("path")
+                .attr("class", "edge")
+                .attr("d", linkVertical<d3.HierarchyPointLink<bPlusTreeNode>, d3.HierarchyPointNode<bPlusTreeNode>>()
+                    .x((d) => d.x)
+                    .y((d) => d.y))
+                .attr("fill", "none")
+                .attr("stroke", "black")
+            //const newSVGPathElements = this.createEdgeSvgElements(edgeSelection.enter())
 
             // reveal newSVGGElement
             timeline.add({
