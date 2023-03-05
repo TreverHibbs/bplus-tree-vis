@@ -229,7 +229,7 @@ export class AlgoVisualizer {
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
             targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2))
-            //targetNode.pointers[this.n - 1] = newNode
+            targetNode.pointers[this.n - 1] = newNode
             targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2))
 
             newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n)
@@ -256,26 +256,18 @@ export class AlgoVisualizer {
                 .data(rootHierarchyNode, (d) => (d).data.id)
             const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
 
-            //TODO put this in a reusable function.
+            //TODO figure out how this will be animated
+            //create svg elements for the new edges created by the split
             const edgeSelection = select("#main-svg")
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
                 .data(rootHierarchyNode.links())
-                .join("path")
-                .attr("class", "edge")
-                .attr("d", (d) => {
-                    const targetIndex = d.source.data.pointers.indexOf(d.target.data)
-                    
-                    const sourceX = (d.source.x - ((this.nodeWidth / 2) - (this.pointerRectWidth / 2))) + ((this.pointerRectWidth + this.keyRectWidth) * targetIndex)
-                    const sourceY = d.source.y + this.nodeHeight / 2
+            const newSVGEdgeSelection = this.createNewEdgeSvgElements(edgeSelection)
 
-                    const path = d3Path()
-                    path.moveTo(sourceX, sourceY)
-                    path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
-                    return path.toString()
-                })
-                .attr("fill", "none")
-                .attr("stroke", "black")
-            //const newSVGPathElements = this.createEdgeSvgElements(edgeSelection.enter())
+            const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
+            const leafNodeSiblingEdgeSelection = select("#main-svg")
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-sibling-edge")
+                .data(leafNodeLinks)
+            const newSVGLeafEdgesSelection = this.createNewEdgeSvgElements(leafNodeSiblingEdgeSelection, true)
 
             // reveal newSVGGElement
             timeline.add({
@@ -435,6 +427,7 @@ export class AlgoVisualizer {
         //create a function that deep copies this.bPlusTreeRoot
 
 
+        //TODO make it so this undo function also restores the animation.
         /**
          * Undoes the operations of the corresponding insert method call, which
          * is defined in the insertDo function definition. All state including
@@ -515,9 +508,51 @@ export class AlgoVisualizer {
 
 
     // Helper Methods Section //
+
+    /**
+     * Generates a list of links that represent a pair of leaf nodes that should
+     * have a edge between them.
+     * @param rootHierarchyNode A node that represents the DOM element of the
+     * root node of the tree.
+     * @returns An array of links that represent a pair of leaf nodes. One of
+     * which has a reference to the other.
+     */
+    private getLeafNodeLinks = (rootHierarchyNode: d3.HierarchyPointNode<bPlusTreeNode>): d3.HierarchyPointLink<bPlusTreeNode>[] => {
+        const getLeafNodes = (rootHierarchyNode: d3.HierarchyPointNode<bPlusTreeNode>): d3.HierarchyPointNode<bPlusTreeNode>[] => {
+            if (rootHierarchyNode.data.isLeaf) {
+                return [rootHierarchyNode]
+            } else {
+                let leafNodes: d3.HierarchyPointNode<bPlusTreeNode>[] = []
+                rootHierarchyNode.children?.forEach((child) => {
+                    leafNodes = leafNodes.concat(getLeafNodes(child))
+                })
+                return leafNodes
+            }
+        }
+        const leafNodes = getLeafNodes(rootHierarchyNode)
+
+        const leafNodeLinks: d3.HierarchyPointLink<bPlusTreeNode>[] = []
+        leafNodes.forEach((leafNode) => {
+            const rightSiblingBPlusTreeNode = leafNode.data.pointers[this.n - 1]
+            if (rightSiblingBPlusTreeNode != undefined) {
+                const rightSiblingNode = leafNodes.find((leafNode) => leafNode.data == rightSiblingBPlusTreeNode)
+
+                if (rightSiblingNode == undefined) {
+                    throw new Error("rightSiblingNode is undefined")
+                }
+
+                leafNodeLinks.push({
+                    source: leafNode,
+                    target: rightSiblingNode
+                })
+            }
+        })
+        return leafNodeLinks
+    }
+
+
     /**
      * creates a new set of text dom elements for a B+ Tree node
-     * 
      * @param newTextSelection A selection of text dom elements that correspond
      * to a B+ Tree keys array.
      * @param isTransparent toggles wether or not text element is transparent
@@ -546,12 +581,65 @@ export class AlgoVisualizer {
      * B+ Tree node. This function exists to keep the logic for calculating a
      * nodes placement in one spot.
      *
-     * @param d3.HierarchyPointNode<bPlusTreeNode> The node to generate the transform string for.
+     * @param d d3.HierarchyPointNode<bPlusTreeNode> The node to generate the transform string for.
      * @dependency this.nodeWidth The width of a bplus tree node
      * @return String The string meant to be used as the transform attribute
      */
     private getNodeTransformString = (d: d3.HierarchyPointNode<bPlusTreeNode>) => {
         return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")"
+    }
+
+
+    /**
+     * Creates a new set of svg elements for B+ Tree edges.
+     * @param edgeSelection A selection of svg path elements that correspond to
+     * a B+ Tree edges.
+     * @param areLeafNodeEdges toggles wether or not the edges are to be
+     * generated for links between leaf node siblings or not.
+     * @return newEdgesSvgElements the selection of newly created svg path
+     * elements
+     * @dependency this.nodeWidth The width of a bplus tree node
+     * @dependency this.nodeHeight The height of a bplus tree node
+     * @dependency this.pointerRectWidth The width of a bplus tree pointer
+     * rectangle
+     * @dependency this.keyRectWidth The width of a bplus tree key rectangle
+     */
+    private createNewEdgeSvgElements(edgeSelection: d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown>,
+        areLeafNodeEdges = false): d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown> {
+        let generateEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
+            const targetIndex = d.source.data.pointers.indexOf(d.target.data)
+
+            const sourceX = (d.source.x - ((this.nodeWidth / 2) - (this.pointerRectWidth / 2))) + ((this.pointerRectWidth + this.keyRectWidth) * targetIndex)
+            const sourceY = d.source.y + this.nodeHeight / 2
+
+            const path = d3Path()
+            path.moveTo(sourceX, sourceY)
+            path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
+            return path.toString()
+        }
+        let className = "edge"
+
+        if (areLeafNodeEdges) {
+            generateEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
+                const path = d3Path()
+
+                const x1 = (this.nodeWidth / 2) - (this.pointerRectWidth / 2)
+                const x2 = (this.nodeWidth / 2)
+
+                path.moveTo(d.source.x + x1, d.source.y + this.nodeHeight / 2)
+                path.lineTo(d.target.x - x2, d.target.y + this.nodeHeight / 2)
+                return path.toString()
+            }
+            className = "leaf-node-sibling-edge"
+        }
+
+        const newEdgesSvgElements = edgeSelection.enter().append("path")
+            .attr("class", className)
+            .attr("d", generateEdgePathFN)
+            .attr("fill", "none")
+            .attr("stroke", "black")
+
+        return newEdgesSvgElements
     }
 
 
@@ -562,7 +650,7 @@ export class AlgoVisualizer {
      * the node is at its top left corner. By default all nodes are made invisible when created
      * so that they can later be revealed in an animation.
      * @param nodeEnterSelection A selection containing newly added BPlus tree nodes.
-     * @param boolean Toggles wether or not the node is transparent. Defaults to true.
+     * @param isTransparent Toggles wether or not the node is transparent. Defaults to true.
      *
      * @dependency this.n The size of a bplus tree node
      * @return SVGGElement[] The SVGGElements that were created
