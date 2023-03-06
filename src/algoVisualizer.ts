@@ -43,6 +43,9 @@ export class AlgoVisualizer {
     /* When the Bplus tree is empty it contains a bplus tree node with an empty
     keys array */
     private bPlusTreeRoot: bPlusTreeNode = new bPlusTreeNode(true)
+    //Used in the undo method to restore the previous state of the tree and animation
+    private previousBPlusTreeRoot: bPlusTreeNode = this.bPlusTreeRoot
+    private previousInsertValue: number | null = null
     /** this is initialized using the color config defined in the :root pseudo
      * class rule of the style.css file*/
     private readonly highlightColor: string
@@ -410,29 +413,31 @@ export class AlgoVisualizer {
     // TODO add edges to the visualization
     // Undoable Methods Section //
     /**
-     * 
      * Inserts a value into the BPlus Tree and animates it. Also allows for the
      * redoing undoing of that insert. Making sure that state is remembered for
      * proper restoring.
-     * 
      * @param value the number to insert, duplicates can't be added to the tree.
-     *   
+     * @dependency this.bPlusTreeRoot used to insert the value
+     * @dependency reads this.previousBPlusTreeRoot to set the closure for the
+     * created algo step.
+     * @dependency this.previousInsertValue to set the closure for the created algo step.
      * @sideEffect adds and AlgoStep object corresponding to this insert to this.algoStepHistory
      * @sideEffect any currently animating algorithm step will be interrupted
      * and a new one corresponding to this method will begin.
+     * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before the last insert.
+     * @sideEffect sets the this.previousInsertValue to the value of the last insert.
      */
     public undoableInsert(value: number) {
-        let BPlusTreeRootStateBeforeInsert: bPlusTreeNode
+        let valueBeforePreviousInsert: number | null = null
 
-        //create a function that deep copies this.bPlusTreeRoot
+        //set the closure variables for the algo step object.
+        const BPlusTreeRootStateBeforePreviousInsert = structuredClone(this.previousBPlusTreeRoot)
+        valueBeforePreviousInsert = this.previousInsertValue
 
-
-        //TODO make it so this undo function also restores the animation.
         /**
          * Undoes the operations of the corresponding insert method call, which
          * is defined in the insertDo function definition. All state including
          * the DOM should be returned to exactly how it was.
-         * 
          * @returns boolean indicates success or failure
          * @sideEffect Remove Dom elements that were added by the insertDo function
          * @sideEffect Restore the state of this.bPlusTreeRoot to what it was before
@@ -443,7 +448,7 @@ export class AlgoVisualizer {
                 selection.remove()
             })
 
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeRootStateBeforeInsert, (node) => {
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeRootStateBeforePreviousInsert, (node) => {
                 if (node.isLeaf) {
                     return []
                 } else {
@@ -467,8 +472,15 @@ export class AlgoVisualizer {
             textSelection.exit().remove()
             this.createNewNodeText(textSelection.enter().append("text"), false)
 
+            // return the global state to its state before the previous insert.
+            this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousInsert)
+            this.previousInsertValue = valueBeforePreviousInsert
+            this.previousBPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousInsert)
 
-            this.bPlusTreeRoot = BPlusTreeRootStateBeforeInsert
+            if (valueBeforePreviousInsert == null) {
+                return true
+            }
+            this.insert(valueBeforePreviousInsert)
             return true
         }
 
@@ -481,7 +493,10 @@ export class AlgoVisualizer {
          * be removed from the DOM.
          */
         const insertDo = () => {
-            BPlusTreeRootStateBeforeInsert = structuredClone(this.bPlusTreeRoot)
+            // set the global state so that future undoable inserts can create
+            // correct closures for undoing.
+            this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
+            this.previousInsertValue = value
             //remove all selection in this.exitSelections
             this.exitSelections.forEach(selection => {
                 selection.remove()
@@ -498,6 +513,7 @@ export class AlgoVisualizer {
 
         // Must execute the do method before it is added, because addAlgoStep
         // assumes that that algo step was the last algo step executed.
+        // TODO make this a different function for just the initial insert.
         insertAlgoStep.do()
         this.algoStepHistory.addAlgoStep(insertAlgoStep)
 
