@@ -60,8 +60,6 @@ export class AlgoVisualizer {
     private readonly nodeChildrenGap = 50
     /* in milliseconds */
     public animationDuration = 1000 //must not be any less than 0.2
-    //TODO replace this with current animation
-    //array to store the durations of animations
     //private readonly animations: anime.AnimeTimelineInstance[] = []
     //private readonly currentAnimation: anime.AnimeTimelineInstance
     public currentAnimation = anime.timeline()
@@ -72,7 +70,6 @@ export class AlgoVisualizer {
     private exitSelections: d3.Selection<SVGTextElement, unknown,
         SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>[] = []
 
-    //TODO pass the do and undo methods to the user of this class
     /**
      * allows control of the algorithm visualization. By calling the do and undo
      * methods of this object a user of this class can navigate the algorithm
@@ -80,8 +77,6 @@ export class AlgoVisualizer {
      * of this object.
      */
     public readonly algoStepHistory = new AlgoStepHistory()
-    // TODO pass the seek animation method of the current timeline object to the
-    // user of this class. As well as the play and pause methods
 
 
     /**
@@ -410,7 +405,6 @@ export class AlgoVisualizer {
 
 
 
-    // TODO add edges to the visualization
     // Undoable Methods Section //
     /**
      * Inserts a value into the BPlus Tree and animates it. Also allows for the
@@ -491,6 +485,8 @@ export class AlgoVisualizer {
          * @returns indicates success or failure
          * @sideEffect all exit selections stored in this.exitSelection will
          * be removed from the DOM.
+         * @sideEffect the global state this.previousBPlusTreeRoot will be set.
+         * @sideEffect the global state this.previousInsertValue will be set.
          */
         const insertDo = () => {
             // set the global state so that future undoable inserts can create
@@ -513,7 +509,6 @@ export class AlgoVisualizer {
 
         // Must execute the do method before it is added, because addAlgoStep
         // assumes that that algo step was the last algo step executed.
-        // TODO make this a different function for just the initial insert.
         insertAlgoStep.do()
         this.algoStepHistory.addAlgoStep(insertAlgoStep)
 
@@ -630,6 +625,8 @@ export class AlgoVisualizer {
 
             const path = d3Path()
             path.moveTo(sourceX, sourceY)
+            //draw a solid circle with a radius of 2 at the source of the edge
+            path.arc(sourceX, sourceY, 2, 0, 2 * Math.PI)
             path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
             return path.toString()
         }
