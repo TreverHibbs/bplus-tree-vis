@@ -626,7 +626,6 @@ export class AlgoVisualizer {
             const path = d3Path()
             path.moveTo(sourceX, sourceY)
             //draw a solid circle with a radius of 2 at the source of the edge
-            path.arc(sourceX, sourceY, 2, 0, 2 * Math.PI)
             path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
             return path.toString()
         }
@@ -651,6 +650,9 @@ export class AlgoVisualizer {
             .attr("d", generateEdgePathFN)
             .attr("fill", "none")
             .attr("stroke", "black")
+            .attr("stroke-width", "2px")
+            .attr("marker-end", "url(#arrow)")
+            .attr("marker-start", "url(#circle)")
 
         return newEdgesSvgElements
     }
