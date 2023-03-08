@@ -259,17 +259,23 @@ export class AlgoVisualizer {
             const edgeSelection = select("#main-svg")
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
                 .data(rootHierarchyNode.links())
-            const newSVGEdgeSelection = this.createNewEdgeSvgElements(edgeSelection)
+            const newEdges = this.createNewEdgeSvgElements(edgeSelection)
 
             const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
             const leafNodeSiblingEdgeSelection = select("#main-svg")
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-sibling-edge")
                 .data(leafNodeLinks)
-            const newSVGLeafEdgesSelection = this.createNewEdgeSvgElements(leafNodeSiblingEdgeSelection, true)
+            const newLeafEdges = this.createNewEdgeSvgElements(leafNodeSiblingEdgeSelection, true)
+            
+            // create animation that reveals new edges
+            //timeline.add({
+            //    targets: newEdges, newLeafEdges
+            //    opacity: 1
+            //}, "-=" + String(this.animationDuration))
 
             // reveal newSVGGElement
             timeline.add({
-                targets: newSVGGElements,
+                targets: [newSVGGElements, newEdges.nodes(), newLeafEdges.nodes()],
                 opacity: 1
             }, "-=" + String(this.animationDuration))
 
@@ -607,6 +613,8 @@ export class AlgoVisualizer {
      * a B+ Tree edges.
      * @param areLeafNodeEdges toggles wether or not the edges are to be
      * generated for links between leaf node siblings or not.
+     * @param isTransparent toggles wether or not the edges are transparent
+     * initially. This exists so that edge reveal can be animated.
      * @return newEdgesSvgElements the selection of newly created svg path
      * elements
      * @dependency this.nodeWidth The width of a bplus tree node
@@ -616,7 +624,7 @@ export class AlgoVisualizer {
      * @dependency this.keyRectWidth The width of a bplus tree key rectangle
      */
     private createNewEdgeSvgElements(edgeSelection: d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown>,
-        areLeafNodeEdges = false): d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown> {
+        areLeafNodeEdges = false, isTransparent = true): d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown> {
         let generateEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
             const targetIndex = d.source.data.pointers.indexOf(d.target.data)
 
@@ -645,7 +653,7 @@ export class AlgoVisualizer {
             className = "leaf-node-sibling-edge"
         }
 
-        const newEdgesSvgElements = edgeSelection.enter().append("path")
+        const newEdges = edgeSelection.enter().append("path")
             .attr("class", className)
             .attr("d", generateEdgePathFN)
             .attr("fill", "none")
@@ -653,8 +661,9 @@ export class AlgoVisualizer {
             .attr("stroke-width", "2px")
             .attr("marker-end", "url(#arrow)")
             .attr("marker-start", "url(#circle)")
+            .attr("opacity", isTransparent ? 0 : 1) //make edges invisible by default so that they can be animated in later")
 
-        return newEdgesSvgElements
+        return newEdges
     }
 
 
