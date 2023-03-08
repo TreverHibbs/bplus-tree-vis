@@ -456,6 +456,17 @@ export class AlgoVisualizer {
                 }
             }))
 
+            const edgeSelection = select("#main-svg")
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
+                .data(rootHierarchyNode.links())
+            edgeSelection.exit().remove()
+
+            const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
+            const leafNodeSiblingEdgeSelection = select("#main-svg")
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-sibling-edge")
+                .data(leafNodeLinks)
+            leafNodeSiblingEdgeSelection.exit().remove()
+
             const nodeSelection = select("#main-svg")
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
                 .data(rootHierarchyNode, (d) => d.data.id)
