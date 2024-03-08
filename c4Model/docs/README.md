@@ -1,32 +1,9 @@
 # Overview
 
 * [**Overview**](README.md)
-  * [1 Internet Banking System](1%20Internet%20Banking%20System/README.md)
-    * [API Application](1%20Internet%20Banking%20System/API%20Application/README.md)
-    * [Single Page Application](1%20Internet%20Banking%20System/Single%20Page%20Application/README.md)
-      * [Dynamic Diagram](1%20Internet%20Banking%20System/Single%20Page%20Application/Dynamic%20Diagram/README.md)
-      * [Extended Docs](1%20Internet%20Banking%20System/Single%20Page%20Application/Extended%20Docs/README.md)
-  * [2 Deployment](2%20Deployment/README.md)
 
 ---
 
-- [1 Internet Banking System](1%20Internet%20Banking%20System/README.md)
-
-- [2 Deployment](2%20Deployment/README.md)
-
 ---
 
-![diagram](https://www.plantuml.com/plantuml/svg/0/RL9BRnen4BuZyH-cdAX4s4jFEIMXgpOIj2Y0efpGh1d0YXyhppYGVr_R6r2sxN5cllaUOz-nO91epN3mHJjbuexWADBoRLK5F4qFMewnYKn1UIVaPAgyhN0NDBet4zjOpRxTB0qwsIpcbK4XbjJQpZBwBDEsK0y7y_kNtvlrzlbn_NCxht_KlxwFl-R-aW9xDsuRDO5HLw211tIlsXrW5bcyfJ1AmtjG7nNuFSYHe4ce2PoIGsWlcxa7g9IFJdWwIXghTnQoOzrm8dbChe8ZkIfqqy9lZ3_nLOH1FBnfEe5sUnyiYlOEiF5HihWEVQa9eDk1nLU25jyjzTMtzLd6b0tKDnQr0RxAhbCGNLmbzmkjWcU_5wZFweZkG42V5_wcj2NK0fF5W9R-asebFX036dEvcagDuZq3_yrspJ_vb4q2EaQLOQaYKSN8SF14fdkwxheR9iw3tCvfkrTTaTlnHuvyrGkYx9IZz135zMAzxC5iZ_ykuSk_-WC0)
-
-**Level 1: System Context diagram**
-
-A System Context diagram is a good starting point for diagramming and documenting a software system, allowing you to step back and see the big picture. Draw a diagram showing your system as a box in the centre, surrounded by its users and the other systems that it interacts with.
-
-Detail isn't important here as this is your zoomed out view showing a big picture of the system landscape. The focus should be on people (actors, roles, personas, etc) and software systems rather than technologies, protocols and other low-level details. It's the sort of diagram that you could show to non-technical people.
-
-**Scope**: A single software system.
-
-**Primary elements**: The software system in scope.
-Supporting elements: People (e.g. users, actors, roles, or personas) and software systems (external dependencies) that are directly connected to the software system in scope. Typically these other software systems sit outside the scope or boundary of your own software system, and you don’t have responsibility or ownership of them.
-
-**Intended audience**: Everybody, both technical and non-technical people, inside and outside of the software development team.
+![diagram](https://www.plantuml.com/plantuml/svg/0/RLDDRzim3Bq7o7_WV6aAUF5XFMsNfcdH5aktOKqwx1JGDcDhaIL1eX9qm_xxGEN3APQJ99AFV8-ahWEZvzXfA9sEOUw9NbI8gDLlyiF1EsKg7Mk2bjc5ZqNXSJjk5BUnZ85yPGsJuN5bkm9hhz1iT7Inc5wz_wRHyE9fLcXa2bnChvPJspbh9Dx5JWy7my5iylFhOhxyyJX_MCxkxk--t8uknVwDVB1cj0ZaSyZao7B8jbH2wUrMdYbiQWsZCkINDpQQ6lthQ4lbnBaSiXkH0w87Ua7P9VmP3W00Zbn6YqSfyIW57kPFCq1Jm_pLqNFbbMCntnE3g0LbNEGK8CAzrO2wiIyg01hL8IjhXDZR_FkG7BA9RgnNt7QdZ7B8-cemrHX2djBH-5S0hKgF_ZM7-aD_5m92DM5R0cqRLG6toA0wfwaZmm6u9JXfGbzSu0qPyZ8O29kcQBdJlGGeCL0DrknIuW4uFcYxE5LtG3sXmIQDQt9CjBUTqrWS98hpCv4Bm1whDTYLK3fX4nYP4cddxKRL5A2CIjVAD51gMwq3hAm_04m3k5jbO4yqFZ-FPoON7bHWA_qy6KnomDvpZhVORccb38N4IHaclyAATisgq419iYqri8KraUjr7Ji98PKHV6St9FotwEjaAB5QfmUttiQcbJdkMlzNLluxwRIn_LOj0eNiyjFUbNxCRgKFzWiGpn5mPc9lKlI1_pVg63WSN9Efqo_-1m00)

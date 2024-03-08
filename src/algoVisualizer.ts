@@ -4,6 +4,7 @@ import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import "animejs"
 import anime from "animejs"
+import { animate } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 export const SVG_NS = "http://www.w3.org/2000/svg"
@@ -120,7 +121,8 @@ export class AlgoVisualizer {
      * function is called.
      *
      * @returns the algoVis instance
-     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation
+     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation, and
+     * adds elements to the animations array.
      */
     insert(value: number, autoplay: boolean = true): AlgoVisualizer {
         // Initialize animation
@@ -146,17 +148,19 @@ export class AlgoVisualizer {
                 .selectAll("g.node")
                 .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
             const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
+            
+            animate(newSVGGElement, { opacity: 1 , duration: this.animationDuration})
 
-            this.addHighlightTextAnimation(timeline, 2)
+            //this.addHighlightTextAnimation(timeline, 2)
             // create animation that reveals new node
-            timeline.add({
-                targets: newSVGGElement,
-                opacity: 1
-            }, "-=" + String(this.animationDuration))
+            //timeline.add({
+            //    targets: newSVGGElement,
+            //    opacity: 1
+            //}, "-=" + String(this.animationDuration))
         } else {
             const { found, node } = this.find(value)
 
-            this.addHighlightTextAnimation(timeline, 3)
+            //this.addHighlightTextAnimation(timeline, 3)
             if (found) {
                 // Do not allow duplicates
                 //this.animations.push(timeline)
@@ -166,11 +170,12 @@ export class AlgoVisualizer {
             }
         }
 
-        this.addHighlightTextAnimation(timeline, 4)
+        //this.addHighlightTextAnimation(timeline, 4)
 
+        // targetNode is ready to have the value inserted into it.
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
 
-            this.addHighlightTextAnimation(timeline, 5)
+            //this.addHighlightTextAnimation(timeline, 5)
 
             this.insertInLeaf(targetNode, value, timeline)
         } else { //targetNode has n - 1 key values already, split it
@@ -220,10 +225,10 @@ export class AlgoVisualizer {
                 .data(targetNode.keys)
             const textElementSelection = this.createNewNodeText(textSelection.enter().append("text"), true)
 
-            returnTimeline.add({
-                targets: textElementSelection.nodes(),
-                opacity: 1
-            }, "-=" + String(this.animationDuration))
+            //returnTimeline.add({
+            //    targets: textElementSelection.nodes(),
+            //    opacity: 1
+            //}, "-=" + String(this.animationDuration))
         } else {
             // insert value into targetNode.keys just after the 
             // highest number that is less than or equal to value.
@@ -347,7 +352,7 @@ export class AlgoVisualizer {
             undo: insertUndo
         }
         this.algoStepHistory.addAlgoStep(insertAlgoStep)
-        
+
         insertDo()
 
         return
