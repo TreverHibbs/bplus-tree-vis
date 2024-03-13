@@ -3,8 +3,8 @@
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import "animejs"
-import anime from "animejs"
-import { animate } from "./lib/anime.esm"
+import anime, { AnimeTimelineInstance, timeline } from "animejs"
+import { createTimeline, Timeline } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 export const SVG_NS = "http://www.w3.org/2000/svg"
@@ -48,7 +48,7 @@ export class AlgoVisualizer {
     /* in milliseconds */
     readonly animationDuration = 1000
     //array to store the durations of animations
-    readonly animations: anime.AnimeTimelineInstance[] = []
+    readonly animations: Timeline[] = []
     private currentAnimationIndex = 0
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
@@ -126,12 +126,18 @@ export class AlgoVisualizer {
      */
     insert(value: number, autoplay: boolean = true): AlgoVisualizer {
         // Initialize animation
-        const timeline = anime.timeline({
-            duration: 0.1,
-            endDelay: this.animationDuration - 0.1,
-            autoplay: autoplay,
-            easing: 'linear'
-        });
+        const timeline = createTimeline({
+            defaults: {
+                duration: this.animationDuration,
+                ease: 'linear'
+            }
+        })
+        // const timeline = anime.timeline({
+        //     duration: 0.1,
+        //     endDelay: this.animationDuration - 0.1,
+        //     autoplay: autoplay,
+        //     easing: 'linear'
+        // });
 
         const insertSudoCode = document.querySelector("#insert-sudo-code")
         if (this.sudoCodeContainer?.innerHTML && insertSudoCode?.innerHTML) {
@@ -148,11 +154,11 @@ export class AlgoVisualizer {
                 .selectAll("g.node")
                 .data(rootHierarchyNode, (d) => (d as typeof rootHierarchyNode).data.id)
             const newSVGGElement = this.createNodeSvgElement(nodeSelection.enter())
-            
-            animate(newSVGGElement, { opacity: 1 , duration: this.animationDuration})
 
             //this.addHighlightTextAnimation(timeline, 2)
             // create animation that reveals new node
+            // @ts-ignore
+            timeline.add(newSVGGElement, { opacity: 1, duration: 0.1 })
             //timeline.add({
             //    targets: newSVGGElement,
             //    opacity: 1
@@ -180,18 +186,20 @@ export class AlgoVisualizer {
             this.insertInLeaf(targetNode, value, timeline)
         } else { //targetNode has n - 1 key values already, split it
             const newNode = new bPlusTreeNode(true)
-            const tempNode = new bPlusTreeNode(true, targetNode.pointers.slice(0, this.n - 2), targetNode.keys.slice(0, this.n - 2))
+            const tempNode = new bPlusTreeNode(true)
+            tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
+            tempNode.keys = targetNode.keys.slice(0, this.n - 1)
             this.insertInLeaf(tempNode, value, timeline)
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
-            targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2) - 1)
+            targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2))
             targetNode.pointers[this.n - 1] = newNode
-            targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2) - 1)
+            targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2))
 
-            newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n - 1)
+            newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n)
             newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
-            newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n - 1)
+            newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
 
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
@@ -210,7 +218,7 @@ export class AlgoVisualizer {
      * @returns anime.js Animation object if successful and null otherwise
      * @sideEffects adds animations to the returnTimeline object
      */
-    private insertInLeaf(targetNode: bPlusTreeNode, value: number, returnTimeline: anime.AnimeTimelineInstance) {
+    private insertInLeaf(targetNode: bPlusTreeNode, value: number, returnTimeline: Timeline) {
         if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
             // shift all values in keys to the right one spot.
             for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
@@ -225,6 +233,9 @@ export class AlgoVisualizer {
                 .data(targetNode.keys)
             const textElementSelection = this.createNewNodeText(textSelection.enter().append("text"), true)
 
+            // This function call does not need a third argument. Beta problem I think.
+            // @ts-expect-error
+            returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
             //returnTimeline.add({
             //    targets: textElementSelection.nodes(),
             //    opacity: 1
@@ -247,10 +258,13 @@ export class AlgoVisualizer {
                 .data(targetNode.keys)
             const textElementSelection = this.createNewNodeText(textSelection.enter().append("text"), true)
 
-            returnTimeline.add({
-                targets: textElementSelection.nodes(),
-                opacity: 1
-            }, "-=" + String(this.animationDuration))
+            // This function call does not need a third argument. Beta problem I think.
+            // @ts-expect-error
+            returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
+            // returnTimeline.add({
+            //     targets: textElementSelection.nodes(),
+            //     opacity: 1
+            // }, "-=" + String(this.animationDuration))
         }
         return 1
     }
