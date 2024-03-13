@@ -18,13 +18,26 @@
   javascript component to function properly.
 -->
   <div class="container">
-    <svg id="main-svg" class="main-svg" viewbox="-500 -50 1000 1000" viewport="" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg id="main-svg" class="main-svg" viewbox="-500 -50 1000 1000" viewport="" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="circle" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"
+          markerUnits="strokeWidth">
+          <circle cx="5" cy="5" r="2" fill="context-fill" />
+        </marker>
+        <marker id="arrow" viewBox="0 0 2 4" markerWidth="3" markerHeight="6" refX="2" refY="2" orient="auto">
+          <path d="M2 2L0 0V4L2 2Z" fill="context-fill" />
+        </marker>
+      </defs>
+    </svg>
     <div class="bottom-row flex-container">
       <div id="operations" class="bottom-row-items">
         <!-- TODO create either a flex box ui layout for the operation forms -->
         <button id="insert-button" class="operation">insert</button>
+        <input type="checkbox" id="animation-toggle">
         <button id="delete-button" class="operation">delete</button>
         <button id="find-button" class="operation">find</button>
+        <button id="back-button" class="operation">back</button>
+        <button id="forward-button" class="operation">forward</button>
         <input type="text" name="number-input" id="number-input">
       </div>
       <div class="bottom-row-items"></div>
@@ -39,8 +52,7 @@
     <div class="left-middle-row"></div>
     <div class="nav">
       <button id="play-button">play</button>
-      <input type="range" id="timeline-input" name="timeline-input" min="0"
-      max="1" value="0" step="0.01">
+      <input type="range" id="timeline-input" name="timeline-input" min="0" max="1" value="0" step="0.01">
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
@@ -53,15 +65,17 @@ does this by highlighting the corresponding line of sudo code.
 -->
 <template id="insert-sudo-code">
   <span id="insert-line1"><b>procedure</b> insert(value K, pointer P)<br></span>
-  <span id="insert-line2">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which is also the
-  root<br></span>
-  <span id="insert-line3">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value K<br></span>
+  <span id="insert-line2">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which is also
+    the
+    root<br></span>
+  <span id="insert-line3">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value
+    K<br></span>
   <span id="insert-line4">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math display="inline">
-    <mn>n</mn>
-    <mo>-</mo>
-    <mi>1</mi>
-  </math>. key values)<br></span>
-  <span id="insert-line5">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node L<br></span> 
+      <mn>n</mn>
+      <mo>-</mo>
+      <mi>1</mi>
+    </math>. key values)<br></span>
+  <span id="insert-line5">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node L<br></span>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
     <mn>n</mn>
     <mo>-</mo>
