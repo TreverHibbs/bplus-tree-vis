@@ -277,7 +277,7 @@ export class AlgoVisualizer {
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-sibling-edge")
                 .data(leafNodeLinks)
             const newLeafEdges = this.createNewEdgeSvgElements(leafNodeSiblingEdgeSelection, true)
-            
+
             // create animation that reveals new edges
             //timeline.add({
             //    targets: newEdges, newLeafEdges
@@ -285,10 +285,15 @@ export class AlgoVisualizer {
             //}, "-=" + String(this.animationDuration))
 
             // reveal newSVGGElement
-            timeline.add({
-                targets: [newSVGGElements, newEdges.nodes(), newLeafEdges.nodes()],
-                opacity: 1
-            }, "-=" + String(this.animationDuration))
+            // timeline.add({
+            //     targets: [newSVGGElements, newEdges.nodes(), newLeafEdges.nodes()],
+            //     opacity: 1
+            // }, "-=" + String(this.animationDuration))
+            // @ts-expect-error
+            timeline.add(
+                [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes()],
+                { opacity: 1 }
+            )
 
             const updatedSVGGElements = nodeSelection.nodes()
             const updatedNodesData = nodeSelection.data()
@@ -296,18 +301,33 @@ export class AlgoVisualizer {
             const textExitSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
                 .data((d) => d.data.keys).exit()
             this.exitSelections.push(textExitSelection)
-            timeline.add({
-                targets: textExitSelection.nodes(),
-                opacity: 0
-            }, "-=" + String(this.animationDuration))
+            // timeline.add({
+            //     targets: textExitSelection.nodes(),
+            //     opacity: 0
+            // }, "-=" + String(this.animationDuration))
+            // @ts-expect-error
+            timeline.add(
+                textExitSelection.nodes(),
+                { opacity: 0 }
+            )
 
             //move update nodes
-            timeline.add({
-                targets: updatedSVGGElements,
-                transform: (_: SVGGElement, i: number) => {
-                    return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
+            // timeline.add({
+            //     targets: updatedSVGGElements,
+            //     transform: (_: SVGGElement, i: number) => {
+            //         return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
+            //     }
+            // }, "-=" + String(this.animationDuration))
+            // @ts-expect-error
+            timeline.add(
+                updatedSVGGElements,
+                {
+                    transform: (_: SVGGElement, i: number) => {
+                        return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
+                    }
                 }
-            }, "-=" + String(this.animationDuration))
+            )
+
         }
 
         this.currentAnimation = timeline
