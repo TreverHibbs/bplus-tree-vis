@@ -1,4 +1,5 @@
 //TODO implement all animations of find and insert
+//TODO replace fast animations with set method maybe
 //TODO implement undoable versions of find and insert
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
@@ -15,16 +16,6 @@ import { path as d3Path } from "d3"
 //import { text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
-// DESIGN NOTES TODO consider removing
-/**
- * ----------------
- * DOM manipulation
- * ----------------
- * When the dom is manipulated and then that DOM is animated it is essential
- * that all DOM elements that were apart of that animation remain in the DOM. This
- * is because if a DOM element is removed it will break the saved animation that
- * require that DOM element. 
- */
 
 /**
  * 
@@ -67,7 +58,6 @@ export class AlgoVisualizer {
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
     // used to store d3 selections that will be removed at the start of a new animation.
-
     private exitSelections: d3.Selection<SVGTextElement, unknown,
         SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>[] = []
 
@@ -269,14 +259,14 @@ export class AlgoVisualizer {
             //create svg elements for the new edges created by the split
             const edgeSelection = select("#main-svg")
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
-                .data(rootHierarchyNode.links())
+                .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
             const newEdges = this.createNewEdgeSvgElements(edgeSelection)
 
             const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
-            const leafNodeSiblingEdgeSelection = select("#main-svg")
-                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-sibling-edge")
-                .data(leafNodeLinks)
-            const newLeafEdges = this.createNewEdgeSvgElements(leafNodeSiblingEdgeSelection, true)
+            const leafNodeEdgeSelection = select("#main-svg")
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-edge")
+                .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
+            const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
 
             // create animation that reveals new edges
             //timeline.add({
@@ -297,6 +287,8 @@ export class AlgoVisualizer {
 
             const updatedSVGGElements = nodeSelection.nodes()
             const updatedNodesData = nodeSelection.data()
+            const updatedEdges = edgeSelection.nodes()
+            const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
 
             const textExitSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
                 .data((d) => d.data.keys).exit()
@@ -311,7 +303,7 @@ export class AlgoVisualizer {
                 { opacity: 0 }
             )
 
-            //move update nodes
+            //move updated nodes
             // timeline.add({
             //     targets: updatedSVGGElements,
             //     transform: (_: SVGGElement, i: number) => {
@@ -324,6 +316,34 @@ export class AlgoVisualizer {
                 {
                     transform: (_: SVGGElement, i: number) => {
                         return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
+                    }
+                }
+            )
+
+            //move updated edges
+            //@ts-expect-error
+            timeline.add(
+                updatedEdges,
+                {
+                    d: (link: d3.HierarchyPointLink<bPlusTreeNode>) => {
+                        this.generateLeafEdgePathFN(link)
+                    }
+                }
+            )
+            const edgeExitSelection = edgeSelection.exit()
+            //create animation that makes edges in edgeExitSelection transparent
+            // timeline.add(
+            //     edgeExitSelection,
+            //     { opacity: 0 }
+            // )
+            // this.exitSelections.push(edgeExitSelection)
+
+            //@ts-expect-error
+            timeline.add(
+                updatedLeafNodeEdges,
+                {
+                    d: (link: d3.HierarchyPointLink<bPlusTreeNode>) => {
+                        this.generateLeafEdgePathFN(link)
                     }
                 }
             )
@@ -458,7 +478,7 @@ export class AlgoVisualizer {
      * @dependency reads this.previousBPlusTreeRoot to set the closure for the
      * created algo step.
      * @dependency this.previousInsertValue to set the closure for the created algo step.
-     * @sideEffect adds and AlgoStep object corresponding to this insert to this.algoStepHistory
+     * @sideEffect adds an AlgoStep object corresponding to this insert to this.algoStepHistory
      * @sideEffect any currently animating algorithm step will be interrupted
      * and a new one corresponding to this method will begin.
      * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before the last insert.
@@ -499,10 +519,10 @@ export class AlgoVisualizer {
             edgeSelection.exit().remove()
 
             const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
-            const leafNodeSiblingEdgeSelection = select("#main-svg")
-                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-sibling-edge")
+            const leafNodeEdgeSelection = select("#main-svg")
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-edge")
                 .data(leafNodeLinks)
-            leafNodeSiblingEdgeSelection.exit().remove()
+            leafNodeEdgeSelection.exit().remove()
 
             const nodeSelection = select("#main-svg")
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
@@ -654,6 +674,39 @@ export class AlgoVisualizer {
         return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")"
     }
 
+    /**
+     * Creates a string that represents the svg path for a B+ Tree node edge.
+     * @param d A d3 datum that contains the source and target data for a B+ Tree edge.
+     * @return The string meant to be used as the d attribute of an svg path element.
+     */
+    private generateEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
+        const targetIndex = d.source.data.pointers.indexOf(d.target.data)
+
+        const sourceX = (d.source.x - ((this.nodeWidth / 2) - (this.pointerRectWidth / 2))) + ((this.pointerRectWidth + this.keyRectWidth) * targetIndex)
+        const sourceY = d.source.y + this.nodeHeight / 2
+
+        const path = d3Path()
+        path.moveTo(sourceX, sourceY)
+        //draw a solid circle with a radius of 2 at the source of the edge
+        path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
+        return path.toString()
+    }
+
+    /**
+     * Creates a string that represents the svg path for a B+ Tree leaf edge.
+     * @param d A d3 datum that contains the source and target data for a B+ Tree leaf edge.
+     * @return The string meant to be used as the d attribute of an svg path element.
+     */
+    private generateLeafEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
+        const path = d3Path()
+
+        const x1 = (this.nodeWidth / 2) - (this.pointerRectWidth / 2)
+        const x2 = (this.nodeWidth / 2)
+
+        path.moveTo(d.source.x + x1, d.source.y + this.nodeHeight / 2)
+        path.lineTo(d.target.x - x2, d.target.y + this.nodeHeight / 2)
+        return path.toString()
+    }
 
     /**
      * Creates a new set of svg elements for B+ Tree edges.
@@ -673,38 +726,19 @@ export class AlgoVisualizer {
      */
     private createNewEdgeSvgElements(edgeSelection: d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown>,
         areLeafNodeEdges = false, isTransparent = true): d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown> {
-        let generateEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
-            const targetIndex = d.source.data.pointers.indexOf(d.target.data)
-
-            const sourceX = (d.source.x - ((this.nodeWidth / 2) - (this.pointerRectWidth / 2))) + ((this.pointerRectWidth + this.keyRectWidth) * targetIndex)
-            const sourceY = d.source.y + this.nodeHeight / 2
-
-            const path = d3Path()
-            path.moveTo(sourceX, sourceY)
-            //draw a solid circle with a radius of 2 at the source of the edge
-            path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
-            return path.toString()
-        }
         let className = "edge"
+        let edgePathFnGenerator = this.generateEdgePathFN
 
         if (areLeafNodeEdges) {
-            generateEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
-                const path = d3Path()
-
-                const x1 = (this.nodeWidth / 2) - (this.pointerRectWidth / 2)
-                const x2 = (this.nodeWidth / 2)
-
-                path.moveTo(d.source.x + x1, d.source.y + this.nodeHeight / 2)
-                path.lineTo(d.target.x - x2, d.target.y + this.nodeHeight / 2)
-                return path.toString()
-            }
-            className = "leaf-node-sibling-edge"
+            edgePathFnGenerator = this.generateLeafEdgePathFN
+            className = "leaf-node-edge"
         }
 
         const newEdges = edgeSelection.enter().append("path")
             .attr("class", className)
-            .attr("d", generateEdgePathFN)
+            .attr("d", edgePathFnGenerator)
             .attr("fill", "none")
+            .attr("id", (d) => { return "edge-" + String(d.source.data.id) + "-" + String(d.target.data.id) })
             .attr("stroke", "black")
             .attr("stroke-width", "2px")
             .attr("marker-end", "url(#arrow)")
