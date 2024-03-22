@@ -5,14 +5,15 @@ import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import "animejs"
 import anime, { AnimeTimelineInstance, timeline } from "animejs"
-import { createTimeline, Timeline } from "./lib/anime.esm"
+import { createTimeline, Timeline, svg as animeSvg, utils } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 import { linkVertical } from "d3-shape"
 //import d3 link generator
 import { link } from "d3-shape"
 //import bezierCurveTo
-import { path as d3Path } from "d3"
+import { path as d3Path, svg } from "d3"
+import ts from "typescript"
 //import { text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -288,7 +289,9 @@ export class AlgoVisualizer {
             const updatedSVGGElements = nodeSelection.nodes()
             const updatedNodesData = nodeSelection.data()
             const updatedEdges = edgeSelection.nodes()
+            const updatedEdgesData = edgeSelection.data()
             const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
+            const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
 
             const textExitSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
                 .data((d) => d.data.keys).exit()
@@ -320,16 +323,40 @@ export class AlgoVisualizer {
                 }
             )
 
+
+            // const goalPath = utils.$("#testPath")
+            // const targetPath = utils.$("#edge-3-0")
             //move updated edges
+            // const updatedEdgesMorphFNs: (($path1: any) => string[] | undefined)[] = []
+            // updatedEdges.forEach((_, i) => {
+            //     updatedEdgesMorphFNs.push(animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i])))
+            // })
+            updatedEdges.forEach((edge, i) => {
+                timeline.add(
+                    edge,
+                    {
+                        d: animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i]))
+                    },
+                    "<<"
+                )
+            })
             //@ts-expect-error
-            timeline.add(
-                updatedEdges,
-                {
-                    d: (link: d3.HierarchyPointLink<bPlusTreeNode>) => {
-                        this.generateLeafEdgePathFN(link)
-                    }
-                }
-            )
+            // timeline.add(
+            //     updatedEdges,
+            //     {
+            //         d: updatedEdgesMorphFNs[1]
+            //     }
+            // )
+            // timeline.add(
+            //     targetPath,
+            //     {
+            //         d: animeSvg.morphTo(goalPath)
+            //     }
+            // )
+            // animate(targetPath, {
+            //     d: animeSvg.morphTo(goalPath),
+            //     autoplay: true
+            // })
             const edgeExitSelection = edgeSelection.exit()
             //create animation that makes edges in edgeExitSelection transparent
             // timeline.add(
@@ -342,9 +369,10 @@ export class AlgoVisualizer {
             timeline.add(
                 updatedLeafNodeEdges,
                 {
-                    d: (link: d3.HierarchyPointLink<bPlusTreeNode>) => {
-                        this.generateLeafEdgePathFN(link)
-                    }
+                    // d: (link: d3.HierarchyPointLink<bPlusTreeNode>) => {
+                    //     this.generateLeafEdgePathFN(link)
+                    // }
+                    opacity: 0.5
                 }
             )
 
@@ -676,6 +704,7 @@ export class AlgoVisualizer {
 
     /**
      * Creates a string that represents the svg path for a B+ Tree node edge.
+     * Do not change interface createNewEdgeSvgElements depends on it.
      * @param d A d3 datum that contains the source and target data for a B+ Tree edge.
      * @return The string meant to be used as the d attribute of an svg path element.
      */
@@ -689,7 +718,41 @@ export class AlgoVisualizer {
         path.moveTo(sourceX, sourceY)
         //draw a solid circle with a radius of 2 at the source of the edge
         path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
+
         return path.toString()
+
+        // let svgElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        // svgElement.setAttribute("d", path.toString());
+
+        // const defsElement: SVGElement | null = document.querySelector('#main-svg defs')
+        // if(!defsElement){
+        //     throw new Error("defs element not found")
+        // }
+
+        // defsElement.appendChild(svgElement);
+    }
+
+    /**
+     * Create a svg path element and insert it into the DOM so that it can be used
+     * in a call to the morphTo method of the animejs library.
+     * @param d A d3 datum that contains the source and target data for a B+ Tree edge.
+     * @sideEffect Adds a path element as a child of the defs element of the main svg element.
+     * @sideEffect Throws error on failure to select the defs element.
+     * @return The created path element
+     */
+    private generateMorphToPath = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
+        const pathString = this.generateEdgePathFN(d)
+
+        let svgElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        svgElement.setAttribute("d", pathString);
+
+        const defsElement: SVGElement | null = document.querySelector('#main-svg defs')
+        if (!defsElement) {
+            throw new Error("defs element not found")
+        }
+
+        defsElement.appendChild(svgElement);
+        return svgElement
     }
 
     /**
