@@ -340,42 +340,24 @@ export class AlgoVisualizer {
                     "<<"
                 )
             })
-            //@ts-expect-error
-            // timeline.add(
-            //     updatedEdges,
-            //     {
-            //         d: updatedEdgesMorphFNs[1]
-            //     }
-            // )
-            // timeline.add(
-            //     targetPath,
-            //     {
-            //         d: animeSvg.morphTo(goalPath)
-            //     }
-            // )
-            // animate(targetPath, {
-            //     d: animeSvg.morphTo(goalPath),
-            //     autoplay: true
-            // })
+
             const edgeExitSelection = edgeSelection.exit()
-            //create animation that makes edges in edgeExitSelection transparent
+            // create animation that makes edges in edgeExitSelection transparent
             // timeline.add(
             //     edgeExitSelection,
             //     { opacity: 0 }
             // )
             // this.exitSelections.push(edgeExitSelection)
 
-            //@ts-expect-error
-            timeline.add(
-                updatedLeafNodeEdges,
-                {
-                    // d: (link: d3.HierarchyPointLink<bPlusTreeNode>) => {
-                    //     this.generateLeafEdgePathFN(link)
-                    // }
-                    opacity: 0.5
-                }
-            )
-
+            updatedLeafNodeEdges.forEach((edge, i) => {
+                timeline.add(
+                    edge,
+                    {
+                        d: animeSvg.morphTo(this.generateMorphToPath(updatedLeafNodeEdgesData[i], true))
+                    },
+                    "<<"
+                )
+            })
         }
 
         this.currentAnimation = timeline
@@ -736,12 +718,16 @@ export class AlgoVisualizer {
      * Create a svg path element and insert it into the DOM so that it can be used
      * in a call to the morphTo method of the animejs library.
      * @param d A d3 datum that contains the source and target data for a B+ Tree edge.
+     * @param isLeaf Changes the path generator function to match the case of leaf edge vs node edge.
      * @sideEffect Adds a path element as a child of the defs element of the main svg element.
      * @sideEffect Throws error on failure to select the defs element.
      * @return The created path element
      */
-    private generateMorphToPath = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
-        const pathString = this.generateEdgePathFN(d)
+    private generateMorphToPath = (d: d3.HierarchyPointLink<bPlusTreeNode>, isLeaf = false) => {
+        let pathString = this.generateEdgePathFN(d)
+        if(isLeaf){
+            pathString = this.generateLeafEdgePathFN(d)
+        }
 
         let svgElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
         svgElement.setAttribute("d", pathString);

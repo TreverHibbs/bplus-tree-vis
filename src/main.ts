@@ -7,12 +7,12 @@ import { svg } from "d3"
 window.onload = () => {
   console.debug("window loaded")
 
-  //TODO use what I learned here to do the real thing
+  //TODO test again if string doesnt work for path target
   //test
   // const targetPath = utils.$("#edge-3-0")
   // const goalPath = utils.$("#testPath")
   // animate(targetPath, {
-  //   d: animeSvg.morphTo(goalPath),
+  //   d: animeSvg.morphTo("M-84,14.5C-84,84.5,-200.20000000000002,29,-200.20000000000002,79"),
   //   autoplay: true
   // })
 
