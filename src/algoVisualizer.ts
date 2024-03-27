@@ -238,6 +238,8 @@ export class AlgoVisualizer {
             }
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
 
+            newNode.parent = targetNode.parent
+
             this.insertInParent(targetNode, newNode.keys[0], newNode)
 
 
@@ -381,6 +383,7 @@ export class AlgoVisualizer {
      *
      * @param targetNode The node to insert they key value into
      * @param value The key value to insert
+     * @sideEffect Adds the value to the keys array of the targetNode
      */
     private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
         if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
@@ -469,13 +472,13 @@ export class AlgoVisualizer {
 
             const newNode = new bPlusTreeNode(false)
 
-            parentNode.pointers = tempPointers.slice(0, Math.ceil(((this.n + 1) / 2) - 1))
-            parentNode.keys = tempKeys.slice(0, Math.ceil(((this.n + 1) / 2) - 2))
+            parentNode.pointers = tempPointers.slice(0, Math.ceil((this.n + 1) / 2))
+            parentNode.keys = tempKeys.slice(0, Math.ceil((this.n + 1) / 2) - 1)
 
             const middleKey = tempKeys[Math.ceil(((this.n + 1) / 2) - 1)]
 
-            newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n)
-            newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n - 1)
+            newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
+            newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
 
             this.insertInParent(parentNode, middleKey, newNode)
         }
