@@ -185,15 +185,14 @@ export class AlgoVisualizer {
 
             // create a new svg element for the root node for animation
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
-            const nodeSelection = select("#main-svg")
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
-                .data(rootHierarchyNode, (d) => d.data.id)
-            const newSVGGElement = this.createNodeSvgElements(nodeSelection.enter())
+            // const nodeSelection = select("#main-svg")
+            //     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+            //     .data(rootHierarchyNode, (d) => d.data.id)
+            // const newSVGGElement = this.createNodeSvgElements(nodeSelection.enter())
 
             //this.addHighlightTextAnimation(timeline, 2)
             // create animation that reveals new node
-            // @ts-ignore
-            timeline.add(newSVGGElement, { opacity: 1, duration: 0.1 })
+            // timeline.add(newSVGGElement, { opacity: 1, duration: 0.1 })
             //timeline.add({
             //    targets: newSVGGElement,
             //    opacity: 1
@@ -218,14 +217,14 @@ export class AlgoVisualizer {
             //insert in leaf
             //this.addHighlightTextAnimation(timeline, 5)
 
-            this.insertInLeaf(targetNode, value, timeline)
+            this.insertInLeaf(targetNode, value)
         } else { //leaf node targetNode has n - 1 key values already, split it
             //TODO find where in here things go bad after adding 7.
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
             tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
             tempNode.keys = targetNode.keys.slice(0, this.n - 1)
-            this.insertInLeaf(tempNode, value, timeline)
+            this.insertInLeaf(tempNode, value)
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
@@ -242,134 +241,136 @@ export class AlgoVisualizer {
             this.insertInParent(targetNode, newNode.keys[0], newNode)
 
 
-            // create svg elements for the new bplus tree nodes created by the
-            // split.
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
-                if (node.isLeaf) {
-                    return []
-                } else {
-                    return node.pointers
+        }
+
+        // -- Animation Section -- //
+        // create svg elements for the new bplus tree nodes created by the
+        // split.
+        const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
+            if (node.isLeaf) {
+                return []
+            } else {
+                return node.pointers
+            }
+        }))
+        //render root rootHierarchyNode with d3
+        const nodeSelection = select("#main-svg")
+            .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+            .data(rootHierarchyNode, (d) => (d).data.id)
+        const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
+
+        //TODO figure out how this will be animated
+        //create svg elements for the new edges created by the split
+        const edgeSelection = select("#main-svg")
+            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
+            .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
+        const newEdges = this.createNewEdgeSvgElements(edgeSelection)
+
+        const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
+        const leafNodeEdgeSelection = select("#main-svg")
+            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-edge")
+            .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
+        const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
+
+        // create animation that reveals new edges
+        //timeline.add({
+        //    targets: newEdges, newLeafEdges
+        //    opacity: 1
+        //}, "-=" + String(this.animationDuration))
+
+        // reveal newSVGGElement
+        // timeline.add({
+        //     targets: [newSVGGElements, newEdges.nodes(), newLeafEdges.nodes()],
+        //     opacity: 1
+        // }, "-=" + String(this.animationDuration))
+        // @ts-expect-error
+        timeline.add(
+            [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes()],
+            { opacity: 1 }
+        )
+
+        const updatedSVGGElements = nodeSelection.nodes()
+        const updatedNodesData = nodeSelection.data()
+        const updatedEdges = edgeSelection.nodes()
+        const updatedEdgesData = edgeSelection.data()
+        const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
+        const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
+
+        const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
+            .data((d) => d.data.keys)
+        const textExitSelection = textSelection.exit()
+        this.exitSelections.push(textExitSelection)
+        // timeline.add({
+        //     targets: textExitSelection.nodes(),
+        //     opacity: 0
+        // }, "-=" + String(this.animationDuration))
+        // @ts-expect-error
+        timeline.add(
+            textExitSelection.nodes(),
+            { opacity: 0 }
+        )
+
+        const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
+        timeline.add(
+            newTextSelection.nodes(),
+            {
+                opacity: 1
+            },
+            "<<"
+        )
+
+        //move updated nodes
+        // timeline.add({
+        //     targets: updatedSVGGElements,
+        //     transform: (_: SVGGElement, i: number) => {
+        //         return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
+        //     }
+        // }, "-=" + String(this.animationDuration))
+        // @ts-expect-error
+        timeline.add(
+            updatedSVGGElements,
+            {
+                transform: (_: SVGGElement, i: number) => {
+                    return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
                 }
-            }))
-            //render root rootHierarchyNode with d3
-            const nodeSelection = select("#main-svg")
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
-                .data(rootHierarchyNode, (d) => (d).data.id)
-            const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
+            }
+        )
 
-            //TODO figure out how this will be animated
-            //create svg elements for the new edges created by the split
-            const edgeSelection = select("#main-svg")
-                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
-                .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
-            const newEdges = this.createNewEdgeSvgElements(edgeSelection)
 
-            const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
-            const leafNodeEdgeSelection = select("#main-svg")
-                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-edge")
-                .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
-            const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
-
-            // create animation that reveals new edges
-            //timeline.add({
-            //    targets: newEdges, newLeafEdges
-            //    opacity: 1
-            //}, "-=" + String(this.animationDuration))
-
-            // reveal newSVGGElement
-            // timeline.add({
-            //     targets: [newSVGGElements, newEdges.nodes(), newLeafEdges.nodes()],
-            //     opacity: 1
-            // }, "-=" + String(this.animationDuration))
-            // @ts-expect-error
+        // const goalPath = utils.$("#testPath")
+        // const targetPath = utils.$("#edge-3-0")
+        //move updated edges
+        // const updatedEdgesMorphFNs: (($path1: any) => string[] | undefined)[] = []
+        // updatedEdges.forEach((_, i) => {
+        //     updatedEdgesMorphFNs.push(animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i])))
+        // })
+        updatedEdges.forEach((edge, i) => {
             timeline.add(
-                [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes()],
-                { opacity: 1 }
-            )
-
-            const updatedSVGGElements = nodeSelection.nodes()
-            const updatedNodesData = nodeSelection.data()
-            const updatedEdges = edgeSelection.nodes()
-            const updatedEdgesData = edgeSelection.data()
-            const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
-            const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
-
-            const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
-                .data((d) => d.data.keys)
-            const textExitSelection = textSelection.exit()
-            this.exitSelections.push(textExitSelection)
-            // timeline.add({
-            //     targets: textExitSelection.nodes(),
-            //     opacity: 0
-            // }, "-=" + String(this.animationDuration))
-            // @ts-expect-error
-            timeline.add(
-                textExitSelection.nodes(),
-                { opacity: 0 }
-            )
-
-            const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
-            timeline.add(
-                newTextSelection.nodes(),
+                edge,
                 {
-                    opacity: 1
+                    d: animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i]))
                 },
                 "<<"
             )
+        })
 
-            //move updated nodes
-            // timeline.add({
-            //     targets: updatedSVGGElements,
-            //     transform: (_: SVGGElement, i: number) => {
-            //         return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
-            //     }
-            // }, "-=" + String(this.animationDuration))
-            // @ts-expect-error
+        const edgeExitSelection = edgeSelection.exit()
+        // create animation that makes edges in edgeExitSelection transparent
+        // timeline.add(
+        //     edgeExitSelection,
+        //     { opacity: 0 }
+        // )
+        // this.exitSelections.push(edgeExitSelection)
+
+        updatedLeafNodeEdges.forEach((edge, i) => {
             timeline.add(
-                updatedSVGGElements,
+                edge,
                 {
-                    transform: (_: SVGGElement, i: number) => {
-                        return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
-                    }
-                }
+                    d: animeSvg.morphTo(this.generateMorphToPath(updatedLeafNodeEdgesData[i], true))
+                },
+                "<<"
             )
-
-
-            // const goalPath = utils.$("#testPath")
-            // const targetPath = utils.$("#edge-3-0")
-            //move updated edges
-            // const updatedEdgesMorphFNs: (($path1: any) => string[] | undefined)[] = []
-            // updatedEdges.forEach((_, i) => {
-            //     updatedEdgesMorphFNs.push(animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i])))
-            // })
-            updatedEdges.forEach((edge, i) => {
-                timeline.add(
-                    edge,
-                    {
-                        d: animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i]))
-                    },
-                    "<<"
-                )
-            })
-
-            const edgeExitSelection = edgeSelection.exit()
-            // create animation that makes edges in edgeExitSelection transparent
-            // timeline.add(
-            //     edgeExitSelection,
-            //     { opacity: 0 }
-            // )
-            // this.exitSelections.push(edgeExitSelection)
-
-            updatedLeafNodeEdges.forEach((edge, i) => {
-                timeline.add(
-                    edge,
-                    {
-                        d: animeSvg.morphTo(this.generateMorphToPath(updatedLeafNodeEdgesData[i], true))
-                    },
-                    "<<"
-                )
-            })
-        }
+        })
 
         this.currentAnimation = timeline
         return this
@@ -380,10 +381,6 @@ export class AlgoVisualizer {
      *
      * @param targetNode The node to insert they key value into
      * @param value The key value to insert
-     * @param returnTimeline The animejs timeline object that is generated and
-     * returned by the insert method
-     * @returns anime.js Animation object if successful and null otherwise
-     * @sideEffects adds animations to the returnTimeline object
      */
     private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
         if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
