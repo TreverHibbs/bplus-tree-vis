@@ -220,6 +220,7 @@ export class AlgoVisualizer {
 
             this.insertInLeaf(targetNode, value, timeline)
         } else { //leaf node targetNode has n - 1 key values already, split it
+            //TODO find where in here things go bad after adding 7.
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
             tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
@@ -293,8 +294,9 @@ export class AlgoVisualizer {
             const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
             const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
 
-            const textExitSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
-                .data((d) => d.data.keys).exit()
+            const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
+                .data((d) => d.data.keys)
+            const textExitSelection = textSelection.exit()
             this.exitSelections.push(textExitSelection)
             // timeline.add({
             //     targets: textExitSelection.nodes(),
@@ -304,6 +306,15 @@ export class AlgoVisualizer {
             timeline.add(
                 textExitSelection.nodes(),
                 { opacity: 0 }
+            )
+
+            const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
+            timeline.add(
+                newTextSelection.nodes(),
+                {
+                    opacity: 1
+                },
+                "<<"
             )
 
             //move updated nodes
@@ -374,7 +385,7 @@ export class AlgoVisualizer {
      * @returns anime.js Animation object if successful and null otherwise
      * @sideEffects adds animations to the returnTimeline object
      */
-    private insertInLeaf(targetNode: bPlusTreeNode, value: number, returnTimeline: Timeline) {
+    private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
         if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
             // shift all values in keys to the right one spot.
             for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
@@ -387,11 +398,10 @@ export class AlgoVisualizer {
             const textSelection = select("#node-id-" + String(targetNode.id))
                 .selectAll("text")
                 .data(targetNode.keys)
-            const textElementSelection = this.createNewNodeText(textSelection.enter().append("text"), true)
+            const textElementSelection = this.createNewNodeText(textSelection.enter(), true)
 
             // This function call does not need a third argument. Beta problem I think.
-            // @ts-expect-error
-            returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
+            //returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
             //returnTimeline.add({
             //    targets: textElementSelection.nodes(),
             //    opacity: 1
@@ -409,14 +419,13 @@ export class AlgoVisualizer {
             }
 
             //TODO put this code in a reusable method of some form.
-            const textSelection = select("#node-id-" + String(targetNode.id))
-                .selectAll("text")
-                .data(targetNode.keys)
-            const textElementSelection = this.createNewNodeText(textSelection.enter().append("text"), true)
+            // const textSelection = select("#node-id-" + String(targetNode.id))
+            //     .selectAll("text")
+            //     .data(targetNode.keys)
+            // const textElementSelection = this.createNewNodeText(textSelection.enter(), true)
 
             // This function call does not need a third argument. Beta problem I think.
-            // @ts-expect-error
-            returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
+            //returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
             // returnTimeline.add({
             //     targets: textElementSelection.nodes(),
             //     opacity: 1
@@ -548,7 +557,7 @@ export class AlgoVisualizer {
             const textSelection = nodeSelection.selectAll("text.node-key-text")
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
-            this.createNewNodeText(textSelection.enter().append("text"), false)
+            this.createNewNodeText(textSelection.enter(), false)
 
             // return the global state to its state before the previous insert.
             this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousInsert)
@@ -648,14 +657,15 @@ export class AlgoVisualizer {
 
     /**
      * creates a new set of text dom elements for a B+ Tree node
-     * @param newTextSelection A selection of text dom elements that correspond
-     * to a B+ Tree keys array.
+     * @param newTextSelection A d3 selection of text data that are to be created.
      * @param isTransparent toggles wether or not text element is transparent
      * initially. This exists so that text reveal can be animated.
      * @return textElementSelection the selection of newly created text elements
      */
-    private createNewNodeText(newTextSelection: d3.Selection<SVGTextElement, number, d3.BaseType, unknown>, isTransparent = false): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
-        let textElementSelection = newTextSelection.attr("class", "node-key-text")
+    private createNewNodeText(newTextSelection: d3.Selection<d3.EnterElement, number, SVGGElement | d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>>,
+        isTransparent = false): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
+        const newSvgTextElement = newTextSelection.append("text")
+        let textElementSelection = newSvgTextElement.attr("class", "node-key-text")
             // Calculate the x coordinate of the text based on its index in the
             // key array.
             .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * (this.keyRectWidth + this.pointerRectWidth) })
@@ -725,7 +735,7 @@ export class AlgoVisualizer {
      */
     private generateMorphToPath = (d: d3.HierarchyPointLink<bPlusTreeNode>, isLeaf = false) => {
         let pathString = this.generateEdgePathFN(d)
-        if(isLeaf){
+        if (isLeaf) {
             pathString = this.generateLeafEdgePathFN(d)
         }
 
@@ -848,7 +858,7 @@ export class AlgoVisualizer {
         const textEnterSelection = newGElementsSelection.selectAll("text.node-key-text")
             .data((d) => d.data.keys).enter()
 
-        this.createNewNodeText(textEnterSelection.append("text"))
+        this.createNewNodeText(textEnterSelection)
 
         return newGElementsSelection.nodes()
     }
