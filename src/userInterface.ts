@@ -25,7 +25,8 @@ export const userInterface = () => {
     }
 
     const insertButton = document.querySelector('#insert-button');
-    insertButton?.addEventListener('click', () => {
+    //TODO make is so that this can't run to instances of the async callback at once.
+    insertButton?.addEventListener('click', async () => {
         const numberInput = <HTMLInputElement>document.querySelector('#number-input')
 
         // Make sure that the right animation duration is used
@@ -33,9 +34,10 @@ export const userInterface = () => {
 
         if (numberInput?.value) {
             const numbers = numberInput.value.split(',').map(Number);
-            numbers.forEach(async num => {
-                await algoVisualizer.undoableInsert(num);
-            });
+            await numbers.reduce(async (previousPromise, num) => {
+                await previousPromise;
+                return algoVisualizer.undoableInsert(num);
+            }, Promise.resolve());
         }
         updateTimelineInput()
     });

@@ -174,7 +174,6 @@ export class AlgoVisualizer {
                 ease: 'linear'
             }
         })
-        const timelineCompletePromise = timeline.then(() => true)
         // const timeline = anime.timeline({
         //     duration: 0.1,
         //     endDelay: this.animationDuration - 0.1,
@@ -344,11 +343,9 @@ export class AlgoVisualizer {
             { opacity: 0 }
         )
 
+        const timelineCompletePromise = timeline.then(() => true)
         this.currentAnimation = timeline
-        const promiseResult = await timelineCompletePromise
-        if(promiseResult){
-            console.debug("animation complete")
-        }
+        await timelineCompletePromise
         
         return
     }
