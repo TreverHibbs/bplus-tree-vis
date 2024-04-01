@@ -28,14 +28,17 @@ export const userInterface = () => {
     insertButton?.addEventListener('click', () => {
         const numberInput = <HTMLInputElement>document.querySelector('#number-input')
 
-        //make sure that the right animation duration is used
+        // Make sure that the right animation duration is used
         setAnimationToggle()
 
         if (numberInput?.value) {
-            algoVisualizer.undoableInsert(Number(numberInput.value))
-            updateTimelineInput()
+            const numbers = numberInput.value.split(',').map(Number);
+            numbers.forEach(async num => {
+                await algoVisualizer.undoableInsert(num);
+            });
         }
-    })
+        updateTimelineInput()
+    });
 
     const playButton = document.querySelector('#play-button')
     playButton?.addEventListener('click', () => {
@@ -70,15 +73,15 @@ export const userInterface = () => {
     })
 
     //when animejs 4.0 comes out this will be possible
-/*     const speedInput = <HTMLInputElement>document.querySelector('#speed-input')
-    speedInput?.addEventListener('input', () => {
-        console.debug('speed input event fired')
-        const currentlyAnimationTimeline = algoVisualizer.getCurrentAnimation()
-        if (currentlyAnimationTimeline) {
-            currentlyAnimationTimeline.duration = speedInput.valueAsNumber * 2000
-        }
-    }) 
-*/
+    /*     const speedInput = <HTMLInputElement>document.querySelector('#speed-input')
+        speedInput?.addEventListener('input', () => {
+            console.debug('speed input event fired')
+            const currentlyAnimationTimeline = algoVisualizer.getCurrentAnimation()
+            if (currentlyAnimationTimeline) {
+                currentlyAnimationTimeline.duration = speedInput.valueAsNumber * 2000
+            }
+        }) 
+    */
 
     animationToggle?.addEventListener('input', setAnimationToggle)
 

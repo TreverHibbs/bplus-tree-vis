@@ -9,7 +9,7 @@ export interface AlgoStep {
      *
      * @return A boolean that indicates success or not
      */
-    do: () => boolean
+    do: () => Promise<boolean>
 
     /**
      * This should return the process and UI to its state from before the corresponding

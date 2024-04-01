@@ -1,6 +1,8 @@
-//TODO implement all animations of find and insert
-//TODO replace fast animations with set method maybe
-//TODO implement undoable versions of find and insert
+//TODO test the other insert cases and go from there
+//test strings
+// 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
+// 1,2,3,4,5,6,7,8,9,10,11,12
+// 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import "animejs"
@@ -49,6 +51,7 @@ export class AlgoVisualizer {
     private readonly nodeWidth: number
     //multiplied by node width to get gap value
     private readonly nodeSiblingsGap = 1.1
+    private readonly nodeParentsGap = 2
     //added to the node size height to create a gap between parents and children.
     private readonly nodeChildrenGap = 50
     /* in milliseconds */
@@ -59,8 +62,8 @@ export class AlgoVisualizer {
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
     // used to store d3 selections that will be removed at the start of a new animation.
-    private exitSelections: d3.Selection<SVGTextElement, unknown,
-        SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>[] = []
+    private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
+        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>>)[] = []
 
     /**
      * allows control of the algorithm visualization. By calling the do and undo
@@ -84,10 +87,13 @@ export class AlgoVisualizer {
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight + this.nodeChildrenGap])
         this.d3TreeLayout.separation((a, b) => {
             //if the nodes are siblings then the separation is 1
+            //TODO make this actually work for inner nodes. So that inner nodes are closer
+            //than leaf nodes. Also this should probably be dynamically caluclated based on
+            //node size.
             if (a.parent == b.parent) {
                 return this.nodeSiblingsGap
             } else {
-                return 2
+                return 1
             }
         })
 
@@ -142,10 +148,11 @@ export class AlgoVisualizer {
     }
 
 
+    //TODO add an optoint to either play animation normally or skip animation to complete state.
     /**
      *
      * Insert a number into the B+Tree if it is not already in the tree. And
-     * generate an animation for that insertion.
+     * generates an animation for that insertion.
      * 
      * @param value a number to insert into the B+Tree.
      * @param autoplay determines weather or not the animation plays when
@@ -157,8 +164,9 @@ export class AlgoVisualizer {
      * @sideEffects adds d3 selections to the exitSelections array for removal
      * at before the next insertion animation is generated. Or before the
      * insertion is undone.
+     * @sideEffect sets this.currentAnimation to the newly created animation.
      */
-    private insert(value: number, autoplay = true): AlgoVisualizer {
+    private async insert(value: number, autoplay = true) {
         // Initialize animation
         const timeline = createTimeline({
             defaults: {
@@ -166,6 +174,7 @@ export class AlgoVisualizer {
                 ease: 'linear'
             }
         })
+        const timelineCompletePromise = timeline.then(() => true)
         // const timeline = anime.timeline({
         //     duration: 0.1,
         //     endDelay: this.animationDuration - 0.1,
@@ -184,7 +193,7 @@ export class AlgoVisualizer {
             targetNode = this.bPlusTreeRoot
 
             // create a new svg element for the root node for animation
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
+            //const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
             // const nodeSelection = select("#main-svg")
             //     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
             //     .data(rootHierarchyNode, (d) => d.data.id)
@@ -204,7 +213,7 @@ export class AlgoVisualizer {
             if (found) {
                 // Do not allow duplicates
                 //this.animations.push(timeline)
-                return this
+                return
             } else {
                 targetNode = node
             }
@@ -219,7 +228,6 @@ export class AlgoVisualizer {
 
             this.insertInLeaf(targetNode, value)
         } else { //leaf node targetNode has n - 1 key values already, split it
-            //TODO find where in here things go bad after adding 7.
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
             tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
@@ -246,8 +254,7 @@ export class AlgoVisualizer {
         }
 
         // -- Animation Section -- //
-        // create svg elements for the new bplus tree nodes created by the
-        // split.
+        // create svg elements for the new bplus tree nodes created by splits.
         const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
             if (node.isLeaf) {
                 return []
@@ -255,13 +262,13 @@ export class AlgoVisualizer {
                 return node.pointers
             }
         }))
-        //render root rootHierarchyNode with d3
+
+        //enter/new section
         const nodeSelection = select("#main-svg")
             .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
             .data(rootHierarchyNode, (d) => (d).data.id)
         const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
 
-        //TODO figure out how this will be animated
         //create svg elements for the new edges created by the split
         const edgeSelection = select("#main-svg")
             .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
@@ -274,23 +281,18 @@ export class AlgoVisualizer {
             .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
         const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
 
-        // create animation that reveals new edges
-        //timeline.add({
-        //    targets: newEdges, newLeafEdges
-        //    opacity: 1
-        //}, "-=" + String(this.animationDuration))
+        const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
+            .data((d) => d.data.keys)
+        const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
 
-        // reveal newSVGGElement
-        // timeline.add({
-        //     targets: [newSVGGElements, newEdges.nodes(), newLeafEdges.nodes()],
-        //     opacity: 1
-        // }, "-=" + String(this.animationDuration))
         // @ts-expect-error
         timeline.add(
-            [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes()],
+            [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes(), ...newTextSelection.nodes()],
             { opacity: 1 }
         )
 
+
+        //update section
         const updatedSVGGElements = nodeSelection.nodes()
         const updatedNodesData = nodeSelection.data()
         const updatedEdges = edgeSelection.nodes()
@@ -298,36 +300,6 @@ export class AlgoVisualizer {
         const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
         const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
 
-        const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
-            .data((d) => d.data.keys)
-        const textExitSelection = textSelection.exit()
-        this.exitSelections.push(textExitSelection)
-        // timeline.add({
-        //     targets: textExitSelection.nodes(),
-        //     opacity: 0
-        // }, "-=" + String(this.animationDuration))
-        // @ts-expect-error
-        timeline.add(
-            textExitSelection.nodes(),
-            { opacity: 0 }
-        )
-
-        const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
-        timeline.add(
-            newTextSelection.nodes(),
-            {
-                opacity: 1
-            },
-            "<<"
-        )
-
-        //move updated nodes
-        // timeline.add({
-        //     targets: updatedSVGGElements,
-        //     transform: (_: SVGGElement, i: number) => {
-        //         return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
-        //     }
-        // }, "-=" + String(this.animationDuration))
         // @ts-expect-error
         timeline.add(
             updatedSVGGElements,
@@ -338,14 +310,6 @@ export class AlgoVisualizer {
             }
         )
 
-
-        // const goalPath = utils.$("#testPath")
-        // const targetPath = utils.$("#edge-3-0")
-        //move updated edges
-        // const updatedEdgesMorphFNs: (($path1: any) => string[] | undefined)[] = []
-        // updatedEdges.forEach((_, i) => {
-        //     updatedEdgesMorphFNs.push(animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i])))
-        // })
         updatedEdges.forEach((edge, i) => {
             timeline.add(
                 edge,
@@ -355,14 +319,6 @@ export class AlgoVisualizer {
                 "<<"
             )
         })
-
-        const edgeExitSelection = edgeSelection.exit()
-        // create animation that makes edges in edgeExitSelection transparent
-        // timeline.add(
-        //     edgeExitSelection,
-        //     { opacity: 0 }
-        // )
-        // this.exitSelections.push(edgeExitSelection)
 
         updatedLeafNodeEdges.forEach((edge, i) => {
             timeline.add(
@@ -374,8 +330,27 @@ export class AlgoVisualizer {
             )
         })
 
+
+        // exit section
+        const textExitSelection = textSelection.exit()
+        const edgeExitSelection = edgeSelection.exit()
+
+        this.exitSelections.push(textExitSelection)
+        this.exitSelections.push(edgeExitSelection)
+
+        // @ts-expect-error
+        timeline.add(
+            [...textExitSelection.nodes(), ...edgeExitSelection.nodes()],
+            { opacity: 0 }
+        )
+
         this.currentAnimation = timeline
-        return this
+        const promiseResult = await timelineCompletePromise
+        if(promiseResult){
+            console.debug("animation complete")
+        }
+        
+        return
     }
 
     /**
@@ -479,6 +454,19 @@ export class AlgoVisualizer {
 
             newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
             newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
+            
+            newNode.parent = parentNode.parent
+            
+            parentNode.pointers.forEach(node => {
+                if (node) {
+                    node.parent = parentNode;
+                }
+            });
+            newNode.pointers.forEach(node => {
+                if (node) {
+                    node.parent = newNode;
+                }
+            });
 
             this.insertInParent(parentNode, middleKey, newNode)
         }
@@ -503,7 +491,7 @@ export class AlgoVisualizer {
      * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before the last insert.
      * @sideEffect sets the this.previousInsertValue to the value of the last insert.
      */
-    public undoableInsert(value: number) {
+    public async undoableInsert(value: number) {
         let valueBeforePreviousInsert: number | null = null
 
         //set the closure variables for the algo step object.
@@ -581,7 +569,7 @@ export class AlgoVisualizer {
          * @sideEffect the global state this.previousBPlusTreeRoot will be set.
          * @sideEffect the global state this.previousInsertValue will be set.
          */
-        const insertDo = () => {
+        const insertDo = async () => {
             // set the global state so that future undoable inserts can create
             // correct closures for undoing.
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
@@ -590,7 +578,7 @@ export class AlgoVisualizer {
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
-            this.insert(value)
+            await this.insert(value)
 
             return true
         }
@@ -602,7 +590,7 @@ export class AlgoVisualizer {
 
         // Must execute the do method before it is added, because addAlgoStep
         // assumes that that algo step was the last algo step executed.
-        insertAlgoStep.do()
+        await insertAlgoStep.do()
         this.algoStepHistory.addAlgoStep(insertAlgoStep)
 
         return
