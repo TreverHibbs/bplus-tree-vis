@@ -158,7 +158,7 @@ export class AlgoVisualizer {
      * @param autoplay determines weather or not the animation plays when
      * function is called.
      *
-     * @returns the algoVis instance
+     * @returns The on completion promise of the generated animation
      * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation, and
      * adds elements to the animations array.
      * @sideEffects adds d3 selections to the exitSelections array for removal
@@ -166,7 +166,7 @@ export class AlgoVisualizer {
      * insertion is undone.
      * @sideEffect sets this.currentAnimation to the newly created animation.
      */
-    private async insert(value: number, autoplay = true) {
+    private async insert(value: number, autoplay = true): Promise<unknown> {
         // Initialize animation
         const timeline = createTimeline({
             defaults: {
@@ -343,11 +343,13 @@ export class AlgoVisualizer {
             { opacity: 0 }
         )
 
-        const timelineCompletePromise = timeline.then(() => true)
+        // //@ts-expect-error
+        // timeline.add({
+        //     duration: 10000,
+        //     onUpdate: () => { console.debug("timer go brrr") }
+        // })
         this.currentAnimation = timeline
-        await timelineCompletePromise
-        
-        return
+        return timeline.then(() => true)
     }
 
     /**
@@ -451,9 +453,9 @@ export class AlgoVisualizer {
 
             newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
             newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
-            
+
             newNode.parent = parentNode.parent
-            
+
             parentNode.pointers.forEach(node => {
                 if (node) {
                     node.parent = parentNode;
@@ -478,6 +480,7 @@ export class AlgoVisualizer {
      * redoing undoing of that insert. Making sure that state is remembered for
      * proper restoring.
      * @param value the number to insert, duplicates can't be added to the tree.
+     * @return The on completion promise of the generated animation
      * @dependency this.bPlusTreeRoot used to insert the value
      * @dependency reads this.previousBPlusTreeRoot to set the closure for the
      * created algo step.
@@ -560,7 +563,7 @@ export class AlgoVisualizer {
          * Executes an insert that can be undone later so that all sate
          * including the DOM is returned to its sate from before the method call.
          * 
-         * @returns indicates success or failure
+         * @returns The on completion promise of the generated animation
          * @sideEffect all exit selections stored in this.exitSelection will
          * be removed from the DOM.
          * @sideEffect the global state this.previousBPlusTreeRoot will be set.
@@ -575,9 +578,7 @@ export class AlgoVisualizer {
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
-            await this.insert(value)
-
-            return true
+            return this.insert(value)
         }
 
         const insertAlgoStep: AlgoStep = {
@@ -587,10 +588,10 @@ export class AlgoVisualizer {
 
         // Must execute the do method before it is added, because addAlgoStep
         // assumes that that algo step was the last algo step executed.
-        await insertAlgoStep.do()
+        const onComplete = insertAlgoStep.do()
         this.algoStepHistory.addAlgoStep(insertAlgoStep)
 
-        return
+        return onComplete
 
     }
 

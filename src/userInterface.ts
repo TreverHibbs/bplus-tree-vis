@@ -36,7 +36,7 @@ export const userInterface = () => {
             const numbers = numberInput.value.split(',').map(Number);
             await numbers.reduce(async (previousPromise, num) => {
                 await previousPromise;
-                return algoVisualizer.undoableInsert(num);
+                await algoVisualizer.undoableInsert(num);
             }, Promise.resolve());
         }
         updateTimelineInput()
