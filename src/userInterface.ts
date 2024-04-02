@@ -2,13 +2,12 @@
 import { AlgoVisualizer } from './algoVisualizer'
 
 /**
- * Implements the functionality of buttons and sliders for interaction with a b+ tree visualization.
  *
+ * Implements the functionality of buttons and sliders for interaction with a b+ tree visualization.
  * @dependency For this class to function there must be a specific html
  * structure in the dom. This structure is defined in index.html.
  */
 export const userInterface = () => {
-    // animation afterwards.
     console.debug("init user interface")
     const algoVisualizer = new AlgoVisualizer(4)
 
@@ -89,10 +88,10 @@ export const userInterface = () => {
 
 
     /**
+     *
      * Manipulates the range input dom element for controlling animations so
      * that the current animejs animation can be controlled correctly. Should be
      * called every time that the currentAnimation global is reassigned.
-     * 
      * @returns 1 if successful and 0 if not
      */
     const updateTimelineInput = () => {

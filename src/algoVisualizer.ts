@@ -1,22 +1,13 @@
-//TODO test the other insert cases and go from there
 //test strings
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
 // 1,2,3,4,5,6,7,8,9,10,11,12
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
-import "animejs"
-import anime, { AnimeTimelineInstance, timeline } from "animejs"
-import { createTimeline, Timeline, svg as animeSvg, utils } from "./lib/anime.esm"
+import { createTimeline, svg as animeSvg } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
-import { linkVertical } from "d3-shape"
-//import d3 link generator
-import { link } from "d3-shape"
-//import bezierCurveTo
-import { path as d3Path, svg } from "d3"
-import ts from "typescript"
-//import { text } from "d3"
+import { path as d3Path } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 
@@ -26,16 +17,14 @@ export const SVG_NS = "http://www.w3.org/2000/svg"
  * Concepts 7th edition) and generates functions that can animate that
  * algorithm. By using this class a web UI can animate a B+tree. Each instance of
  * this class corresponds to a rendered B+tree algorithm.   
- * 
  * @dependency For this class to function correctly there must be a blank svg element with
- * the id "main-svg", a blank div with the id "sudo-code", and three template
- * elements with a specific structure in the dom. These elements are defined in index.html.
- */
+ * the id "main-svg".
+ * */
 export class AlgoVisualizer {
     /* number of pointers in a node */
     private readonly n: number
     private readonly sudoCodeContainer = document.querySelector("#sudo-code")
-    /* When the Bplus tree is empty it contains a bplus tree node with an empty
+    /* When the bplus tree is empty it contains a bplus tree node with an empty
     keys array */
     private bPlusTreeRoot: bPlusTreeNode = new bPlusTreeNode(true)
     //Used in the undo method to restore the previous state of the tree and animation
@@ -54,10 +43,15 @@ export class AlgoVisualizer {
     private readonly nodeParentsGap = 2
     //added to the node size height to create a gap between parents and children.
     private readonly nodeChildrenGap = 50
+    private readonly leafNodeEdgeClassName = "leaf-node-edge"
+    private readonly edgeClassName = "edge"
+    private readonly nodeClassName = "node"
+    private readonly nodeRectClassName = this.nodeClassName + "-rect"
+    private readonly keyTextClassName = "node-key-text"
+    //this must match the id of the svg defined in the index.html file.
+    private readonly mainSvgId = "#main-svg"
     /* in milliseconds */
-    public animationDuration = 1000 //must not be any less than 0.2
-    //private readonly animations: Timeline[] = []
-    //private readonly currentAnimation: anime.AnimeTimelineInstance
+    public animationDuration = 1000
     public currentAnimation = createTimeline({})
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
@@ -86,17 +80,17 @@ export class AlgoVisualizer {
 
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight + this.nodeChildrenGap])
         this.d3TreeLayout.separation((a, b) => {
-            //if the nodes are siblings then the separation is 1
             //TODO make this actually work for inner nodes. So that inner nodes are closer
-            //than leaf nodes. Also this should probably be dynamically caluclated based on
+            //than leaf nodes. Also this should probably be dynamically calculated based on
             //node size.
             if (a.parent == b.parent) {
                 return this.nodeSiblingsGap
             } else {
-                return 1
+                return this.nodeParentsGap
             }
         })
 
+        //TODO consider this when implementing sudo code animations.
         const rootElement = document.querySelector("html")
         if (rootElement) {
             this.highlightColor = getComputedStyle(rootElement).getPropertyValue("--highlighted-text")
@@ -113,13 +107,10 @@ export class AlgoVisualizer {
     /**
      * 
      * Find a numeric key in the B+Tree. Assumes that there are no duplicates.
-     * 
      * @param keyToFind A number to locate in the B+Tree.
-     * 
      * @returns An object that contains a found boolean flag which indicates if
      * the key was found. The bPlusTreeNode that should contain the key if it
      * exists in the tree. The index of the key if it has been found.    
-     * 
      */
     find(keyToFind: number): { found: boolean, node: bPlusTreeNode, index?: number } {
         let currentNode = this.bPlusTreeRoot
@@ -148,17 +139,20 @@ export class AlgoVisualizer {
     }
 
 
-    //TODO add an optoint to either play animation normally or skip animation to complete state.
+    //TODO add an option to either play animation normally or skip animation to complete state.
     /**
      *
      * Insert a number into the B+Tree if it is not already in the tree. And
      * generates an animation for that insertion.
-     * 
      * @param value a number to insert into the B+Tree.
      * @param autoplay determines weather or not the animation plays when
      * function is called.
-     *
      * @returns The on completion promise of the generated animation
+     * @dependency this.bPlusTreeRoot inserts value into this tree
+     * @sideEffect any currently animating algorithm step will be interrupted
+     * and a new one corresponding to this method will begin.
+     * @sideEffect all exit selections stored in this.exitSelection will
+     * be removed from the DOM.
      * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation, and
      * adds elements to the animations array.
      * @sideEffects adds d3 selections to the exitSelections array for removal
@@ -167,19 +161,19 @@ export class AlgoVisualizer {
      * @sideEffect sets this.currentAnimation to the newly created animation.
      */
     private async insert(value: number, autoplay = true): Promise<unknown> {
-        // Initialize animation
+        //This needs to be done so that the old elements that are no longer relevant
+        //do not interfere with the new animation. If this wasn't done then the new selections
+        //could potentially be erroneously selecting old irrelevant elements.
+        this.exitSelections.forEach(selection => {
+            selection.remove()
+        })
+
         const timeline = createTimeline({
             defaults: {
                 duration: this.animationDuration,
                 ease: 'linear'
             }
         })
-        // const timeline = anime.timeline({
-        //     duration: 0.1,
-        //     endDelay: this.animationDuration - 0.1,
-        //     autoplay: autoplay,
-        //     easing: 'linear'
-        // });
 
         const insertSudoCode = document.querySelector("#insert-sudo-code")
         if (this.sudoCodeContainer?.innerHTML && insertSudoCode?.innerHTML) {
@@ -187,44 +181,22 @@ export class AlgoVisualizer {
         }
 
         let targetNode: bPlusTreeNode
-        if (this.bPlusTreeRoot.keys.length == 0) {
-            //targetNode = new bPlusTreeNode(true)
+        if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
             targetNode = this.bPlusTreeRoot
 
-            // create a new svg element for the root node for animation
-            //const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, (node) => { return node.pointers }))
-            // const nodeSelection = select("#main-svg")
-            //     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
-            //     .data(rootHierarchyNode, (d) => d.data.id)
-            // const newSVGGElement = this.createNodeSvgElements(nodeSelection.enter())
-
-            //this.addHighlightTextAnimation(timeline, 2)
-            // create animation that reveals new node
-            // timeline.add(newSVGGElement, { opacity: 1, duration: 0.1 })
-            //timeline.add({
-            //    targets: newSVGGElement,
-            //    opacity: 1
-            //}, "-=" + String(this.animationDuration))
         } else {
             const { found, node } = this.find(value)
 
-            //this.addHighlightTextAnimation(timeline, 3)
             if (found) {
                 // Do not allow duplicates
-                //this.animations.push(timeline)
                 return
             } else {
                 targetNode = node
             }
         }
 
-        //this.addHighlightTextAnimation(timeline, 4)
-
         // targetNode is ready to have the value inserted into it.
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
-            //insert in leaf
-            //this.addHighlightTextAnimation(timeline, 5)
-
             this.insertInLeaf(targetNode, value)
         } else { //leaf node targetNode has n - 1 key values already, split it
             const newNode = new bPlusTreeNode(true)
@@ -248,12 +220,9 @@ export class AlgoVisualizer {
             newNode.parent = targetNode.parent
 
             this.insertInParent(targetNode, newNode.keys[0], newNode)
-
-
         }
 
         // -- Animation Section -- //
-        // create svg elements for the new bplus tree nodes created by splits.
         const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
             if (node.isLeaf) {
                 return []
@@ -263,24 +232,24 @@ export class AlgoVisualizer {
         }))
 
         //enter/new section
-        const nodeSelection = select("#main-svg")
-            .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+        const nodeSelection = select(this.mainSvgId)
+            .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
             .data(rootHierarchyNode, (d) => (d).data.id)
         const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
 
         //create svg elements for the new edges created by the split
-        const edgeSelection = select("#main-svg")
-            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
+        const edgeSelection = select(this.mainSvgId)
+            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
             .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
         const newEdges = this.createNewEdgeSvgElements(edgeSelection)
 
         const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
-        const leafNodeEdgeSelection = select("#main-svg")
-            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-edge")
+        const leafNodeEdgeSelection = select(this.mainSvgId)
+            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.leafNodeEdgeClassName)
             .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
         const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
 
-        const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text.node-key-text")
+        const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
             .data((d) => d.data.keys)
         const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
 
@@ -330,18 +299,19 @@ export class AlgoVisualizer {
         })
 
 
-        // exit section
+        //exit section
         const textExitSelection = textSelection.exit()
         const edgeExitSelection = edgeSelection.exit()
 
         this.exitSelections.push(textExitSelection)
         this.exitSelections.push(edgeExitSelection)
 
-        // @ts-expect-error
+        //@ts-expect-error
         timeline.add(
             [...textExitSelection.nodes(), ...edgeExitSelection.nodes()],
             { opacity: 0 }
         )
+
 
         // //@ts-expect-error
         // timeline.add({
@@ -353,8 +323,8 @@ export class AlgoVisualizer {
     }
 
     /**
-     * A sub procedure for the insert method
      *
+     * A sub procedure for the insert method
      * @param targetNode The node to insert they key value into
      * @param value The key value to insert
      * @sideEffect Adds the value to the keys array of the targetNode
@@ -368,18 +338,6 @@ export class AlgoVisualizer {
                 }
             }
             targetNode.keys[0] = value
-
-            const textSelection = select("#node-id-" + String(targetNode.id))
-                .selectAll("text")
-                .data(targetNode.keys)
-            const textElementSelection = this.createNewNodeText(textSelection.enter(), true)
-
-            // This function call does not need a third argument. Beta problem I think.
-            //returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
-            //returnTimeline.add({
-            //    targets: textElementSelection.nodes(),
-            //    opacity: 1
-            //}, "-=" + String(this.animationDuration))
         } else {
             // insert value into targetNode.keys just after the 
             // highest number that is less than or equal to value.
@@ -391,21 +349,8 @@ export class AlgoVisualizer {
             } else {
                 targetNode.keys[highestNumberIndex] = value
             }
-
-            //TODO put this code in a reusable method of some form.
-            // const textSelection = select("#node-id-" + String(targetNode.id))
-            //     .selectAll("text")
-            //     .data(targetNode.keys)
-            // const textElementSelection = this.createNewNodeText(textSelection.enter(), true)
-
-            // This function call does not need a third argument. Beta problem I think.
-            //returnTimeline.add(textElementSelection.nodes(), { opacity: 1, duration: 0.1 })
-            // returnTimeline.add({
-            //     targets: textElementSelection.nodes(),
-            //     opacity: 1
-            // }, "-=" + String(this.animationDuration))
         }
-        return 1
+        return
     }
 
     /**
@@ -414,7 +359,9 @@ export class AlgoVisualizer {
      * @param leftNode A bPlusTreeNode to be placed to the left of the key value
      * @param value The key value to insert into parent node
      * @param rightNode A bPlusTreeNode to be placed to the right of the key value
-     * @returns 1 if successful and 0 otherwise
+     * @sideEffect potentially splits the parent node of leftNode and rightNode
+     * @sideEffects edits the contents of the pointers and keys arrays of
+     * the parent node, leftNode and rightNode.
      */
     private insertInParent(leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode) {
         if (leftNode.parent == null) {
@@ -426,7 +373,7 @@ export class AlgoVisualizer {
             leftNode.parent = this.bPlusTreeRoot
             rightNode.parent = this.bPlusTreeRoot
 
-            return 1
+            return
         }
 
         const parentNode = leftNode.parent
@@ -469,7 +416,7 @@ export class AlgoVisualizer {
 
             this.insertInParent(parentNode, middleKey, newNode)
         }
-        return 1
+        return
     }
 
 
@@ -479,17 +426,16 @@ export class AlgoVisualizer {
      * Inserts a value into the BPlus Tree and animates it. Also allows for the
      * redoing undoing of that insert. Making sure that state is remembered for
      * proper restoring.
-     * @param value the number to insert, duplicates can't be added to the tree.
+     * @param value the number to insert, duplicates can't be added to the tree
      * @return The on completion promise of the generated animation
-     * @dependency this.bPlusTreeRoot used to insert the value
+     * @dependency undefined behavior if another undoable method is called before
+     * the previous undoable method has completed.
      * @dependency reads this.previousBPlusTreeRoot to set the closure for the
      * created algo step.
-     * @dependency this.previousInsertValue to set the closure for the created algo step.
+     * @dependency this.previousInsertValue to set the closure for the created algo step
      * @sideEffect adds an AlgoStep object corresponding to this insert to this.algoStepHistory
-     * @sideEffect any currently animating algorithm step will be interrupted
-     * and a new one corresponding to this method will begin.
-     * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before the last insert.
-     * @sideEffect sets the this.previousInsertValue to the value of the last insert.
+     * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before the last insert
+     * @sideEffect sets the this.previousInsertValue to the value of the last insert
      */
     public async undoableInsert(value: number) {
         let valueBeforePreviousInsert: number | null = null
@@ -520,19 +466,19 @@ export class AlgoVisualizer {
                 }
             }))
 
-            const edgeSelection = select("#main-svg")
-                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.edge")
+            const edgeSelection = select(this.mainSvgId)
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                 .data(rootHierarchyNode.links())
             edgeSelection.exit().remove()
 
             const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
-            const leafNodeEdgeSelection = select("#main-svg")
-                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path.leaf-node-edge")
+            const leafNodeEdgeSelection = select(this.mainSvgId)
+                .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.leafNodeEdgeClassName)
                 .data(leafNodeLinks)
             leafNodeEdgeSelection.exit().remove()
 
-            const nodeSelection = select("#main-svg")
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.node")
+            const nodeSelection = select(this.mainSvgId)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
                 .data(rootHierarchyNode, (d) => d.data.id)
 
             nodeSelection.exit().remove()
@@ -542,7 +488,7 @@ export class AlgoVisualizer {
 
             nodeSelection.attr("transform", this.getNodeTransformString)
 
-            const textSelection = nodeSelection.selectAll("text.node-key-text")
+            const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
             this.createNewNodeText(textSelection.enter(), false)
@@ -560,12 +506,10 @@ export class AlgoVisualizer {
         }
 
         /**
+         *
          * Executes an insert that can be undone later so that all sate
          * including the DOM is returned to its sate from before the method call.
-         * 
          * @returns The on completion promise of the generated animation
-         * @sideEffect all exit selections stored in this.exitSelection will
-         * be removed from the DOM.
          * @sideEffect the global state this.previousBPlusTreeRoot will be set.
          * @sideEffect the global state this.previousInsertValue will be set.
          */
@@ -574,10 +518,6 @@ export class AlgoVisualizer {
             // correct closures for undoing.
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
             this.previousInsertValue = value
-            //remove all selection in this.exitSelections
-            this.exitSelections.forEach(selection => {
-                selection.remove()
-            })
             return this.insert(value)
         }
 
@@ -586,13 +526,9 @@ export class AlgoVisualizer {
             undo: insertUndo
         }
 
-        // Must execute the do method before it is added, because addAlgoStep
-        // assumes that that algo step was the last algo step executed.
-        const onComplete = insertAlgoStep.do()
         this.algoStepHistory.addAlgoStep(insertAlgoStep)
 
-        return onComplete
-
+        return insertAlgoStep.do()
     }
 
 
@@ -671,7 +607,6 @@ export class AlgoVisualizer {
      * Returns the string that represents the svg transform attribute for a
      * B+ Tree node. This function exists to keep the logic for calculating a
      * nodes placement in one spot.
-     *
      * @param d d3.HierarchyPointNode<bPlusTreeNode> The node to generate the transform string for.
      * @dependency this.nodeWidth The width of a bplus tree node
      * @return String The string meant to be used as the transform attribute
@@ -698,16 +633,6 @@ export class AlgoVisualizer {
         path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
 
         return path.toString()
-
-        // let svgElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        // svgElement.setAttribute("d", path.toString());
-
-        // const defsElement: SVGElement | null = document.querySelector('#main-svg defs')
-        // if(!defsElement){
-        //     throw new Error("defs element not found")
-        // }
-
-        // defsElement.appendChild(svgElement);
     }
 
     /**
@@ -725,10 +650,10 @@ export class AlgoVisualizer {
             pathString = this.generateLeafEdgePathFN(d)
         }
 
-        let svgElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        let svgElement = document.createElementNS(SVG_NS, "path");
         svgElement.setAttribute("d", pathString);
 
-        const defsElement: SVGElement | null = document.querySelector('#main-svg defs')
+        const defsElement: SVGElement | null = document.querySelector(this.mainSvgId + " defs")
         if (!defsElement) {
             throw new Error("defs element not found")
         }
@@ -771,19 +696,19 @@ export class AlgoVisualizer {
      */
     private createNewEdgeSvgElements(edgeSelection: d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown>,
         areLeafNodeEdges = false, isTransparent = true): d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown> {
-        let className = "edge"
+        let className = this.edgeClassName
         let edgePathFnGenerator = this.generateEdgePathFN
 
         if (areLeafNodeEdges) {
             edgePathFnGenerator = this.generateLeafEdgePathFN
-            className = "leaf-node-edge"
+            className = this.leafNodeEdgeClassName
         }
 
         const newEdges = edgeSelection.enter().append("path")
             .attr("class", className)
             .attr("d", edgePathFnGenerator)
             .attr("fill", "none")
-            .attr("id", (d) => { return "edge-" + String(d.source.data.id) + "-" + String(d.target.data.id) })
+            .attr("id", (d) => { return this.edgeClassName + "-" + String(d.source.data.id) + "-" + String(d.target.data.id) })
             .attr("stroke", "black")
             .attr("stroke-width", "2px")
             .attr("marker-end", "url(#arrow)")
@@ -814,7 +739,7 @@ export class AlgoVisualizer {
 
         const newGElementsSelection = nodeEnterSelection.append("g")
             .attr("class", "node")
-            .attr("id", d => { return "node-id-" + String(d.data.id) })
+            .attr("id", d => { return this.nodeClassName + String(d.data.id) })
             .attr("transform-origin", "center")
             .attr("transform", this.getNodeTransformString)
             .attr("opacity", transparencyValue)
@@ -822,26 +747,26 @@ export class AlgoVisualizer {
         for (let i = 0; i < (this.n - 1); i++) {
             const currentXCordOrigin = i * (this.pointerRectWidth + this.keyRectWidth)
             newGElementsSelection.append('rect')
-                .attr("class", "node-rect")
+                .attr("class", this.nodeRectClassName)
                 .attr("width", this.pointerRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin)
                 .attr("y", 0)
             newGElementsSelection.append('rect')
-                .attr("class", "node-rect")
+                .attr("class", this.nodeRectClassName)
                 .attr("width", this.keyRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin + this.pointerRectWidth)
                 .attr("y", 0)
         }
         newGElementsSelection.append('rect')
-            .attr("class", "node-rect")
+            .attr("class", this.nodeRectClassName)
             .attr("width", this.pointerRectWidth)
             .attr("height", this.nodeHeight)
             .attr("x", (this.n - 1) * (this.pointerRectWidth + this.keyRectWidth))
             .attr("y", 0)
 
-        const textEnterSelection = newGElementsSelection.selectAll("text.node-key-text")
+        const textEnterSelection = newGElementsSelection.selectAll("text." + this.keyTextClassName)
             .data((d) => d.data.keys).enter()
 
         this.createNewNodeText(textEnterSelection)
