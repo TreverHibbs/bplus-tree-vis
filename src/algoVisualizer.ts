@@ -399,13 +399,13 @@ export class AlgoVisualizer {
         const leftNodeIndex = parentNode.pointers.findIndex(element => element === leftNode)
         if (parentNode.pointers.filter(element => element).length < this.n) {
             parentNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
-            parentNode.keys.splice(leftNodeIndex + 1, 0, value)
+            parentNode.keys.splice(leftNodeIndex, 0, value)
         } else { // split
             const tempKeys = parentNode.keys.slice()
             const tempPointers = parentNode.pointers.slice()
 
             tempPointers.splice(leftNodeIndex + 1, 0, rightNode)
-            tempKeys.splice(leftNodeIndex + 1, 0, value)
+            tempKeys.splice(leftNodeIndex, 0, value)
 
             parentNode.keys = []
             parentNode.pointers = []
