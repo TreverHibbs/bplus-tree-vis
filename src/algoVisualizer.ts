@@ -2,12 +2,13 @@
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
 // 1,2,3,4,5,6,7,8,9,10,11,12
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100
+// 12, 7, 29, 45, 2, 33, 18, 51, 9, 37, 24, 6, 42, 15, 30
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import { createTimeline, svg as animeSvg } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
-import { path as d3Path } from "d3"
+import { path as d3Path, text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 
@@ -116,14 +117,10 @@ export class AlgoVisualizer {
         let currentNode = this.bPlusTreeRoot
         while (currentNode && !currentNode.isLeaf) {
             const smallestValidNum = Math.min(...currentNode.keys.filter((element) => { return keyToFind <= element }));
-            const smallestValidNumIndex = currentNode.keys.findIndex((element) => { smallestValidNum == element })
-            if (smallestValidNum == Infinity) {
-                for (let i = currentNode.pointers.length - 1; i >= 0; i--) {
-                    if (currentNode.pointers[i]) {
-                        currentNode = currentNode.pointers[i]
-                        break;
-                    }
-                }
+            const smallestValidNumIndex = currentNode.keys.findIndex((element) => smallestValidNum == element)
+            if (smallestValidNumIndex == -1) { // if there is no smallest valid number
+                const lastNonNullPointer = currentNode.pointers[currentNode.pointers.length - 1]
+                if (lastNonNullPointer) currentNode = lastNonNullPointer
             } else if (keyToFind == smallestValidNum) {
                 currentNode = currentNode.pointers[smallestValidNumIndex + 1]
             } else {
@@ -263,6 +260,8 @@ export class AlgoVisualizer {
         //update section
         const updatedSVGGElements = nodeSelection.nodes()
         const updatedNodesData = nodeSelection.data()
+        const updatedTextSelection = textSelection.nodes()
+        const updatedTextData = textSelection.data()
         const updatedEdges = edgeSelection.nodes()
         const updatedEdgesData = edgeSelection.data()
         const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
@@ -277,6 +276,29 @@ export class AlgoVisualizer {
                 }
             }
         )
+        updatedTextSelection.forEach((text, i) => {
+            const textData = updatedTextData[i].toString()
+            if (textData == text.textContent) {
+                return
+            }
+            timeline.add(
+                text,
+                {
+                    opacity: 0,
+                    onComplete: () => {
+                        text.textContent = textData // Update the text
+                    }
+                },
+                '<<'
+            )
+            timeline.add(
+                text,
+                {
+                    opacity: 1,
+                },
+                '>>'
+            );
+        });
 
         updatedEdges.forEach((edge, i) => {
             timeline.add(
@@ -302,13 +324,15 @@ export class AlgoVisualizer {
         //exit section
         const textExitSelection = textSelection.exit()
         const edgeExitSelection = edgeSelection.exit()
+        const leafEdgeExitSelection = leafNodeEdgeSelection.exit()
 
         this.exitSelections.push(textExitSelection)
         this.exitSelections.push(edgeExitSelection)
+        this.exitSelections.push(leafEdgeExitSelection)
 
         //@ts-expect-error
         timeline.add(
-            [...textExitSelection.nodes(), ...edgeExitSelection.nodes()],
+            [...textExitSelection.nodes(), ...edgeExitSelection.nodes(), ...leafEdgeExitSelection.nodes()],
             { opacity: 0 }
         )
 
@@ -336,13 +360,13 @@ export class AlgoVisualizer {
         } else {
             // insert value into targetNode.keys just after the 
             // highest number that is less than or equal to value.
-            const highestNumberIndex = targetNode.keys.findIndex(element => element >= value) - 1
+            const highestNumberIndex = targetNode.keys.findIndex(element => element >= value)
             // if find Index returns -1 then the last number in keys must be the
             // greatest number that is less than or equal to value.
             if (highestNumberIndex < 0) {
                 targetNode.keys.push(value)
             } else {
-                targetNode.keys[highestNumberIndex] = value
+                targetNode.keys.splice(highestNumberIndex, 0, value);
             }
         }
         return
@@ -429,7 +453,8 @@ export class AlgoVisualizer {
      * created algo step.
      * @dependency if you call this method right after a previous animation generated by and
      * undoable method operation is completed the animation generated by this method will be wrong.
-     * Wait at least one second after the completion of the on completion promise of the previous animation.
+     * Wait at least 10 milliseconds after the completion of the on completion promise of 
+     * the previous animation.
      * @dependency this.previousInsertValue to set the closure for the created algo step
      * @sideEffect adds an AlgoStep object corresponding to this insert to this.algoStepHistory
      * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before the last insert
@@ -536,8 +561,7 @@ export class AlgoVisualizer {
     /**
      * Generates a list of links that represent a pair of leaf nodes that should
      * have a edge between them.
-     * @param rootHierarchyNode A node that represents the DOM element of the
-     * root node of the tree.
+     * @param rootHierarchyNode A d3 node that represents the root node of the tree.
      * @returns An array of links that represent a pair of leaf nodes. One of
      * which has a reference to the other.
      */
