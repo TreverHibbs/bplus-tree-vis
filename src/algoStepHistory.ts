@@ -17,7 +17,7 @@ export interface AlgoStep {
      * 
      * @return A boolean that indicates success or not
      */
-    undo: () => boolean
+    undo: () => void
 }
 
 /**
