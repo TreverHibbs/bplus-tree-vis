@@ -443,7 +443,7 @@ export class AlgoVisualizer {
         return
     }
 
-    
+
     /**
      *
      * Delete a number from the B+Tree if it is in the tree. And
@@ -451,7 +451,9 @@ export class AlgoVisualizer {
      * @param value a number to delete from the B+Tree.
      * @param autoplay determines weather or not the animation plays when
      * function is called.
-     * @returns The on completion promise of the generated animation
+     * @returns The on completion promise of the generated animation, or
+     * a promise that results in null if the tree is empty or the value
+     * is not in the tree.
      * @dependency this.bPlusTreeRoot delete value from this tree
      * @sideEffect any currently animating algorithm step will be interrupted
      * and a new one corresponding to this method will begin.
@@ -463,7 +465,7 @@ export class AlgoVisualizer {
      * operation is undone.
      * @sideEffect sets this.currentAnimation to the newly created animation.
      */
-    private async delete(value: number, autoplay = true): Promise<unknown> {
+    private async delete(value: number, autoplay = true): Promise<unknown | null> {
         //This needs to be done so that the old elements that are no longer relevant
         //do not interfere with the new animation. If this wasn't done then the new selections
         //could potentially be erroneously selecting old irrelevant elements.
@@ -477,6 +479,30 @@ export class AlgoVisualizer {
                 ease: 'linear'
             }
         })
+
+        let targetNode: bPlusTreeNode
+        if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
+            return null // nothing to delete
+
+        } else {
+            const { found, node } = this.find(value)
+
+            if (found) {
+                targetNode = node
+            } else {
+                return null // value not in tree
+            }
+            //TODO implement delete in leaf
+        }
+
+        //Attempt to delete the value from the targetNode
+        //Algorithm found in Database System Concepts 7th edition ch.14 p.648
+        //TODO decide if on if in the case of the last value in the tree being
+        //deleted if the tree should be set to empty.
+        targetNode.keys = targetNode.keys.filter(element => element != value)
+
+
+        // -- Animation Section -- //
     }
 
 
@@ -673,7 +699,6 @@ export class AlgoVisualizer {
 
 
     // Helper Methods Section //
-
     /**
      * Generates a list of links that represent a pair of leaf nodes that should
      * have a edge between them.
@@ -714,7 +739,6 @@ export class AlgoVisualizer {
         return leafNodeLinks
     }
 
-
     /**
      * creates a new set of text dom elements for a B+ Tree node
      * @param newTextSelection A d3 selection of text data that are to be created.
@@ -738,7 +762,6 @@ export class AlgoVisualizer {
 
         return textElementSelection
     }
-
 
     /**
      * 
@@ -856,7 +879,6 @@ export class AlgoVisualizer {
         return newEdges
     }
 
-
     /**
      * 
      * Creates a HTML element that represents one bplus tree node. This method
@@ -912,7 +934,6 @@ export class AlgoVisualizer {
         return newGElementsSelection.nodes()
     }
 
-
     private addHighlightTextAnimation(timeline: anime.AnimeTimelineInstance, lineNumber: number) {
         timeline.add({
             targets: '#insert-line' + String(lineNumber),
@@ -927,5 +948,159 @@ export class AlgoVisualizer {
             backgroundColor: this.sudoCodeBackgroundColor,
             endDelay: 0,
         })
+    }
+
+
+    /**
+     *
+     * Create animation based on the current state of the B+ Tree and the last
+     * operation that was performed on it. This method is meant to be called by
+     * the operation methods (ex. insert or delete).
+     * @returns The on completion promise of the generated animation
+     * @sideEffect any currently animating algorithm step will be interrupted
+     * and a new one corresponding to the latest operation will begin.
+     * @sideEffect all exit selections stored in this.exitSelection will
+     * be removed from the DOM.
+     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation, and
+     * adds elements to the animations array.
+     * @sideEffects adds d3 selections to the exitSelections array for removal
+     * at before the next insertion animation is generated. Or before the
+     * insertion is undone.
+     * @sideEffect sets this.currentAnimation to the newly created animation.
+     */
+    private animateOperation() {
+        //This needs to be done so that the old elements that are no longer relevant
+        //do not interfere with the new animation. If this wasn't done then the new selections
+        //could potentially be erroneously selecting old irrelevant elements.
+        this.exitSelections.forEach(selection => {
+            selection.remove()
+        })
+
+        const timeline = createTimeline({
+            defaults: {
+                duration: this.animationDuration,
+                ease: 'linear'
+            }
+        })
+
+        const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
+            if (node.isLeaf) {
+                return []
+            } else {
+                return node.pointers
+            }
+        }))
+
+        //enter/new section
+        const nodeSelection = select(this.mainSvgId)
+            .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
+            .data(rootHierarchyNode, (d) => (d).data.id)
+        const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
+
+        //create svg elements for the new edges created by the split
+        const edgeSelection = select(this.mainSvgId)
+            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+            .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
+        const newEdges = this.createNewEdgeSvgElements(edgeSelection)
+
+        const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
+        const leafNodeEdgeSelection = select(this.mainSvgId)
+            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.leafNodeEdgeClassName)
+            .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
+        const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
+
+        const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+            .data((d) => d.data.keys)
+        const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
+
+        // @ts-expect-error
+        timeline.add(
+            [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes(), ...newTextSelection.nodes()],
+            { opacity: 1 }
+        )
+
+
+        //update section
+        const updatedSVGGElements = nodeSelection.nodes()
+        const updatedNodesData = nodeSelection.data()
+        const updatedTextSelection = textSelection.nodes()
+        const updatedTextData = textSelection.data()
+        const updatedEdges = edgeSelection.nodes()
+        const updatedEdgesData = edgeSelection.data()
+        const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
+        const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
+
+        // @ts-expect-error
+        timeline.add(
+            updatedSVGGElements,
+            {
+                transform: (_: SVGGElement, i: number) => {
+                    return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
+                }
+            }
+        )
+        updatedTextSelection.forEach((text, i) => {
+            const textData = updatedTextData[i].toString()
+            if (textData == text.textContent) {
+                return
+            }
+            timeline.add(
+                text,
+                {
+                    opacity: 0,
+                    onComplete: () => {
+                        text.textContent = textData // Update the text
+                    }
+                },
+                '<<'
+            )
+            timeline.add(
+                text,
+                {
+                    opacity: 1,
+                },
+                '>>'
+            );
+        });
+
+        updatedEdges.forEach((edge, i) => {
+            timeline.add(
+                edge,
+                {
+                    d: animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i]))
+                },
+                "<<"
+            )
+        })
+
+        updatedLeafNodeEdges.forEach((edge, i) => {
+            timeline.add(
+                edge,
+                {
+                    d: animeSvg.morphTo(this.generateMorphToPath(updatedLeafNodeEdgesData[i], true))
+                },
+                "<<"
+            )
+        })
+
+
+        //exit section
+        const textExitSelection = textSelection.exit()
+        const edgeExitSelection = edgeSelection.exit()
+        const leafEdgeExitSelection = leafNodeEdgeSelection.exit()
+
+        this.exitSelections.push(textExitSelection)
+        this.exitSelections.push(edgeExitSelection)
+        this.exitSelections.push(leafEdgeExitSelection)
+
+        //@ts-expect-error
+        timeline.add(
+            [...textExitSelection.nodes(), ...edgeExitSelection.nodes(), ...leafEdgeExitSelection.nodes()],
+            { opacity: 0 }
+        )
+
+
+        this.currentAnimation = timeline
+        return timeline.then(() => true)
     }
 }

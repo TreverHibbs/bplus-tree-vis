@@ -45,6 +45,24 @@ export const userInterface = () => {
         updateTimelineInput()
     });
 
+    const deleteButton = document.querySelector('#delete-button');
+    deleteButton?.addEventListener('click', async () => {
+        const numberInput = <HTMLInputElement>document.querySelector('#number-input')
+
+        // Make sure that the right animation duration is used
+        setAnimationToggle()
+
+        if (numberInput?.value) {
+            const numbers = numberInput.value.split(',').map(Number);
+            await numbers.reduce(async (previousPromise, num) => {
+                await previousPromise;
+                await algoVisualizer.undoableDelete(num);
+                await new Promise(resolve => setTimeout(resolve, 10)); // Wait for 10 milliseconds
+            }, Promise.resolve());
+        }
+        updateTimelineInput()
+    });
+
     const playButton = document.querySelector('#play-button')
     playButton?.addEventListener('click', () => {
         const currentlyAnimationTimeline = algoVisualizer.currentAnimation
