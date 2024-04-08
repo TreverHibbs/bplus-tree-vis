@@ -560,47 +560,42 @@ export class AlgoVisualizer {
             }
         } else {
             // Redistribution: borrow an entry from a sibling
-            if (siblingNode.pointers[this.n - 1] === targetNode) {
-                this.redistributeEntry(siblingNode, targetNode, betweenValue)
-            } else {
-                this.redistributeEntry(targetNode, siblingNode, betweenValue)
-            }
-        }
-    }
 
-    /**
-     * 
-     * A subsidiary procedure for the deleteEntry method
-     * @param leftNode
-     * @param rightNode
-     * @param betweenValue
-     * @sideEffects Edits the b+tree structure(this.bPlusTreeRoot) to redistribute entries
-     */
-    private redistributeEntry(leftNode: bPlusTreeNode, rightNode: bPlusTreeNode, betweenValue: number) {
-        if (!rightNode.isLeaf) {
-            const lastPointer = leftNode.pointers.pop()
-            const lastKey = leftNode.keys.pop()
-            if (lastPointer == undefined || lastKey == undefined) {
-                throw new Error("last pointer or lastKey is undefined")
+            let leftNode: bPlusTreeNode
+            let rightNode: bPlusTreeNode
+            if (siblingNode.pointers[this.n - 1] === targetNode) {
+                leftNode = siblingNode
+                rightNode = targetNode
+            } else {
+                rightNode = siblingNode
+                leftNode = targetNode
             }
-            rightNode.pointers.unshift(lastPointer)
-            rightNode.keys.unshift(betweenValue)
-            if (rightNode.parent == null) {
-                throw new Error("target node parent is null")
+
+            if (!rightNode.isLeaf) {
+                const lastPointer = leftNode.pointers.pop()
+                const lastKey = leftNode.keys.pop()
+                if (lastPointer == undefined || lastKey == undefined) {
+                    throw new Error("last pointer or lastKey is undefined")
+                }
+                rightNode.pointers.unshift(lastPointer)
+                rightNode.keys.unshift(betweenValue)
+                if (rightNode.parent == null) {
+                    throw new Error("target node parent is null")
+                }
+                rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
+            } else {
+                const lastKey = leftNode.keys.pop()
+                const secondToLastPointer = leftNode.pointers.splice(-2, 1)[0]
+                if (lastKey == undefined) {
+                    throw new Error("last key is undefined")
+                }
+                rightNode.keys.unshift(lastKey)
+                rightNode.pointers.unshift(secondToLastPointer)
+                if (rightNode.parent == null) {
+                    throw new Error("target node parent is null")
+                }
+                rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
             }
-            rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
-        } else {
-            const lastKey = leftNode.keys.pop()
-            const secondToLastPointer = leftNode.pointers.splice(-2, 1)[0]
-            if (lastKey == undefined) {
-                throw new Error("last key is undefined")
-            }
-            rightNode.keys.unshift(lastKey)
-            rightNode.pointers.unshift(secondToLastPointer)
-            if (rightNode.parent == null) {
-                throw new Error("target node parent is null")
-            }
-            rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
         }
     }
 
