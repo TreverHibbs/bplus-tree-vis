@@ -14,6 +14,8 @@ import { select } from "d3-selection"
 import { path as d3Path, text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
+type OperationType = "insert" | "delete"
+
 
 /**
  * 
@@ -34,6 +36,7 @@ export class AlgoVisualizer {
     //Used in the undo method to restore the previous state of the tree and animation
     private previousBPlusTreeRoot: bPlusTreeNode = this.bPlusTreeRoot
     private previousValue: number | null = null //represents a value that was inserted or deleted
+    private previousOperationType: OperationType | null = null
     /** this is initialized using the color config defined in the :root pseudo
      * class rule of the style.css file*/
     private readonly highlightColor: string
@@ -503,6 +506,7 @@ export class AlgoVisualizer {
 
 
         // -- Animation Section -- //
+        return this.animateOperation()
     }
 
 
@@ -528,11 +532,13 @@ export class AlgoVisualizer {
      * @sideEffect sets the this.previousValue to the value given to the last undoable method call.
      */
     public async undoableInsert(value: number) {
-        let valueBeforePreviousInsert: number | null = null
+        let valueBeforePreviousOperation: number | null = null
+        let operationTypeBeforePreviousOperation: OperationType | null = null
 
         //set the closure variables for the algo step object.
         const BPlusTreeRootStateBeforePreviousInsert = structuredClone(this.previousBPlusTreeRoot)
-        valueBeforePreviousInsert = this.previousValue
+        valueBeforePreviousOperation = this.previousValue
+        operationTypeBeforePreviousOperation = this.previousOperationType
 
         /**
          * Undoes the operations of the corresponding insert method call, which
@@ -584,13 +590,15 @@ export class AlgoVisualizer {
 
             // return the global state to its state before the previous insert.
             this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousInsert)
-            this.previousValue = valueBeforePreviousInsert
-            this.previousBPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousInsert)
+            this.previousValue = valueBeforePreviousOperation
 
-            if (valueBeforePreviousInsert == null) {
+            if (valueBeforePreviousOperation == null) {
                 return
+            } else if (operationTypeBeforePreviousOperation == "insert") {
+                this.insert(valueBeforePreviousOperation)
+            } else if (operationTypeBeforePreviousOperation == "delete") {
+                this.delete(valueBeforePreviousOperation)
             }
-            this.insert(valueBeforePreviousInsert)
             return
         }
 
@@ -607,6 +615,7 @@ export class AlgoVisualizer {
             // correct closures for undoing.
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
             this.previousValue = value
+            this.previousOperationType = "insert"
             return this.insert(value)
         }
 
@@ -643,29 +652,37 @@ export class AlgoVisualizer {
      */
     public async undoableDelete(value: number) {
         let valueBeforePreviousOperation: number | null = null
+        let operationTypeBeforePreviousOperation: OperationType | null = null
 
         //set the closure variables for the algo step object.
         const BPlusTreeRootStateBeforePreviousOperation = structuredClone(this.previousBPlusTreeRoot)
         valueBeforePreviousOperation = this.previousValue
+        operationTypeBeforePreviousOperation = this.previousOperationType
 
         /**
          * Undoes the operations of the corresponding delete method call, which
          * is defined in the deleteDo function definition. All state including
          * the DOM should be returned to exactly how it was.
-         * @sideEffect Remove Dom elements that were added by the insertDo function
+         * @sideEffect Remove Dom elements that were added by the deleteDo function
          * @sideEffect Restore the state of this.bPlusTreeRoot to what it was before
-         * the corresponding insertDo function was called.
+         * the corresponding DeleteDo function was called.
          */
         const deleteUndo = () => {
-            // return the global state to its state before the previous insert.
+            // return the global state to its state before the previous delete.
             this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousOperation)
             this.previousValue = valueBeforePreviousOperation
-            this.previousBPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousOperation)
+            this.previousOperationType = operationTypeBeforePreviousOperation
+        
+            this.animateOperation()
 
             if (valueBeforePreviousOperation == null) {
                 return
+            } else if (operationTypeBeforePreviousOperation == "insert") {
+                this.insert(valueBeforePreviousOperation)
+            } else if (operationTypeBeforePreviousOperation == "delete") {
+                this.delete(valueBeforePreviousOperation)
             }
-            //this.insert(valueBeforePreviousOperation)
+
             return
         }
 
@@ -682,6 +699,7 @@ export class AlgoVisualizer {
             // correct closures for undoing.
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
             this.previousValue = value
+            this.previousOperationType = "delete"
             return this.delete(value)
         }
 
@@ -951,22 +969,20 @@ export class AlgoVisualizer {
     }
 
 
+    //TODO this method may be adding complexity in the long run. Consider removing it
+    //especially if later more params are needed.
     /**
      *
-     * Create animation based on the current state of the B+ Tree and the last
-     * operation that was performed on it. This method is meant to be called by
-     * the operation methods (ex. insert or delete).
+     * Create animation based on the current state of the B+ Tree.
+     * This method is meant to be called by the operation methods (ex. insert or delete).
      * @returns The on completion promise of the generated animation
      * @sideEffect any currently animating algorithm step will be interrupted
-     * and a new one corresponding to the latest operation will begin.
+     * and a new one corresponding to the latest operation will begin
      * @sideEffect all exit selections stored in this.exitSelection will
-     * be removed from the DOM.
-     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation, and
-     * adds elements to the animations array.
+     * be removed from the DOM
+     * @sideEffects Manipulates the DOM by adding svg elements for animation
      * @sideEffects adds d3 selections to the exitSelections array for removal
-     * at before the next insertion animation is generated. Or before the
-     * insertion is undone.
-     * @sideEffect sets this.currentAnimation to the newly created animation.
+     * @sideEffect sets this.currentAnimation to the newly created animation
      */
     private animateOperation() {
         //This needs to be done so that the old elements that are no longer relevant
