@@ -227,6 +227,7 @@ export class AlgoVisualizer {
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
 
+        // TODO consider replacing this with method call.
         // -- Animation Section -- //
         const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
             if (node.isLeaf) {
@@ -469,20 +470,6 @@ export class AlgoVisualizer {
      * @sideEffect sets this.currentAnimation to the newly created animation.
      */
     private async delete(value: number, autoplay = true): Promise<unknown | null> {
-        //This needs to be done so that the old elements that are no longer relevant
-        //do not interfere with the new animation. If this wasn't done then the new selections
-        //could potentially be erroneously selecting old irrelevant elements.
-        this.exitSelections.forEach(selection => {
-            selection.remove()
-        })
-
-        const timeline = createTimeline({
-            defaults: {
-                duration: this.animationDuration,
-                ease: 'linear'
-            }
-        })
-
         let targetNode: bPlusTreeNode
         if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
             return null // nothing to delete
@@ -495,18 +482,77 @@ export class AlgoVisualizer {
             } else {
                 return null // value not in tree
             }
-            //TODO implement delete in leaf
         }
-
-        //Attempt to delete the value from the targetNode
-        //Algorithm found in Database System Concepts 7th edition ch.14 p.648
-        //TODO decide if on if in the case of the last value in the tree being
-        //deleted if the tree should be set to empty.
-        targetNode.keys = targetNode.keys.filter(element => element != value)
-
+        
+        this.deleteEntry(targetNode, value)
 
         // -- Animation Section -- //
         return this.animateOperation()
+    }
+
+    /**
+     * 
+     * A subsidiary procedure for the delete method
+     * @param leftNode A bPlusTreeNode to delete the key value from
+     * @param value The key value to delete
+     * @sideEffects Edits the b+tree structure(this.bPlusTreeRoot) to remove the value from the tree
+     */
+    private deleteEntry(targetNode: bPlusTreeNode, value: number) {
+        //Attempt to delete the value from the targetNode
+        //Algorithm found in Database System Concepts 7th edition ch.14 p.648
+        //TODO decide if in the case of the last value in the tree being
+        //deleted if the tree should be set to empty.
+        targetNode.keys = targetNode.keys.filter(element => element != value)
+        if (targetNode === this.bPlusTreeRoot && targetNode.pointers.length === 1) {
+            // targetNode is the root and has only one child
+            this.bPlusTreeRoot = targetNode.pointers.filter(element => element != null)[0];
+            this.bPlusTreeRoot.parent = null
+        } else if (targetNode.keys.length < Math.ceil((this.n - 1) / 2)) {
+            let siblingNode = null;
+            let betweenValue = null
+            let isPreviousSibling = false
+
+            // Find a sibling node to borrow from
+            if (targetNode.parent) {
+                const index = targetNode.parent.pointers.indexOf(targetNode);
+
+                if (index > 0) { // There is a previous sibling
+                    siblingNode = targetNode.parent.pointers[index - 1];
+                    betweenValue = targetNode.parent.keys[index - 1];
+                    isPreviousSibling = true
+                } else {
+                    siblingNode = targetNode.parent.pointers[index + 1];
+                    betweenValue = targetNode.parent.keys[index];
+                    isPreviousSibling = false
+                }
+            }
+            if (siblingNode == null || betweenValue == null) {
+                throw new Error("valid sibling node or between value not found")
+            }
+
+            const totalKeys = siblingNode.keys.length + targetNode.keys.length;
+
+            if (totalKeys <= this.n - 1) {
+                // The keys of siblingNode and targetNode can fit in a single node. Coalesce them.
+                if (isPreviousSibling) {
+                    const temp = siblingNode;
+                    siblingNode = targetNode;
+                    targetNode = temp;
+                }
+                if (!targetNode.isLeaf) {
+                    siblingNode.keys.push(betweenValue)
+                    siblingNode.keys.push(...targetNode.keys)
+                    siblingNode.pointers.push(...targetNode.pointers)
+                } else {
+                    siblingNode.keys.push(...targetNode.keys)
+                    siblingNode.pointers.push(...targetNode.pointers)
+                }
+                if(targetNode.parent == null){
+                    throw new Error("target node parent is null")
+                }
+                this.deleteEntry(targetNode.parent, betweenValue)
+            }
+        }
     }
 
 
@@ -672,7 +718,7 @@ export class AlgoVisualizer {
             this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousOperation)
             this.previousValue = valueBeforePreviousOperation
             this.previousOperationType = operationTypeBeforePreviousOperation
-        
+
             this.animateOperation()
 
             if (valueBeforePreviousOperation == null) {
@@ -717,6 +763,7 @@ export class AlgoVisualizer {
 
 
     // Helper Methods Section //
+
     /**
      * Generates a list of links that represent a pair of leaf nodes that should
      * have a edge between them.
