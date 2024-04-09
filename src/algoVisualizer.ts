@@ -513,35 +513,35 @@ export class AlgoVisualizer {
         let betweenValue = null
         let isPreviousSibling = false
 
-        // Find a sibling node to borrow from
-        if (targetNode.parent) {
-            const index = targetNode.parent.pointers.indexOf(targetNode);
-
-            if (index > 0) { // There is a previous sibling
-                siblingNode = targetNode.parent.pointers[index - 1];
-                betweenValue = targetNode.parent.keys[index - 1];
-                isPreviousSibling = true
-            } else {
-                siblingNode = targetNode.parent.pointers[index + 1];
-                betweenValue = targetNode.parent.keys[index];
-                isPreviousSibling = false
-            }
-        }
-
-        if (siblingNode == null || betweenValue == null) {
-            throw new Error("valid sibling node or between value not found")
-        }
         if (targetNode === this.bPlusTreeRoot && targetNode.pointers.length === 1) {
             // targetNode is the root and has only one child
             this.bPlusTreeRoot = targetNode.pointers.filter(element => element != null)[0];
             this.bPlusTreeRoot.parent = null
         } else if (targetNode.keys.length < Math.ceil((this.n - 1) / 2)) {
+            // Find a sibling node to borrow from
+            if (targetNode.parent) {
+                const index = targetNode.parent.pointers.indexOf(targetNode);
+
+                if (index > 0) { // There is a previous sibling
+                    siblingNode = targetNode.parent.pointers[index - 1];
+                    betweenValue = targetNode.parent.keys[index - 1];
+                    isPreviousSibling = true
+                } else {
+                    siblingNode = targetNode.parent.pointers[index + 1];
+                    betweenValue = targetNode.parent.keys[index];
+                    isPreviousSibling = false
+                }
+            }
+
+            if (siblingNode == null || betweenValue == null) {
+                throw new Error("valid sibling node or between value not found")
+            }
 
             const totalKeys = siblingNode.keys.length + targetNode.keys.length;
 
             if (totalKeys <= this.n - 1) {
                 // The keys of siblingNode and targetNode can fit in a single node. Coalesce them.
-                if (isPreviousSibling) {
+                if (!isPreviousSibling) { // targetNode should always be the right sibling
                     const temp = siblingNode;
                     siblingNode = targetNode;
                     targetNode = temp;
@@ -555,55 +555,49 @@ export class AlgoVisualizer {
                     })
                 } else {
                     siblingNode.keys.push(...targetNode.keys)
-                    siblingNode.pointers.push(...targetNode.pointers)
-                    targetNode.pointers.forEach(node => {
-                        node.parent = siblingNode
-                    })
+                    siblingNode.pointers[siblingNode.pointers.length - 1] = targetNode.pointers[targetNode.pointers.length - 1]
                 }
                 if (targetNode.parent == null) {
                     throw new Error("target node parent is null")
                 }
                 this.deleteEntry(targetNode.parent, betweenValue, targetNode)
-            }
-        } else {
-            // Redistribution: borrow an entry from a sibling
-
-            let leftNode: bPlusTreeNode
-            let rightNode: bPlusTreeNode
-            if (siblingNode.pointers[this.n - 1] === targetNode) {
-                leftNode = siblingNode
-                rightNode = targetNode
             } else {
-                rightNode = siblingNode
-                leftNode = targetNode
-            }
+                // Redistribution: borrow an entry from a sibling
 
-            if (!rightNode.isLeaf) {
-                const lastPointer = leftNode.pointers.pop()
-                const lastKey = leftNode.keys.pop()
-                if (lastPointer == undefined || lastKey == undefined) {
-                    throw new Error("last pointer or lastKey is undefined")
+                let leftNode: bPlusTreeNode
+                let rightNode: bPlusTreeNode
+                if (siblingNode.pointers[this.n - 1] === targetNode) {
+                    leftNode = siblingNode
+                    rightNode = targetNode
+                } else {
+                    rightNode = siblingNode
+                    leftNode = targetNode
                 }
-                rightNode.pointers.unshift(lastPointer)
-                lastPointer.parent = rightNode
-                rightNode.keys.unshift(betweenValue)
-                if (rightNode.parent == null) {
-                    throw new Error("target node parent is null")
+
+                if (!rightNode.isLeaf) {
+                    const lastPointer = leftNode.pointers.pop()
+                    const lastKey = leftNode.keys.pop()
+                    if (lastPointer == undefined || lastKey == undefined) {
+                        throw new Error("last pointer or lastKey is undefined")
+                    }
+                    rightNode.pointers.unshift(lastPointer)
+                    lastPointer.parent = rightNode
+                    rightNode.keys.unshift(betweenValue)
+                    if (rightNode.parent == null) {
+                        throw new Error("target node parent is null")
+                    }
+                    rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
+                } else {
+                    const lastKey = leftNode.keys.pop()
+                    if (lastKey == undefined) {
+                        throw new Error("malformed data structure")
+                    }
+                    rightNode.keys.unshift(lastKey)
+                    if (rightNode.parent == null) {
+                        throw new Error("target node parent is null")
+                    }
+                    rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
                 }
-                rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
-            } else {
-                const lastKey = leftNode.keys.pop()
-                const secondToLastPointer = leftNode.pointers.splice(-2, 1)[0]
-                if (lastKey == undefined) {
-                    throw new Error("last key is undefined")
-                }
-                rightNode.keys.unshift(lastKey)
-                rightNode.pointers.unshift(secondToLastPointer)
-                secondToLastPointer.parent = rightNode
-                if (rightNode.parent == null) {
-                    throw new Error("target node parent is null")
-                }
-                rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
             }
         }
     }
@@ -845,7 +839,7 @@ export class AlgoVisualizer {
                 const rightSiblingNode = leafNodes.find((leafNode) => leafNode.data == rightSiblingBPlusTreeNode)
 
                 if (rightSiblingNode == undefined) {
-                    throw new Error("rightSiblingNode is undefined")
+                    throw new Error("malformed data structure")
                 }
 
                 leafNodeLinks.push({
