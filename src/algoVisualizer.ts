@@ -484,6 +484,7 @@ export class AlgoVisualizer {
             }
         }
 
+        //TODO debug this starting with deleting 21,20 from 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
         this.deleteEntry(targetNode, value)
 
         // -- Animation Section -- //
@@ -508,7 +509,7 @@ export class AlgoVisualizer {
             targetNode.pointers = targetNode.pointers.filter(element => element !== node)
         }
 
-        let siblingNode = null;
+        let siblingNode: bPlusTreeNode | null = null;
         let betweenValue = null
         let isPreviousSibling = false
 
@@ -549,9 +550,15 @@ export class AlgoVisualizer {
                     siblingNode.keys.push(betweenValue)
                     siblingNode.keys.push(...targetNode.keys)
                     siblingNode.pointers.push(...targetNode.pointers)
+                    targetNode.pointers.forEach(node => {
+                        node.parent = siblingNode
+                    })
                 } else {
                     siblingNode.keys.push(...targetNode.keys)
                     siblingNode.pointers.push(...targetNode.pointers)
+                    targetNode.pointers.forEach(node => {
+                        node.parent = siblingNode
+                    })
                 }
                 if (targetNode.parent == null) {
                     throw new Error("target node parent is null")
@@ -578,6 +585,7 @@ export class AlgoVisualizer {
                     throw new Error("last pointer or lastKey is undefined")
                 }
                 rightNode.pointers.unshift(lastPointer)
+                lastPointer.parent = rightNode
                 rightNode.keys.unshift(betweenValue)
                 if (rightNode.parent == null) {
                     throw new Error("target node parent is null")
@@ -591,6 +599,7 @@ export class AlgoVisualizer {
                 }
                 rightNode.keys.unshift(lastKey)
                 rightNode.pointers.unshift(secondToLastPointer)
+                secondToLastPointer.parent = rightNode
                 if (rightNode.parent == null) {
                     throw new Error("target node parent is null")
                 }
