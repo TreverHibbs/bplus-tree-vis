@@ -597,29 +597,29 @@ export class AlgoVisualizer {
                         targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = lastKey
                     }
                 } else {
-                    if (!leftNode.isLeaf) {
-                        const lastPointer = rightNode.pointers.pop()
-                        const lastKey = rightNode.keys.pop()
-                        if (lastPointer == undefined || lastKey == undefined) {
+                    if (!targetNode.isLeaf) {
+                        const firstPointer = siblingNode.pointers.shift()
+                        const firstKey = siblingNode.keys.shift()
+                        if (firstPointer == undefined || firstKey == undefined) {
                             throw new Error("malformed data structure")
                         }
-                        leftNode.pointers.unshift(lastPointer)
-                        lastPointer.parent = leftNode
-                        leftNode.keys.unshift(betweenValue)
-                        if (leftNode.parent == null) {
+                        targetNode.pointers.push(firstPointer)
+                        firstPointer.parent = targetNode
+                        targetNode.keys.push(betweenValue)
+                        if (targetNode.parent == null) {
                             throw new Error("target node parent is null")
                         }
-                        leftNode.parent.keys[leftNode.parent.keys.indexOf(betweenValue)] = lastKey
+                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = firstKey
                     } else {
-                        const lastKey = rightNode.keys.pop()
-                        if (lastKey == undefined) {
+                        const firstKey = siblingNode.keys.shift()
+                        if (firstKey == undefined) {
                             throw new Error("malformed data structure")
                         }
-                        leftNode.keys.unshift(lastKey)
-                        if (leftNode.parent == null) {
+                        targetNode.keys.push(firstKey)
+                        if (targetNode.parent == null) {
                             throw new Error("target node parent is null")
                         }
-                        rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
+                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = firstKey
                     }
                 }
             }
