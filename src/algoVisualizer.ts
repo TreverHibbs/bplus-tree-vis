@@ -64,7 +64,8 @@ export class AlgoVisualizer {
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
     // used to store d3 selections that will be removed at the start of a new animation.
     private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>>)[] = []
+        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
+        d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
 
     /**
      * allows control of the algorithm visualization. By calling the do and undo
@@ -484,7 +485,7 @@ export class AlgoVisualizer {
             }
         }
 
-        //TODO debug this starting with deleting 21,20 from 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
+        //TODO debug this starting with deleting 21,20,19,18 from 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
         this.deleteEntry(targetNode, value)
 
         // -- Animation Section -- //
@@ -517,7 +518,9 @@ export class AlgoVisualizer {
             // targetNode is the root and has only one child
             this.bPlusTreeRoot = targetNode.pointers.filter(element => element != null)[0];
             this.bPlusTreeRoot.parent = null
-        } else if (targetNode.keys.length < Math.ceil((this.n - 1) / 2)) {
+        } else if (!(targetNode === this.bPlusTreeRoot && targetNode.isLeaf) &&
+            (targetNode.isLeaf && targetNode.keys.length < Math.ceil((this.n - 1) / 2) ||
+                !targetNode.isLeaf && targetNode.pointers.length < Math.ceil(this.n / 2))) {
             // Find a sibling node to borrow from
             if (targetNode.parent) {
                 const index = targetNode.parent.pointers.indexOf(targetNode);
@@ -539,7 +542,7 @@ export class AlgoVisualizer {
 
             const totalKeys = siblingNode.keys.length + targetNode.keys.length;
 
-            if (totalKeys <= this.n - 1) {
+            if (targetNode.isLeaf && totalKeys <= this.n - 1 || !targetNode.isLeaf && totalKeys <= this.n - 2) {
                 // The keys of siblingNode and targetNode can fit in a single node. Coalesce them.
                 if (!isPreviousSibling) { // targetNode should always be the right sibling
                     const temp = siblingNode;
@@ -555,7 +558,12 @@ export class AlgoVisualizer {
                     })
                 } else {
                     siblingNode.keys.push(...targetNode.keys)
-                    siblingNode.pointers[siblingNode.pointers.length - 1] = targetNode.pointers[targetNode.pointers.length - 1]
+                    const targetNodeLastPointer = targetNode.pointers[targetNode.pointers.length - 1]
+                    if (targetNodeLastPointer) {
+                        siblingNode.pointers[siblingNode.pointers.length - 1] = targetNodeLastPointer
+                    } else {
+                        siblingNode.pointers = []
+                    }
                 }
                 if (targetNode.parent == null) {
                     throw new Error("target node parent is null")
@@ -563,40 +571,56 @@ export class AlgoVisualizer {
                 this.deleteEntry(targetNode.parent, betweenValue, targetNode)
             } else {
                 // Redistribution: borrow an entry from a sibling
-
-                let leftNode: bPlusTreeNode
-                let rightNode: bPlusTreeNode
-                if (siblingNode.pointers[this.n - 1] === targetNode) {
-                    leftNode = siblingNode
-                    rightNode = targetNode
+                if (isPreviousSibling) {
+                    if (!targetNode.isLeaf) {
+                        const lastPointer = siblingNode.pointers.pop()
+                        const lastKey = siblingNode.keys.pop()
+                        if (lastPointer == undefined || lastKey == undefined) {
+                            throw new Error("malformed data structure")
+                        }
+                        targetNode.pointers.unshift(lastPointer)
+                        lastPointer.parent = targetNode
+                        targetNode.keys.unshift(betweenValue)
+                        if (targetNode.parent == null) {
+                            throw new Error("target node parent is null")
+                        }
+                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = lastKey
+                    } else {
+                        const lastKey = siblingNode.keys.pop()
+                        if (lastKey == undefined) {
+                            throw new Error("malformed data structure")
+                        }
+                        targetNode.keys.unshift(lastKey)
+                        if (targetNode.parent == null) {
+                            throw new Error("target node parent is null")
+                        }
+                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = lastKey
+                    }
                 } else {
-                    rightNode = siblingNode
-                    leftNode = targetNode
-                }
-
-                if (!rightNode.isLeaf) {
-                    const lastPointer = leftNode.pointers.pop()
-                    const lastKey = leftNode.keys.pop()
-                    if (lastPointer == undefined || lastKey == undefined) {
-                        throw new Error("last pointer or lastKey is undefined")
+                    if (!leftNode.isLeaf) {
+                        const lastPointer = rightNode.pointers.pop()
+                        const lastKey = rightNode.keys.pop()
+                        if (lastPointer == undefined || lastKey == undefined) {
+                            throw new Error("malformed data structure")
+                        }
+                        leftNode.pointers.unshift(lastPointer)
+                        lastPointer.parent = leftNode
+                        leftNode.keys.unshift(betweenValue)
+                        if (leftNode.parent == null) {
+                            throw new Error("target node parent is null")
+                        }
+                        leftNode.parent.keys[leftNode.parent.keys.indexOf(betweenValue)] = lastKey
+                    } else {
+                        const lastKey = rightNode.keys.pop()
+                        if (lastKey == undefined) {
+                            throw new Error("malformed data structure")
+                        }
+                        leftNode.keys.unshift(lastKey)
+                        if (leftNode.parent == null) {
+                            throw new Error("target node parent is null")
+                        }
+                        rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
                     }
-                    rightNode.pointers.unshift(lastPointer)
-                    lastPointer.parent = rightNode
-                    rightNode.keys.unshift(betweenValue)
-                    if (rightNode.parent == null) {
-                        throw new Error("target node parent is null")
-                    }
-                    rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
-                } else {
-                    const lastKey = leftNode.keys.pop()
-                    if (lastKey == undefined) {
-                        throw new Error("malformed data structure")
-                    }
-                    rightNode.keys.unshift(lastKey)
-                    if (rightNode.parent == null) {
-                        throw new Error("target node parent is null")
-                    }
-                    rightNode.parent.keys[rightNode.parent.keys.indexOf(betweenValue)] = lastKey
                 }
             }
         }
@@ -1198,14 +1222,16 @@ export class AlgoVisualizer {
         const textExitSelection = textSelection.exit()
         const edgeExitSelection = edgeSelection.exit()
         const leafEdgeExitSelection = leafNodeEdgeSelection.exit()
+        const nodeExitSelection = nodeSelection.exit()
 
         this.exitSelections.push(textExitSelection)
         this.exitSelections.push(edgeExitSelection)
         this.exitSelections.push(leafEdgeExitSelection)
+        this.exitSelections.push(nodeExitSelection)
 
         //@ts-expect-error
         timeline.add(
-            [...textExitSelection.nodes(), ...edgeExitSelection.nodes(), ...leafEdgeExitSelection.nodes()],
+            [...textExitSelection.nodes(), ...edgeExitSelection.nodes(), ...leafEdgeExitSelection.nodes(), ...nodeExitSelection.nodes()],
             { opacity: 0 }
         )
 
