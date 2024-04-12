@@ -48,6 +48,57 @@
       </div>
       <div class="bottom-row-items"></div>
       <div id="sudo-code" class="bottom-row-items">
+        <div id="insert-sudo-code" class="operation-sudo-code">
+          <span id="insert-line1"><b>procedure</b> insert(value K, pointer P)<br></span>
+          <span id="insert-line2">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which
+            is
+            also
+            the
+            root<br></span>
+          <span id="insert-line3">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value
+            K<br></span>
+          <span id="insert-line4">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math display="inline">
+              <mn>n</mn>
+              <mo>-</mo>
+              <mi>1</mi>
+            </math>. key values)<br></span>
+          <span id="insert-line5">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node L<br></span>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
+            <mn>n</mn>
+            <mo>-</mo>
+            <mi>1</mi>
+          </math> already, split it into L and L'<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
+          be the smallest key-value in L'<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(L,
+          K', L')<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+        </div>
+        <div id="insert-parent-sudo-code" class="operation-sudo-code">
+          <b>procedure</b> insert_in_parent(node N, value K', node N')<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (N is the root of the tree)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then begin</b><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create a new node R containing N, K',
+          N' /* N
+          and N' are pointers */<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Make R the root of the tree<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>return</b><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;Let <math display="inline">
+            <mi>P</mi>
+            <mo>=</mo>
+            <mi>parent(N)</mi>
+          </math><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (P has less than n pointers)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> insert (K', N') in P just after N<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> Split P into
+          P and P'<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let
+          K'' be the smallest key-value in P'<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(P,
+          K'', P')<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+        </div>
       </div>
     </div>
     <div class="middle-row"></div>
@@ -70,53 +121,9 @@ class to indicate what step of the algorithm it is currently visualizing. It
 does this by highlighting the corresponding line of sudo code.
 -->
 <template id="insert-sudo-code">
-  <span id="insert-line1"><b>procedure</b> insert(value K, pointer P)<br></span>
-  <span id="insert-line2">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty) create an empty leaf node L, which is also
-    the
-    root<br></span>
-  <span id="insert-line3">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that should contain key value
-    K<br></span>
-  <span id="insert-line4">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math display="inline">
-      <mn>n</mn>
-      <mo>-</mo>
-      <mi>1</mi>
-    </math>. key values)<br></span>
-  <span id="insert-line5">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node L<br></span>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
-    <mn>n</mn>
-    <mo>-</mo>
-    <mi>1</mi>
-  </math> already, split it into L and L'<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
-  be the smallest key-value in L'<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(L,
-  K', L')<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
 </template>
 
 <template id="insert-in-parent-sudo-code">
-  <b>procedure</b> insert_in_parent(node N, value K', node N')<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (N is the root of the tree)<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then begin</b><br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create a new node R containing N, K', N' /* N
-  and N' are pointers */<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Make R the root of the tree<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>return</b><br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
-  &nbsp;&nbsp;&nbsp;&nbsp;Let <math display="inline">
-    <mi>P</mi>
-    <mo>=</mo>
-    <mi>parent(N)</mi>
-  </math><br>
-  &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (P has less than n pointers)<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> insert (K', N') in P just after N<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> Split P into
-  P and P'<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let
-  K'' be the smallest key-value in P'<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(P,
-  K'', P')<br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
 </template>
 
 </html>

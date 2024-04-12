@@ -8,7 +8,7 @@
 
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
-import { createTimeline, svg as animeSvg } from "./lib/anime.esm"
+import { createTimeline, svg as animeSvg, utils } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 import { path as d3Path, text } from "d3"
@@ -25,7 +25,12 @@ type OperationType = "insert" | "delete"
  * this class corresponds to a rendered B+tree algorithm.   
  * @dependency For this class to function correctly there must be a blank svg element with
  * the id "main-svg".
- * */
+ * @dependency There must be div element with the id "sudo-code" that contains the sudo
+ * code for the B+tree algorithm. This html element structure is defined in the
+ * index.html file of this project.
+ * @dependency There must be a certain color config defined in the :root pseudo class.
+ * This color config is defined in the style.css file of this project.
+ */
 export class AlgoVisualizer {
     /* number of pointers in a node */
     private readonly n: number
@@ -57,8 +62,11 @@ export class AlgoVisualizer {
     private readonly keyTextClassName = "node-key-text"
     //this must match the id of the svg defined in the index.html file.
     private readonly mainSvgId = "#main-svg"
+    private readonly lightBlue
+    private readonly lightGreen
+    private readonly pink
     /* in milliseconds */
-    private animationDuration = 1000
+    private animationDuration = 5000
     public currentAnimation = createTimeline({})
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
@@ -83,8 +91,11 @@ export class AlgoVisualizer {
      */
     constructor(nodeSize: number) {
         this.n = nodeSize
-
         this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * (this.n - 1) + this.pointerRectWidth
+        const style = getComputedStyle(document.body)
+        this.lightBlue = style.getPropertyValue("--light-blue")
+        this.lightGreen = style.getPropertyValue("--light-green")
+        this.pink = style.getPropertyValue("--pink")
 
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight + this.nodeChildrenGap])
         this.d3TreeLayout.separation((a, b) => {
@@ -155,6 +166,9 @@ export class AlgoVisualizer {
      * function is called.
      * @returns The on completion promise of the generated animation
      * @dependency this.bPlusTreeRoot inserts value into this tree
+     * @dependency A svg element with the id "main-svg" in the DOM
+     * @dependency A div element with the id "sudo-code" in the DOM and its
+     * children. (defined in index.html file)
      * @sideEffect any currently animating algorithm step will be interrupted
      * and a new one corresponding to this method will begin.
      * @sideEffect all exit selections stored in this.exitSelection will
@@ -180,11 +194,6 @@ export class AlgoVisualizer {
                 ease: 'linear'
             }
         })
-
-        const insertSudoCode = document.querySelector("#insert-sudo-code")
-        if (this.sudoCodeContainer?.innerHTML && insertSudoCode?.innerHTML) {
-            this.sudoCodeContainer.innerHTML = insertSudoCode?.innerHTML
-        }
 
         let targetNode: bPlusTreeNode
         if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
@@ -230,125 +239,7 @@ export class AlgoVisualizer {
 
         // TODO consider replacing this with method call.
         // -- Animation Section -- //
-        const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
-            if (node.isLeaf) {
-                return []
-            } else {
-                return node.pointers
-            }
-        }))
-
-        //enter/new section
-        const nodeSelection = select(this.mainSvgId)
-            .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
-            .data(rootHierarchyNode, (d) => (d).data.id)
-        const newSVGGElements = this.createNodeSvgElements(nodeSelection.enter())
-
-        //create svg elements for the new edges created by the split
-        const edgeSelection = select(this.mainSvgId)
-            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-            .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
-        const newEdges = this.createNewEdgeSvgElements(edgeSelection)
-
-        const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
-        const leafNodeEdgeSelection = select(this.mainSvgId)
-            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.leafNodeEdgeClassName)
-            .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
-        const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
-
-        const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-            .data((d) => d.data.keys)
-        const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
-
-        // @ts-expect-error
-        timeline.add(
-            [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes(), ...newTextSelection.nodes()],
-            { opacity: 1 }
-        )
-
-
-        //update section
-        const updatedSVGGElements = nodeSelection.nodes()
-        const updatedNodesData = nodeSelection.data()
-        const updatedTextSelection = textSelection.nodes()
-        const updatedTextData = textSelection.data()
-        const updatedEdges = edgeSelection.nodes()
-        const updatedEdgesData = edgeSelection.data()
-        const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
-        const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
-
-        // @ts-expect-error
-        timeline.add(
-            updatedSVGGElements,
-            {
-                transform: (_: SVGGElement, i: number) => {
-                    return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
-                }
-            }
-        )
-        updatedTextSelection.forEach((text, i) => {
-            const textData = updatedTextData[i].toString()
-            if (textData == text.textContent) {
-                return
-            }
-            timeline.add(
-                text,
-                {
-                    opacity: 0,
-                    onComplete: () => {
-                        text.textContent = textData // Update the text
-                    }
-                },
-                '<<'
-            )
-            timeline.add(
-                text,
-                {
-                    opacity: 1,
-                },
-                '>>'
-            );
-        });
-
-        updatedEdges.forEach((edge, i) => {
-            timeline.add(
-                edge,
-                {
-                    d: animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i]))
-                },
-                "<<"
-            )
-        })
-
-        updatedLeafNodeEdges.forEach((edge, i) => {
-            timeline.add(
-                edge,
-                {
-                    d: animeSvg.morphTo(this.generateMorphToPath(updatedLeafNodeEdgesData[i], true))
-                },
-                "<<"
-            )
-        })
-
-
-        //exit section
-        const textExitSelection = textSelection.exit()
-        const edgeExitSelection = edgeSelection.exit()
-        const leafEdgeExitSelection = leafNodeEdgeSelection.exit()
-
-        this.exitSelections.push(textExitSelection)
-        this.exitSelections.push(edgeExitSelection)
-        this.exitSelections.push(leafEdgeExitSelection)
-
-        //@ts-expect-error
-        timeline.add(
-            [...textExitSelection.nodes(), ...edgeExitSelection.nodes(), ...leafEdgeExitSelection.nodes()],
-            { opacity: 0 }
-        )
-
-
-        this.currentAnimation = timeline
-        return timeline.then(() => true)
+        return this.animateOperation()
     }
 
     /**
@@ -1062,11 +953,6 @@ export class AlgoVisualizer {
             .attr("x", (this.n - 1) * (this.pointerRectWidth + this.keyRectWidth))
             .attr("y", 0)
 
-        const textEnterSelection = newGElementsSelection.selectAll("text." + this.keyTextClassName)
-            .data((d) => d.data.keys).enter()
-
-        this.createNewNodeText(textEnterSelection)
-
         return newGElementsSelection.nodes()
     }
 
@@ -1125,6 +1011,21 @@ export class AlgoVisualizer {
             }
         }))
 
+        const operationSudoCodeDivs = document.querySelectorAll(".operation-sudo-code");
+        if(operationSudoCodeDivs == null){
+            throw new Error("sudo code div not found in the DOM")
+        }
+        // we do this so that the previous sudo code for the previous operation is
+        // hidden.
+        operationSudoCodeDivs.forEach((div) => {
+            div.classList.remove("active")
+        })
+        const insertSudoCodeDiv = document.querySelector("#insert-sudo-code")
+        if(insertSudoCodeDiv == null){
+            throw new Error("insert sudo code div not found in the DOM")
+        }
+        insertSudoCodeDiv.classList.add("active")
+
         //enter/new section
         const nodeSelection = select(this.mainSvgId)
             .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
@@ -1147,10 +1048,27 @@ export class AlgoVisualizer {
             .data((d) => d.data.keys)
         const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
 
-        // @ts-expect-error
+        //@ts-expect-error
         timeline.add(
-            [...newSVGGElements, ...newEdges.nodes(), ...newLeafEdges.nodes(), ...newTextSelection.nodes()],
+            [...newEdges.nodes(), ...newLeafEdges.nodes(),],
             { opacity: 1 }
+        )
+
+        timeline.add(
+            [...newSVGGElements],
+            {
+                opacity: {to: 1, ease: "outQuad"},
+                fill: { from: this.lightGreen, to: this.lightBlue, ease: "inQuad" }
+            },
+            '<<'
+        )
+        const newSVGGElementsChildren = newSVGGElements.map((element) => element.childNodes)
+        timeline.add(
+            newSVGGElementsChildren[0],
+            {
+                translateY: { from: "-40" }
+            },
+            '<<'
         )
 
 

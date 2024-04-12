@@ -2,7 +2,8 @@
   /* color config */
   --highlighted-text: #ffed99;
   --light-blue: #C7EBFC;
-  --pink: #fcc7eb;
+  --light-green: #EAFCC5;
+  --pink: #FCC5EA;
   --black: black;
 }
 
@@ -105,6 +106,15 @@ body {
   padding: 1em;
   background-color: var(--light-blue);
 }
+/* This is meant to be used in the animation code to
+display the pseudo code for the algorithm being
+animated. */
+#sudo-code > div {
+  display: none;
+}
+#sudo-code > div.active {
+  display: block;
+}
 
 #operations {
   padding: 1em;
@@ -134,8 +144,11 @@ body {
   background-color: var(--highlighted-text);
 }
 
+.green-node{
+  fill: #ebfcc7;
+  stroke: var(--black);
+}
 .node {
-  fill: var(--light-blue);
   stroke: var(--black);
 }
 .node-key-text {
