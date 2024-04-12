@@ -8,7 +8,7 @@
 
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
-import { createTimeline, svg as animeSvg, utils } from "./lib/anime.esm"
+import { createTimeline, svg as animeSvg, Timeline } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
 import { path as d3Path, text } from "d3"
@@ -44,7 +44,6 @@ export class AlgoVisualizer {
     private previousOperationType: OperationType | null = null
     /** this is initialized using the color config defined in the :root pseudo
      * class rule of the style.css file*/
-    private readonly highlightColor: string
     private readonly sudoCodeBackgroundColor: string
     private readonly keyRectWidth = 42
     private readonly nodeHeight = 29
@@ -65,6 +64,9 @@ export class AlgoVisualizer {
     private readonly lightBlue
     private readonly lightGreen
     private readonly pink
+    private readonly highlightColor: string
+    private sudoCodeRectWidth: string
+    private sudoCodeLineHeight = "1lh"
     /* in milliseconds */
     private animationDuration = 5000
     public currentAnimation = createTimeline({})
@@ -96,6 +98,12 @@ export class AlgoVisualizer {
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
         this.pink = style.getPropertyValue("--pink")
+        const sudoCodeRect = document.querySelector("#sudo-code-rectangle")
+        if (sudoCodeRect == null) {
+            throw new Error("incorrect HTML structure in DOM")
+        }
+        this.highlightColor = style.getPropertyValue("--highlighted-text")
+        this.sudoCodeRectWidth = style.getPropertyValue("--sudo-code-rectangle-width")
 
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight + this.nodeChildrenGap])
         this.d3TreeLayout.separation((a, b) => {
@@ -768,15 +776,17 @@ export class AlgoVisualizer {
 
     /**
      * creates a new set of text dom elements for a B+ Tree node
-     * @param newTextSelection A d3 selection of text data that are to be created.
+     * @param newNodeSelection A d3 selection of text data that are to be created.
      * @param isTransparent toggles wether or not text element is transparent
      * initially. This exists so that text reveal can be animated.
      * @return textElementSelection the selection of newly created text elements
      */
-    private createNewNodeText(newTextSelection: d3.Selection<d3.EnterElement, number, SVGGElement | d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>>,
+    private createNewNodeText(newNodeSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>,
         isTransparent = false): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
-        const newSvgTextElement = newTextSelection.append("text")
-        let textElementSelection = newSvgTextElement.attr("class", "node-key-text")
+        const newSvgTextElementSelection = newNodeSelection.append("text")
+        let textElementSelection = newSvgTextElementSelection
+            .data((d) => d.data.keys)
+            .attr("class", "node-key-text")
             // Calculate the x coordinate of the text based on its index in the
             // key array.
             .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * (this.keyRectWidth + this.pointerRectWidth) })
@@ -939,12 +949,14 @@ export class AlgoVisualizer {
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin)
                 .attr("y", 0)
+                .attr("fill", this.lightGreen)
             newGElementsSelection.append('rect')
                 .attr("class", this.nodeRectClassName)
                 .attr("width", this.keyRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin + this.pointerRectWidth)
                 .attr("y", 0)
+                .attr("fill", this.lightGreen)
         }
         newGElementsSelection.append('rect')
             .attr("class", this.nodeRectClassName)
@@ -952,26 +964,10 @@ export class AlgoVisualizer {
             .attr("height", this.nodeHeight)
             .attr("x", (this.n - 1) * (this.pointerRectWidth + this.keyRectWidth))
             .attr("y", 0)
+            .attr("fill", this.lightGreen)
 
         return newGElementsSelection.nodes()
     }
-
-    private addHighlightTextAnimation(timeline: anime.AnimeTimelineInstance, lineNumber: number) {
-        timeline.add({
-            targets: '#insert-line' + String(lineNumber),
-            backgroundColor: this.highlightColor,
-            //complete: (anim) => {
-            //    anime.set(anim.animatables.map(a => a.target), { backgroundColor: "transparent" })
-            //}
-        })
-
-        timeline.add({
-            targets: '#insert-line' + String(lineNumber),
-            backgroundColor: this.sudoCodeBackgroundColor,
-            endDelay: 0,
-        })
-    }
-
 
     //TODO this method may be adding complexity in the long run. Consider removing it
     //especially if later more params are needed.
@@ -1012,7 +1008,7 @@ export class AlgoVisualizer {
         }))
 
         const operationSudoCodeDivs = document.querySelectorAll(".operation-sudo-code");
-        if(operationSudoCodeDivs == null){
+        if (operationSudoCodeDivs == null) {
             throw new Error("sudo code div not found in the DOM")
         }
         // we do this so that the previous sudo code for the previous operation is
@@ -1021,7 +1017,7 @@ export class AlgoVisualizer {
             div.classList.remove("active")
         })
         const insertSudoCodeDiv = document.querySelector("#insert-sudo-code")
-        if(insertSudoCodeDiv == null){
+        if (insertSudoCodeDiv == null) {
             throw new Error("insert sudo code div not found in the DOM")
         }
         insertSudoCodeDiv.classList.add("active")
@@ -1046,7 +1042,11 @@ export class AlgoVisualizer {
 
         const textSelection = nodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
             .data((d) => d.data.keys)
-        const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
+        const newNodeTextSelection = nodeSelection.enter().selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+            .data((d) => d.data.keys)
+
+        // const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
+        const newNodeNewTextSelection = this.createNewNodeText(nodeSelection.enter(), true)
 
         //@ts-expect-error
         timeline.add(
@@ -1054,13 +1054,16 @@ export class AlgoVisualizer {
             { opacity: 1 }
         )
 
+        const moveSudoCodeRectangle = this.createSudoCodeRectangleObj(timeline)
+        moveSudoCodeRectangle(1)
+        moveSudoCodeRectangle(2)
+        //@ts-expect-error
         timeline.add(
             [...newSVGGElements],
             {
-                opacity: {to: 1, ease: "outQuad"},
-                fill: { from: this.lightGreen, to: this.lightBlue, ease: "inQuad" }
-            },
-            '<<'
+                opacity: { to: 1, ease: "outQuad" },
+                // fill: { from: this.lightGreen, to: this.lightBlue, ease: "inQuad" },
+            }
         )
         const newSVGGElementsChildren = newSVGGElements.map((element) => element.childNodes)
         timeline.add(
@@ -1070,7 +1073,18 @@ export class AlgoVisualizer {
             },
             '<<'
         )
-
+        //@ts-expect-error
+        timeline.set(newSVGGElementsChildren[0],
+            {
+                fill: this.lightBlue
+            }
+        )
+        moveSudoCodeRectangle(4)
+        moveSudoCodeRectangle(5)
+        //@ts-expect-error
+        timeline.add(newNodeNewTextSelection.nodes(),
+            { opacity: 1 }
+        )
 
         //update section
         const updatedSVGGElements = nodeSelection.nodes()
@@ -1156,5 +1170,56 @@ export class AlgoVisualizer {
 
         this.currentAnimation = timeline
         return timeline.then(() => true)
+    }
+
+    /**
+     *
+     * Represents the sudo code rectangle that is used to provide a visual
+     * indication of where the animation is currently at in the sudo code.
+     * @param timeline the timeline to add the animations to
+     * @returns A function used to move the sudo code rectangle to a specific line
+     */
+    private createSudoCodeRectangleObj(timeline: Timeline) {
+        /**
+         *
+         * Add sudo code rectangle animations to the timeline
+         * @param sudoCodeLineGoal the line number of the sudo code that the rectangle
+         * should be moved to
+         * @returns Timeline the modified timeline
+         * @sideEffect adds animations to the given timeline
+         */
+        const moveSudoCodeRectangle = (sudoCodeLineGoal: number) => {
+            // The sudo code rectangle should always start at the first line as defined in the index.html file
+            const sudoCodeRectangle = document.querySelector("#sudo-code-rectangle")
+            const sudoCodeLineGoalElement = document.querySelector("#insert-line" + sudoCodeLineGoal)
+            if (sudoCodeRectangle == null || sudoCodeLineGoalElement == null) {
+                throw new Error("incorrect html DOM structure")
+            }
+            const sudoCodeLineHeightFloat = parseFloat(this.sudoCodeLineHeight)
+
+            // Since the rectangle starts at the first line we don't need to move it there first.
+            // This is defined in the index.html file
+            if (sudoCodeLineGoal == 1) {
+                //@ts-expect-error
+                timeline.add(sudoCodeRectangle, {
+                    width: (sudoCodeLineGoalElement as HTMLElement).offsetWidth.toString() + "px",
+                })
+            } else {
+                //@ts-expect-error
+                timeline.add(sudoCodeRectangle, {
+                    width: this.sudoCodeRectWidth,
+                    //@ts-expect-error
+                }).add(sudoCodeRectangle, {
+                    top: ((sudoCodeLineHeightFloat * sudoCodeLineGoal) - 1) + "lh",
+                    //@ts-expect-error
+                }).add(sudoCodeRectangle, {
+                    width: (sudoCodeLineGoalElement as HTMLElement).offsetWidth.toString() + "px",
+                })
+            }
+
+            return timeline
+        }
+
+        return moveSudoCodeRectangle
     }
 }
