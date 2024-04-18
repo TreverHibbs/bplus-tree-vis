@@ -3,8 +3,9 @@
   --highlighted-text: #ffed99;
   --light-blue: #C7EBFC;
   --light-green: #EAFCC5;
+  --dark-green: #2A3D03;
   --pink: #FCC5EA;
-  --black: black;
+  --black: #000000;
   --sudo-code-rectangle-width: 1rem;
 }
 
@@ -174,10 +175,10 @@ animated. */
   stroke: var(--black);
 }
 
+/* TODO make this text easier to read */
 .node-key-text {
   dominant-baseline: middle;
   text-anchor: middle;
-  fill: var(--black);
   stroke: none;
 }
 
