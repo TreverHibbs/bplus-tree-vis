@@ -46,7 +46,7 @@ export const userInterface = () => {
                 //@ts-expect-error
                 currentAnimationOriginalDuration = algoVisualizer.currentAnimation.duration
 
-                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration/speedModifier).play()
+                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier).play()
                 await onAnimationComplete
                 await new Promise(resolve => setTimeout(resolve, 10)); // Wait for 10 milliseconds
             }, Promise.resolve());
@@ -110,6 +110,7 @@ export const userInterface = () => {
     // Speed checkboxes listener
     checkboxes.forEach((checkbox) => {
         checkbox.addEventListener('mousedown', function (this: HTMLInputElement) {
+            const currentAnimeProgress = algoVisualizer.currentAnimation.progress
             // If the checkbox button is already checked
             if (this.checked == false) {
                 // Make the checkboxes mutually exclusive
@@ -117,10 +118,33 @@ export const userInterface = () => {
                     checkbox.checked = false;
                 })
                 speedModifier = Number(this.value)
-                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration/Number(this.value)).restart()
-            }else{
+                // Make it so that when a new speed modifier is selected and an animation is
+                // currently playing the animation speeds up at the current location in the animation.
+                // So that it looks seamless to the user.
+                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier)
+                // if we don't restart here there is one frame where the animation appears to be at a
+                // different location than it should be. I don't know why this is.
+                algoVisualizer.currentAnimation.restart()
+                if (currentAnimeProgress == 1) {
+                    // for some reason setting progress to 1 doesn't seem to 
+                    // do anything. Therefore in order for the animation to
+                    // appear as though it is at the end we set the progress
+                    // to 0.99999. A number very close to 1
+                    algoVisualizer.currentAnimation.progress = 0.99999
+                } else {
+                    algoVisualizer.currentAnimation.progress = currentAnimeProgress
+                }
+            } else {
                 speedModifier = 1
-                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration).restart()
+                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration)
+                // see comments above for clarification on this line
+                algoVisualizer.currentAnimation.restart()
+                if (currentAnimeProgress == 1) {
+                    // see comments above for clarification on this line
+                    algoVisualizer.currentAnimation.progress = 0.99999
+                } else {
+                    algoVisualizer.currentAnimation.progress = currentAnimeProgress
+                }
             }
         });
     });
