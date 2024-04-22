@@ -1030,9 +1030,13 @@ export class AlgoVisualizer {
             .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
         const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
 
-        const textSelection = newNodes.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+        const oldNodeTextSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
             .data((d) => d.data.keys)
-        const newTextSelection = this.createNewNodeText(textSelection.enter(), true)
+        const oldNodesNewTextSelection = this.createNewNodeText(oldNodeTextSelection.enter(), true)
+
+        const newNodesTextSelection = newNodes.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+            .data((d) => d.data.keys)
+        const newNodesNewTextSelection = this.createNewNodeText(newNodesTextSelection.enter(), true)
 
         //@ts-expect-error
         timeline.add(
@@ -1060,13 +1064,15 @@ export class AlgoVisualizer {
             })
             return rectChildNodes
         })
-        timeline.add(
-            newSVGGElementsRectChildren[0],
-            {
-                translateY: { from: "-40" }
-            },
-            '<<'
-        )
+        if (newSVGGElementsRectChildren.length != 0) {
+            timeline.add(
+                newSVGGElementsRectChildren[0],
+                {
+                    translateY: { from: "-40" }
+                },
+                '<<'
+            )
+        }
         //@ts-expect-error
         timeline.set(newSVGGElementsRectChildren[0],
             {
@@ -1076,30 +1082,30 @@ export class AlgoVisualizer {
         moveSudoCodeRectangle(4)
         moveSudoCodeRectangle(5)
         //@ts-expect-error
-        timeline.set(newTextSelection.nodes(),
+        timeline.set([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
             {
                 opacity: 1
             }
             //@ts-expect-error
-        ).add(newTextSelection.nodes(),
+        ).add([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
             {
                 translateY: { from: "-40" },
                 duration: this.animationDuration * 2
                 //@ts-expect-error
-            }).set(newTextSelection.nodes(),
+            }).set([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
                 {
                     fill: "#000000"
                 }
             )
         moveSudoCodeRectangle(9)
         moveSudoCodeRectangle(9, true)
-        //TODO figure out how to animated adding 2 after 1
+        //TODO figure out how to animate adding 2 after 1
 
         //update section
         const updatedSVGGElements = nodeSelection.nodes()
         const updatedNodesData = nodeSelection.data()
-        const updatedTextSelection = textSelection.nodes()
-        const updatedTextData = textSelection.data()
+        const updatedTextSelection = oldNodeTextSelection.nodes()
+        const updatedTextData = oldNodeTextSelection.data()
         const updatedEdges = edgeSelection.nodes()
         const updatedEdgesData = edgeSelection.data()
         const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
@@ -1160,7 +1166,7 @@ export class AlgoVisualizer {
 
 
         //exit section
-        const textExitSelection = textSelection.exit()
+        const textExitSelection = oldNodeTextSelection.exit()
         const edgeExitSelection = edgeSelection.exit()
         const leafEdgeExitSelection = leafNodeEdgeSelection.exit()
         const nodeExitSelection = nodeSelection.exit()
