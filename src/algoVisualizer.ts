@@ -179,8 +179,7 @@ export class AlgoVisualizer {
      * and a new one corresponding to this method will begin.
      * @sideEffect all exit selections stored in this.exitSelection will
      * be removed from the DOM.
-     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation, and
-     * adds elements to the animations array.
+     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation.
      * @sideEffects adds d3 selections to the exitSelections array for removal
      * at before the next insertion animation is generated. Or before the
      * insertion is undone.
@@ -193,12 +192,85 @@ export class AlgoVisualizer {
         this.exitSelections.forEach(selection => {
             selection.remove()
         })
+        const timeline = createTimeline({
+            autoplay: false,
+            defaults: {
+                duration: this.animationDuration,
+                ease: 'linear'
+            }
+        })
+        const moveSudoCodeRectangle = this.createSudoCodeRectangleObj(timeline)
+        const bPlusTreeChildrenDefinition = (node: bPlusTreeNode) => {
+            if (node.isLeaf) {
+                return []
+            } else {
+                return node.pointers
+            }
+        }
 
+        /* display sudo code section */
+        const operationSudoCodeDivs = document.querySelectorAll(".operation-sudo-code");
+        if (operationSudoCodeDivs == null) {
+            throw new Error("sudo code div not found in the DOM")
+        }
+        // we do this so that the previous sudo code for the previous operation is
+        // hidden.
+        operationSudoCodeDivs.forEach((div) => {
+            div.classList.remove("active")
+        })
+        const insertSudoCodeDiv = document.querySelector("#insert-sudo-code")
+        if (insertSudoCodeDiv == null) {
+            throw new Error("insert sudo code div not found in the DOM")
+        }
+        insertSudoCodeDiv.classList.add("active")
+
+        moveSudoCodeRectangle(1)
+        moveSudoCodeRectangle(2)
         let targetNode: bPlusTreeNode
         if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
             targetNode = this.bPlusTreeRoot
+            moveSudoCodeRectangle(3)
 
+            //animate new root node
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+            const nodeSelection = select(this.mainSvgId)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
+                .data(rootHierarchyNode, (d) => (d).data.id)
+            const newNodes = this.createNodeSvgElements(nodeSelection.enter())
+            //@ts-expect-error
+            timeline.add(
+                [...newNodes],
+                {
+                    opacity: { to: 1, ease: "outQuad" },
+                }
+            )
+            const newSVGGElementsRectChildren = newNodes.nodes().map((element) => {
+                //check each child array for rect elements and only select those.
+                const rectChildNodes: ChildNode[] = []
+                element.childNodes.forEach((child) => {
+                    if (child.nodeName == "rect") {
+                        rectChildNodes.push(child)
+                    }
+                })
+                return rectChildNodes
+            })
+            if (newSVGGElementsRectChildren.length != 0) {
+                timeline.add(
+                    newSVGGElementsRectChildren[0],
+                    {
+                        translateY: { from: "-40" }
+                    },
+                    '<<'
+                )
+            }
+            //@ts-expect-error
+            timeline.set(newSVGGElementsRectChildren[0],
+                {
+                    fill: this.lightBlue
+                }
+            )
         } else {
+            moveSudoCodeRectangle(4)
             const { found, node } = this.find(value)
 
             if (found) {
@@ -209,10 +281,39 @@ export class AlgoVisualizer {
             }
         }
 
+        moveSudoCodeRectangle(5)
         // targetNode is ready to have the value inserted into it.
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
+            moveSudoCodeRectangle(6)
             this.insertInLeaf(targetNode, value)
+
+            //animate adding the new key value to the leaf node
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
+            const nodeSelection = select(this.mainSvgId)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
+                .data(rootHierarchyNode, (d) => (d).data.id)
+            const newNodesTextSelection = nodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+                .data((d) => d.data.keys)
+            const textSelection = this.createNewNodeText(newNodesTextSelection.enter(), true)
+            //@ts-expect-error
+            timeline.set(textSelection.nodes(),
+                {
+                    opacity: 1
+                }
+                //@ts-expect-error
+            ).add(textSelection.nodes(),
+                {
+                    translateY: { from: "-40" },
+                    duration: this.animationDuration * 2
+                    //@ts-expect-error
+                }).set(textSelection.nodes(),
+                    {
+                        fill: "#000000"
+                    }
+                )
         } else { //leaf node targetNode has n - 1 key values already, split it
+            moveSudoCodeRectangle(7)
+
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
             tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
@@ -235,9 +336,12 @@ export class AlgoVisualizer {
 
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
+        moveSudoCodeRectangle(10)
+        moveSudoCodeRectangle(10, true)
 
-        // -- Animation Section -- //
-        return this.animateOperation()
+        this.currentAnimation = timeline
+
+        return timeline.then(() => true)
     }
 
     /**
