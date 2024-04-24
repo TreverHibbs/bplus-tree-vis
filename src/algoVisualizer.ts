@@ -57,6 +57,7 @@ export class AlgoVisualizer {
     private readonly leafNodeEdgeClassName = "leaf-node-edge"
     private readonly edgeClassName = "edge"
     private readonly nodeClassName = "node"
+    private readonly nodeSelector = "g.node"
     private readonly nodeRectClassName = this.nodeClassName + "-rect"
     private readonly keyTextClassName = "node-key-text"
     //this must match the id of the svg defined in the index.html file.
@@ -231,12 +232,15 @@ export class AlgoVisualizer {
             targetNode = this.bPlusTreeRoot
             moveSudoCodeRectangle(3)
 
-            //animate new root node
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+            //First create the new node for the root and then animate the new root node
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot,
+                bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
-                .data(rootHierarchyNode, (d) => (d).data.id)
-            const newNodes = this.createNodeSvgElements(nodeSelection.enter())
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
+            const newNodes = nodeSelection.enter().data().map((node) => {
+                return this.createNodeElement(node.data)
+            })
             //@ts-expect-error
             timeline.add(
                 [...newNodes],
@@ -244,7 +248,7 @@ export class AlgoVisualizer {
                     opacity: { to: 1, ease: "outQuad" },
                 }
             )
-            const newSVGGElementsRectChildren = newNodes.nodes().map((element) => {
+            const newSVGGElementsRectChildren = newNodes.map((element) => {
                 //check each child array for rect elements and only select those.
                 const rectChildNodes: ChildNode[] = []
                 element.childNodes.forEach((child) => {
@@ -313,6 +317,7 @@ export class AlgoVisualizer {
                 )
         } else { //leaf node targetNode has n - 1 key values already, split it
             moveSudoCodeRectangle(7)
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
 
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
@@ -331,9 +336,41 @@ export class AlgoVisualizer {
                 newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
             }
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
-
             newNode.parent = targetNode.parent
 
+            // animate node splitting
+            // first need to find the coordinates of the target node
+            const nodeSelection = select(this.mainSvgId)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
+                .data(rootHierarchyNode, (d) => d.data.id)
+            const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
+            targetNodeSelection.data()[0].x
+
+            const splitRootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNodeSelection.data()[0].data.pointers[this.n - 1],
+                bPlusTreeChildrenDefinition))
+            const splitNodeSelection = select(this.mainSvgId)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.split-node")
+                .data(splitRootHierarchyNode, (d) => d.data.id)
+            const splitNodeGElementSelection = this.createNodeSvgElements(splitNodeSelection.enter(), true)
+
+            //@ts-expect-error
+            timeline.add(
+                targetNodeSelection.nodes(),
+                {
+                    translateX: { to: targetNodeSelection.data()[0].x - this.nodeWidth * 1.5 },
+                    translateY: { to: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5 },
+                }
+                //@ts-expect-error
+            ).add(
+                splitNodeGElementSelection.nodes(),
+                {
+                    opacity: { to: 1, ease: "outQuad" },
+                }
+            )
+
+            //TODO create animation for splitting node. Can't get the root hierarchy node
+            //so another method will have to be used. Some how get the position of the target
+            //node and animate the split.
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
         moveSudoCodeRectangle(10)
@@ -686,11 +723,11 @@ export class AlgoVisualizer {
                 .data(rootHierarchyNode, (d) => d.data.id)
 
             nodeSelection.exit().remove()
-            //this.createNodeSvgElements(nodeSelection.enter(), false)
             nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
-            //nodeSelection.attr("transform", this.getNodeTransformString)
 
-            nodeSelection.attr("transform", this.getNodeTransformString)
+            nodeSelection.attr("transform", (d) => {
+                return this.getNodeTransformString(d.x, d.y)
+            })
 
             const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
@@ -897,12 +934,13 @@ export class AlgoVisualizer {
      * Returns the string that represents the svg transform attribute for a
      * B+ Tree node. This function exists to keep the logic for calculating a
      * nodes placement in one spot.
-     * @param d d3.HierarchyPointNode<bPlusTreeNode> The node to generate the transform string for.
+     * @param x The x coordinate of the node
+     * @param y The y coordinate of the node
      * @dependency this.nodeWidth The width of a bplus tree node
      * @return String The string meant to be used as the transform attribute
      */
-    private getNodeTransformString = (d: d3.HierarchyPointNode<bPlusTreeNode>) => {
-        return "translate(" + String(d.x - this.nodeWidth / 2) + "," + String(d.y) + ")"
+    private getNodeTransformString = (x: number, y: number) => {
+        return "translate(" + String(x - this.nodeWidth / 2) + "," + String(y) + ")"
     }
 
     /**
@@ -1014,24 +1052,26 @@ export class AlgoVisualizer {
      * exists to keep all styling of bplus tree nodes in one spot. The origin of
      * the node is at its top left corner. By default all nodes are made invisible when created
      * so that they can later be revealed in an animation.
-     * @param nodeEnterSelection A selection containing newly added BPlus tree nodes.
+     * @param node The bPlusTreeNode to create an svg element for.
+     * @param x The x coordinate of the node. Defaults to 0.
+     * @param y The y coordinate of the node. Defaults to 0.
      * @param isTransparent Toggles wether or not the node is transparent. Defaults to true.
      *
      * @dependency this.n The size of a bplus tree node
-     * @return SVGGElement[] The SVGGElements that were created
+     * @return SVGGElement The SVGGElement that was created
      */
-    private createNodeSvgElements(nodeEnterSelection: d3.Selection<d3.EnterElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown>, isTransparent = true):
-        d3.Selection<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>, d3.BaseType, unknown> {
+    private createNodeElement(node: bPlusTreeNode, x = 0, y = 0, isTransparent = true): SVGGElement {
         let transparencyValue = 0
         if (isTransparent == false) {
             transparencyValue = 1
         }
 
-        const newGElementsSelection = nodeEnterSelection.append("g")
+
+        const newGElementsSelection = select(this.mainSvgId).append("g")
             .attr("class", "node")
-            .attr("id", d => { return this.nodeClassName + String(d.data.id) })
+            .attr("id", String(node.id))
             .attr("transform-origin", "center")
-            .attr("transform", this.getNodeTransformString)
+            .attr("transform", this.getNodeTransformString(x, y))
             .attr("opacity", transparencyValue)
 
         for (let i = 0; i < (this.n - 1); i++) {
@@ -1059,7 +1099,7 @@ export class AlgoVisualizer {
             .attr("y", 0)
             .attr("fill", this.lightGreen)
 
-        return newGElementsSelection
+        return newGElementsSelection.nodes()[0]
     }
 
     //TODO this method may be adding complexity in the long run. Consider removing it
@@ -1203,7 +1243,6 @@ export class AlgoVisualizer {
             )
         moveSudoCodeRectangle(9)
         moveSudoCodeRectangle(9, true)
-        //TODO figure out how to animate adding 2 after 1
 
         //update section
         const updatedSVGGElements = nodeSelection.nodes()
