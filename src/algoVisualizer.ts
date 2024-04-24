@@ -237,7 +237,7 @@ export class AlgoVisualizer {
                 bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
+                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
             const newNodes = nodeSelection.enter().data().map((node) => {
                 return this.createNodeElement(node.data)
             })
@@ -294,8 +294,8 @@ export class AlgoVisualizer {
             //animate adding the new key value to the leaf node
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
-                .data(rootHierarchyNode, (d) => (d).data.id)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
             const newNodesTextSelection = nodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
             const textSelection = this.createNewNodeText(newNodesTextSelection.enter(), true)
@@ -341,36 +341,50 @@ export class AlgoVisualizer {
             // animate node splitting
             // first need to find the coordinates of the target node
             const nodeSelection = select(this.mainSvgId)
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
-                .data(rootHierarchyNode, (d) => d.data.id)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
-            targetNodeSelection.data()[0].x
-
-            const splitRootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNodeSelection.data()[0].data.pointers[this.n - 1],
-                bPlusTreeChildrenDefinition))
-            const splitNodeSelection = select(this.mainSvgId)
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g.split-node")
-                .data(splitRootHierarchyNode, (d) => d.data.id)
-            const splitNodeGElementSelection = this.createNodeSvgElements(splitNodeSelection.enter(), true)
+            const newNodeElement = this.createNodeElement(newNode,
+                targetNodeSelection.data()[0].x + this.nodeWidth,
+                targetNodeSelection.data()[0].y + this.nodeHeight * 1.5)
 
             //@ts-expect-error
             timeline.add(
                 targetNodeSelection.nodes(),
                 {
-                    translateX: { to: targetNodeSelection.data()[0].x - this.nodeWidth * 1.5 },
+                    translateX: { to: targetNodeSelection.data()[0].x - this.nodeWidth },
                     translateY: { to: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5 },
                 }
                 //@ts-expect-error
             ).add(
-                splitNodeGElementSelection.nodes(),
+                newNodeElement,
                 {
                     opacity: { to: 1, ease: "outQuad" },
                 }
             )
 
-            //TODO create animation for splitting node. Can't get the root hierarchy node
-            //so another method will have to be used. Some how get the position of the target
-            //node and animate the split.
+            const rectChildNodes: ChildNode[] = []
+            newNodeElement.childNodes.forEach((child) => {
+                if (child.nodeName == "rect") {
+                    rectChildNodes.push(child)
+                }
+            })
+            if (rectChildNodes.length != 0) {
+                timeline.add(
+                    rectChildNodes,
+                    {
+                        translateY: { from: "-40" }
+                    },
+                    '<<'
+                )
+            }
+            //@ts-expect-error
+            timeline.set(newNodeElement,
+                {
+                    fill: this.lightBlue
+                }
+            )
+
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
         moveSudoCodeRectangle(10)
