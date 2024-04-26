@@ -6,7 +6,7 @@
   --dark-green: #2A3D03;
   --pink: #FCC5EA;
   --black: #000000;
-  --sudo-code-rectangle-width: 1rem;
+  --sudo-code-rectangle-width: 1em;
 }
 
 html,
@@ -20,10 +20,12 @@ body {
   overflow: auto;
 }
 
+/* link to saved grid in case it needs to be edited */
+/* grid.layoutit.com?id=rsXbSgO */
 .container {
   display: grid;
-  grid-template-columns: 0.05fr 2.8fr 0.05fr;
-  grid-template-rows: 2.5fr 0.2fr 1.2fr 0.1fr;
+  grid-template-columns: 0.1fr 3.8fr 0.1fr;
+  grid-template-rows: 1fr max-content max-content;
   gap: 0px 0px;
   grid-auto-flow: row;
   gap: px 0px;
@@ -31,10 +33,35 @@ body {
   height: 100vh;
 }
 
+.middle {
+  display: grid;
+  grid-template-columns: 0.5fr 1.4fr max-content;
+  grid-template-rows: max-content;
+  gap: 0px 0px;
+  grid-template-areas:
+    "controls . sudo-code";
+  grid-area: 2 / 2 / 3 / 3;
+  z-index: 2;
+}
+
+.controls {
+  grid-area: controls;
+}
+
+.sudo-code {
+  grid-area: sudo-code;
+  background-color: var(--light-blue);
+}
+
+.Animation-Controls {
+  grid-area: 3 / 2 / 4 / 3;
+}
+
 .main-svg {
-  grid-area: 1 / 2 / 4 / 3;
+  grid-area: 1 / 1 / 3 / 4;
   width: 100%;
   height: 100%;
+  z-index: 1;
 }
 
 .bottom-row {
@@ -49,91 +76,33 @@ body {
   margin: 0.5em;
 }
 
-.middle-row {
-  grid-area: 2 / 2 / 3 / 3;
+/* end of grid */
+
+.operation-sudo-code {
+  padding: 0;
+  margin: 1em;
+  opacity: 0;
+  position: relative;
+  padding-left: 1em;
 }
 
-.top-row {
-  grid-area: 1 / 2 / 2 / 3;
+#insert-sudo-code {
 }
 
-.right-middle-row {
-  grid-area: 2 / 3 / 3 / 4;
+#insert-parent-sudo-code {
 }
 
-.right-bottom-row {
-  grid-area: 3 / 3 / 4 / 4;
-}
-
-.left-bottom-row {
-  grid-area: 3 / 1 / 4 / 2;
-}
-
-.left-middle-row {
-  grid-area: 2 / 1 / 3 / 2;
-}
-
-.nav {
-  grid-area: 4 / 2 / 5 / 3;
-}
-
-.bottom-row-items:nth-child(1) {
-  display: block;
-  flex-grow: 0;
-  flex-shrink: 1;
-  flex-basis: auto;
-  align-self: auto;
-  order: 0;
-}
-
-.bottom-row-items:nth-child(2) {
-  display: block;
-  flex-grow: 1;
-  flex-shrink: 1;
-  flex-basis: auto;
-  align-self: auto;
-  order: 0;
-}
-
-.bottom-row-items:nth-child(3) {
-  display: block;
-  flex-grow: 0;
-  flex-shrink: 1;
-  flex-basis: auto;
-  align-self: auto;
-  order: 0;
-}
-
-#sudo-code {
-  padding: 1em;
-  background-color: var(--light-blue);
-}
-
-/* This is meant to be used in the animation code to
-display the pseudo code for the algorithm being
-animated. */
-#sudo-code>div {
-  display: none;
-}
-#sudo-code>div.active {
-  display: block;
-}
-#sudo-code-rectangle {
+.sudo-code-rectangle {
   position: absolute;
   /* or absolute, fixed, or sticky */
   z-index: 1;
-  width: 1rem;
+  width: var(--sudo-code-rectangle-width);
   height: 1lh;
   background-color: var(--highlighted-text);
   left: 0;
 }
-#insert-sudo-code {
-  position: relative;
-  /* or absolute, fixed, or sticky */
-  z-index: 2;
-}
+
 .sudo-code-line {
-  padding-left: 1rem;
   z-index: 2;
   position: relative;
 }

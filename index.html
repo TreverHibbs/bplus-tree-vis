@@ -10,7 +10,7 @@
 </head>
 
 <!-- my grid layout -->
-<!-- grid.layoutit.com?id=KikjoL7 -->
+<!-- grid.layoutit.com?id=rsXbSgO -->
 
 <body>
   <!--   
@@ -18,6 +18,105 @@
   javascript component to function properly.
 -->
   <div class="container">
+    <div class="middle">
+      <div id="operations" class="controls">
+        <button id="insert-button" class="operation">insert</button>
+        <input type="checkbox" id="animation-toggle">
+        <button id="delete-button" class="operation">delete</button>
+        <button id="find-button" class="operation">find</button>
+        <button id="back-button" class="operation">back</button>
+        <button id="forward-button" class="operation">forward</button>
+        <input type="text" name="number-input" id="number-input" autocomplete="off">
+      </div>
+      <div class="sudo-code">
+        <!-- TODO figure out how to make sudo code look like I want. aligned to the grid on the right 
+        and bottom but free to expand on the left and top -->
+      </div>
+      <div id="insert-sudo-code" class="operation-sudo-code sudo-code">
+        <div id="insert-cursor" class="sudo-code-rectangle">
+        </div>
+        <span id="insert-line1" class="sudo-code-line"><b>procedure</b> insert(value K, pointer P)<br></span>
+        <span id="insert-line2" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty)<br></span>
+        <span id="insert-line3" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;create an
+          empty leaf node <i>L</i>, which is also the root<br></span>
+        <span id="insert-line4" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that
+          should contain key value
+          K<br></span>
+        <span id="insert-line5" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math
+            display="inline">
+            <mn>n</mn>
+            <mo>-</mo>
+            <mi>1</mi>
+          </math>. key values)<br></span>
+        <span id="insert-line6" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node
+          L<br></span>
+        <span id="insert-line7" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
+            <mn>n</mn>
+            <mo>-</mo>
+            <mi>1</mi>
+          </math> already, split it into L and L'<br>
+        </span>
+        <span id="insert-line8" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
+          be the smallest key-value in L'<br>
+        </span>
+        <span id="insert-line9" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(L,
+          K', L')<br>
+        </span>
+        <span id="insert-line10" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+        </span>
+      </div>
+      <div id="insert-parent-sudo-code" class="operation-sudo-code sudo-code">
+        <div id="insert-parent-cursor" class="sudo-code-rectangle">
+        </div>
+        <b>procedure</b> insert_in_parent(node N, value K', node N')<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (N is the root of the tree)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then begin</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create a new node R containing N, K',
+        N' /* N
+        and N' are pointers */<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Make R the root of the tree<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>return</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;Let <math display="inline">
+          <mi>P</mi>
+          <mo>=</mo>
+          <mi>parent(N)</mi>
+        </math><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (P has less than n pointers)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> insert (K', N') in P just after N<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> Split P into
+        P and P'<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let
+        K'' be the smallest key-value in P'<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(P,
+        K'', P')<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+      </div>
+    </div>
+    <div class="Animation-Controls">
+      <button id="play-button">play</button>
+      <input type="range" id="timeline-input" name="timeline-input" min="0" max="1" value="0" step="0.01">
+      <div>
+        <input type="checkbox" name="speed" value="2" id="2x-checkbox">
+        <label for="2x-checkbox">2x</label>
+      </div>
+      <div>
+        <input type="checkbox" name="speed" value="4" id="4x-checkbox">
+        <label for="4x-checkbox">4x</label>
+      </div>
+      <div>
+        <input type="checkbox" name="speed" value="8" id="8x-checkbox">
+        <label for="8x-checkbox">8x</label>
+      </div>
+      <div>
+        <input type="checkbox" name="speed" value="1000" id="instant-checkbox">
+        <label for="8x-checkbox">instant</label>
+      </div>
+    </div>
     <svg id="main-svg" class="main-svg" viewBox="-500 -50 1000 1000" viewport="" xmlns="http://www.w3.org/2000/svg">
       <!-- <path class="edge" d="M 1 1 L 118 27" fill="none" id="edge-3-0" stroke="black" stroke-width="2px"
         marker-end="url(#arrow)" marker-start="url(#circle)" opacity="0" style="opacity: 1;"></path> -->
@@ -35,9 +134,9 @@
         </marker>
       </defs>
     </svg>
-    <div class="bottom-row flex-container">
+
+    <!-- <div class="bottom-row flex-container">
       <div id="operations" class="bottom-row-items">
-        <!-- TODO create either a flex box ui layout for the operation forms -->
         <button id="insert-button" class="operation">insert</button>
         <input type="checkbox" id="animation-toggle">
         <button id="delete-button" class="operation">delete</button>
@@ -47,44 +146,45 @@
         <input type="text" name="number-input" id="number-input" autocomplete="off">
       </div>
       <div class="bottom-row-items"></div>
-      <div id="sudo-code" class="bottom-row-items">
-        <div id="insert-sudo-code" class="operation-sudo-code active">
-          <div id="sudo-code-rectangle">
-          </div>
-          <span id="insert-line1" class="sudo-code-line"><b>procedure</b> insert(value K, pointer P)<br></span>
-          <span id="insert-line2" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty)<br></span>
-          <span id="insert-line3" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;create an
-            empty leaf node <i>L</i>, which is also the root<br></span>
-          <span id="insert-line4" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that
-            should contain key value
-            K<br></span>
-          <span id="insert-line5" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math
-              display="inline">
-              <mn>n</mn>
-              <mo>-</mo>
-              <mi>1</mi>
-            </math>. key values)<br></span>
-          <span id="insert-line6" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node
-            L<br></span>
-          <span id="insert-line7" class="sudo-code-line">
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
-              <mn>n</mn>
-              <mo>-</mo>
-              <mi>1</mi>
-            </math> already, split it into L and L'<br>
-          </span>
-          <span id="insert-line8" class="sudo-code-line">
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
-            be the smallest key-value in L'<br>
-          </span>
-          <span id="insert-line9" class="sudo-code-line">
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(L,
-            K', L')<br>
-          </span>
-          <span id="insert-line10" class="sudo-code-line">
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
-          </span>
+      <div id="insert-sudo-code" class="operation-sudo-code bottom-row-items">
+        <div id="sudo-code-rectangle">
         </div>
+        <span id="insert-line1" class="sudo-code-line"><b>procedure</b> insert(value K, pointer P)<br></span>
+        <span id="insert-line2" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty)<br></span>
+        <span id="insert-line3" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;create an
+          empty leaf node <i>L</i>, which is also the root<br></span>
+        <span id="insert-line4" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that
+          should contain key value
+          K<br></span>
+        <span id="insert-line5" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math
+            display="inline">
+            <mn>n</mn>
+            <mo>-</mo>
+            <mi>1</mi>
+          </math>. key values)<br></span>
+        <span id="insert-line6" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node
+          L<br></span>
+        <span id="insert-line7" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
+            <mn>n</mn>
+            <mo>-</mo>
+            <mi>1</mi>
+          </math> already, split it into L and L'<br>
+        </span>
+        <span id="insert-line8" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
+          be the smallest key-value in L'<br>
+        </span>
+        <span id="insert-line9" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(L,
+          K', L')<br>
+        </span>
+        <span id="insert-line10" class="sudo-code-line">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
+        </span>
+      </div>
+      <div id="sudo-code" class="bottom-row-items">
+
         <div id="insert-parent-sudo-code" class="operation-sudo-code">
           <b>procedure</b> insert_in_parent(node N, value K', node N')<br>
           &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (N is the root of the tree)<br>
@@ -111,46 +211,9 @@
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
         </div>
       </div>
-    </div>
-    <div class="middle-row"></div>
-    <div class="top-row"></div>
-    <div class="right-middle-row"></div>
-    <div class="right-bottom-row"></div>
-    <div class="left-bottom-row"></div>
-    <div class="left-middle-row"></div>
-    <div class="nav">
-      <button id="play-button">play</button>
-      <input type="range" id="timeline-input" name="timeline-input" min="0" max="1" value="0" step="0.01">
-      <div>
-        <input type="checkbox" name="speed" value="2" id="2x-checkbox">
-        <label for="2x-checkbox">2x</label>
-      </div>
-      <div>
-        <input type="checkbox" name="speed" value="4" id="4x-checkbox">
-        <label for="4x-checkbox">4x</label>
-      </div>
-      <div>
-        <input type="checkbox" name="speed" value="8" id="8x-checkbox">
-        <label for="8x-checkbox">8x</label>
-      </div>
-      <div>
-        <input type="checkbox" name="speed" value="1000" id="instant-checkbox">
-        <label for="8x-checkbox">instant</label>
-      </div>
-    </div>
+    </div> -->
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
-
-<!-- 
-The following templates define the sudo code that is used by the algoVisualizer
-class to indicate what step of the algorithm it is currently visualizing. It
-does this by highlighting the corresponding line of sudo code.
--->
-<template id="insert-sudo-code">
-</template>
-
-<template id="insert-in-parent-sudo-code">
-</template>
 
 </html>

@@ -14,7 +14,7 @@ import { select } from "d3-selection"
 import { path as d3Path, text } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
-type OperationType = "insert" | "delete"
+type OperationType = "insert" | "delete" | "insert-parent"
 
 
 /**
@@ -66,8 +66,6 @@ export class AlgoVisualizer {
     private readonly lightGreen
     private readonly pink
     private readonly highlightColor: string
-    private sudoCodeRectWidth: string
-    private sudoCodeLineHeight = "1lh"
     /* in milliseconds */
     private animationDuration = 5000
     public currentAnimation = createTimeline({})
@@ -99,12 +97,7 @@ export class AlgoVisualizer {
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
         this.pink = style.getPropertyValue("--pink")
-        const sudoCodeRect = document.querySelector("#sudo-code-rectangle")
-        if (sudoCodeRect == null) {
-            throw new Error("incorrect HTML structure in DOM")
-        }
         this.highlightColor = style.getPropertyValue("--highlighted-text")
-        this.sudoCodeRectWidth = style.getPropertyValue("--sudo-code-rectangle-width")
 
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight + this.nodeChildrenGap])
         this.d3TreeLayout.separation((a, b) => {
@@ -200,7 +193,6 @@ export class AlgoVisualizer {
                 ease: 'linear'
             }
         })
-        const moveSudoCodeRectangle = this.createSudoCodeRectangleObj(timeline)
         const bPlusTreeChildrenDefinition = (node: bPlusTreeNode) => {
             if (node.isLeaf) {
                 return []
@@ -209,22 +201,7 @@ export class AlgoVisualizer {
             }
         }
 
-        /* display sudo code section */
-        const operationSudoCodeDivs = document.querySelectorAll(".operation-sudo-code");
-        if (operationSudoCodeDivs == null) {
-            throw new Error("sudo code div not found in the DOM")
-        }
-        // we do this so that the previous sudo code for the previous operation is
-        // hidden.
-        operationSudoCodeDivs.forEach((div) => {
-            div.classList.remove("active")
-        })
-        const insertSudoCodeDiv = document.querySelector("#insert-sudo-code")
-        if (insertSudoCodeDiv == null) {
-            throw new Error("insert sudo code div not found in the DOM")
-        }
-        insertSudoCodeDiv.classList.add("active")
-
+        const moveSudoCodeRectangle = this.createSudoCodeRectangleObj(timeline, "insert")
         moveSudoCodeRectangle(1)
         moveSudoCodeRectangle(2)
         let targetNode: bPlusTreeNode
@@ -385,6 +362,7 @@ export class AlgoVisualizer {
                 }
             )
 
+            //TODO create a system for animating switching between operation sudo code.
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
         moveSudoCodeRectangle(10)
@@ -1350,9 +1328,56 @@ export class AlgoVisualizer {
      * Represents the sudo code rectangle that is used to provide a visual
      * indication of where the animation is currently at in the sudo code.
      * @param timeline the timeline to add the animations to
+     * @param operationType the type of operation that the sudo code rectangle
+     * is being used for.
+     * @dependency The specific css and html sudo code definitions located in the
+     * index.html file and the style.css files.
      * @returns A function used to move the sudo code rectangle to a specific line
      */
-    private createSudoCodeRectangleObj(timeline: Timeline) {
+    private createSudoCodeRectangleObj(timeline: Timeline, operationType: OperationType) {
+        const sudoCodeLineHeight = "1lh"
+        const style = getComputedStyle(document.body)
+        const sudoCodeRectWidth = style.getPropertyValue("--sudo-code-rectangle-width")
+        //We need this so that we can compute the width of the rectangle
+        //The width is stored in em units so we need to convert it to pixels.
+        const sudoCodeRectWidthFloat = parseFloat(sudoCodeRectWidth)
+        const sudoCodeLineHeightFloat = parseFloat(sudoCodeLineHeight)
+        const sudoCodeRectangle = document.querySelector("#" + operationType + "-cursor") // id defined in the index.html file
+        const insertSudoCodeDiv = document.querySelector("#insert-sudo-code")
+        const insertParentSudoCodeDiv = document.querySelector("#insert-parent-sudo-code")
+        let divArray = [insertSudoCodeDiv, insertParentSudoCodeDiv]
+        if (!insertSudoCodeDiv || !insertParentSudoCodeDiv || !sudoCodeRectangle) {
+            throw new Error("incorrect html DOM structure")
+        }
+        if (!timeline) {
+            throw new Error("bad timeline object passed in")
+        }
+        let divToReveal: null | Element = null
+        if (operationType == "insert") {
+            divToReveal = insertSudoCodeDiv
+        } else if (operationType == "insert-parent") {
+            divToReveal = insertParentSudoCodeDiv
+        }
+        divArray = divArray.filter((div) => {
+            div !== divToReveal
+        })
+        if (divToReveal == null) {
+            throw new Error("bad HTML structure or bad query selector string")
+        }
+        // this will be used to convert em units to pixels
+        const fontSize = parseFloat(window.getComputedStyle(divToReveal).fontSize)
+
+        //@ts-expect-error
+        timeline.add(divToReveal, {
+            opacity: 1,
+        })
+        // hide all the other sudo code that isn't being used
+        divArray.forEach((div) => {
+            timeline.set(div, {
+                opacity: 0
+            }, "<<")
+        })
+
         /**
          *
          * Add sudo code rectangle animations to the timeline
@@ -1364,20 +1389,20 @@ export class AlgoVisualizer {
          * @sideEffect adds animations to the given timeline
          */
         const moveSudoCodeRectangle = (sudoCodeLineGoal: number, end = false) => {
-            // The sudo code rectangle should always start at the first line as defined in the index.html file
-            const sudoCodeRectangle = document.querySelector("#sudo-code-rectangle")
-            const sudoCodeLineGoalElement = document.querySelector("#insert-line" + sudoCodeLineGoal)
-            if (sudoCodeRectangle == null || sudoCodeLineGoalElement == null) {
-                throw new Error("incorrect html DOM structure")
+            const sudoCodeLineGoalElement = document.querySelector("#" + operationType + "-line" + String(sudoCodeLineGoal))
+            if (!sudoCodeLineGoalElement) {
+                throw new Error("bad HTML structure or bad query selector string")
             }
-            const sudoCodeLineHeightFloat = parseFloat(this.sudoCodeLineHeight)
-
+            // The width of the rectangle hast to be added to the offset with because
+            // padding of the parent element is used to position the rectangle. This extra
+            // width needs to be accounted for.
+            const widthToAnimate = (sudoCodeLineGoalElement as HTMLElement).offsetWidth + (sudoCodeRectWidthFloat * fontSize)
             // Since the rectangle starts at the first line we don't need to move it there first.
             // This is defined in the index.html file
             if (end) {
                 //@ts-expect-error
                 timeline.add(sudoCodeRectangle, {
-                    width: this.sudoCodeRectWidth,
+                    width: sudoCodeRectWidth,
                     //@ts-expect-error
                 }).add(sudoCodeRectangle, {
                     top: ((sudoCodeLineHeightFloat * 1) - 1) + "lh",
@@ -1385,18 +1410,18 @@ export class AlgoVisualizer {
             } else if (sudoCodeLineGoal == 1) {
                 //@ts-expect-error
                 timeline.add(sudoCodeRectangle, {
-                    width: (sudoCodeLineGoalElement as HTMLElement).offsetWidth.toString() + "px",
+                    width: widthToAnimate + "px",
                 })
             } else {
                 //@ts-expect-error
                 timeline.add(sudoCodeRectangle, {
-                    width: this.sudoCodeRectWidth,
+                    width: sudoCodeRectWidth,
                     //@ts-expect-error
                 }).add(sudoCodeRectangle, {
                     top: ((sudoCodeLineHeightFloat * sudoCodeLineGoal) - 1) + "lh",
                     //@ts-expect-error
                 }).add(sudoCodeRectangle, {
-                    width: (sudoCodeLineGoalElement as HTMLElement).offsetWidth.toString() + "px",
+                    width: widthToAnimate + "px",
                 })
             }
 
