@@ -11,40 +11,37 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import { createTimeline, svg as animeSvg, Timeline } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
-import { path as d3Path, text } from "d3"
+import { path as d3Path } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
+// This type is used to communicate what algorithm operation is being animated or
+// was animated.
 type OperationType = "insert" | "delete" | "insert-parent"
 
 
 /**
  * 
  * This class implements a B+tree algorithm (as described in the Database System
- * Concepts 7th edition) and generates functions that can animate that
- * algorithm. By using this class a web UI can animate a B+tree. Each instance of
+ * Concepts 7th edition) and generates animations for that algorithm.
+ * By using this class a web UI can animate a B+tree. Each instance of
  * this class corresponds to a rendered B+tree algorithm.   
- * @dependency For this class to function correctly there must be a blank svg element with
- * the id "main-svg".
- * @dependency There must be div element with the id "sudo-code" that contains the sudo
- * code for the B+tree algorithm. This html element structure is defined in the
- * index.html file of this project.
- * @dependency There must be a certain color config defined in the :root pseudo class.
- * This color config is defined in the style.css file of this project.
+ * @dependency For this class to function correctly there must be a certain HTML and CSS
+ * structure already rendered by the browser. This structure is defined in the index.html
+ * and style.css files of this project.
  */
 export class AlgoVisualizer {
     /* number of pointers in a node */
     private readonly n: number
-    private readonly sudoCodeContainer = document.querySelector("#sudo-code")
+    //TODO maybe change this convention below.
     /* When the bplus tree is empty it contains a bplus tree node with an empty
     keys array */
     private bPlusTreeRoot: bPlusTreeNode = new bPlusTreeNode(true)
-    //Used in the undo method to restore the previous state of the tree and animation
+    //Used in undo methods to restore the previous state of the tree and animation
     private previousBPlusTreeRoot: bPlusTreeNode = this.bPlusTreeRoot
     private previousValue: number | null = null //represents a value that was inserted or deleted
     private previousOperationType: OperationType | null = null
-    /** this is initialized using the color config defined in the :root pseudo
-     * class rule of the style.css file*/
-    private readonly sudoCodeBackgroundColor: string
+    // The following constants are used to generate the style of the bplus tree nodes.
+    // You can change their value to change how the tree looks.
     private readonly keyRectWidth = 42
     private readonly nodeHeight = 29
     private readonly pointerRectWidth = 14
@@ -54,28 +51,28 @@ export class AlgoVisualizer {
     private readonly nodeParentsGap = 2
     //added to the node size height to create a gap between parents and children.
     private readonly nodeChildrenGap = 200
+    private readonly lightBlue
+    private readonly lightGreen
+    /* in milliseconds */
+    private animationDuration = 5000
+    // end of style constants
+    // The following constants are here to help the programmer to keep track of the
+    // class and id names of the relevant elements in the DOM. This names are defined
+    // in the index.html and style.css files of this project.
     private readonly leafNodeEdgeClassName = "leaf-node-edge"
     private readonly edgeClassName = "edge"
     private readonly nodeClassName = "node"
+    //  All nodes are g elements so you can use this along with the d3 selection
+    //  function to select nodes.
     private readonly nodeSelector = "g.node"
     private readonly nodeRectClassName = this.nodeClassName + "-rect"
     private readonly keyTextClassName = "node-key-text"
-    //this must match the id of the svg defined in the index.html file.
     private readonly mainSvgId = "#main-svg"
-    private readonly lightBlue
-    private readonly lightGreen
-    private readonly pink
-    private readonly highlightColor: string
-    /* in milliseconds */
-    private animationDuration = 5000
-    public currentAnimation = createTimeline({})
+    // end of class and id names constants
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
-    // used to store d3 selections that will be removed at the start of a new animation.
-    private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
-
+    //TODO make this a return value of the operation methods rather than a 
+    //public field.
     /**
      * allows control of the algorithm visualization. By calling the do and undo
      * methods of this object a user of this class can navigate the algorithm
@@ -83,6 +80,12 @@ export class AlgoVisualizer {
      * of this object.
      */
     public readonly algoStepHistory = new AlgoStepHistory()
+    // ** mutable global variables section ** //
+    // used to store d3 selections that will be removed at the start of a new animation.
+    private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
+        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
+        d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
+    public currentAnimation = createTimeline({})
 
 
     /**
@@ -96,8 +99,6 @@ export class AlgoVisualizer {
         const style = getComputedStyle(document.body)
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
-        this.pink = style.getPropertyValue("--pink")
-        this.highlightColor = style.getPropertyValue("--highlighted-text")
 
         this.d3TreeLayout.nodeSize([this.nodeWidth, this.nodeHeight + this.nodeChildrenGap])
         this.d3TreeLayout.separation((a, b) => {
@@ -110,17 +111,6 @@ export class AlgoVisualizer {
                 return this.nodeParentsGap
             }
         })
-
-        const rootElement = document.querySelector("html")
-        if (rootElement) {
-            this.highlightColor = getComputedStyle(rootElement).getPropertyValue("--highlighted-text")
-            this.sudoCodeBackgroundColor = getComputedStyle(rootElement).getPropertyValue("--light-blue")
-        } else {
-            console.warn("Text highlight color could not be accessed defaulting to #ffed99")
-            this.highlightColor = "#ffed99"
-            console.warn("Text highlight color could not be accessed defaulting to #c7ebfc")
-            this.sudoCodeBackgroundColor = "#c7ebfc"
-        }
     }
 
 
@@ -162,24 +152,17 @@ export class AlgoVisualizer {
      * Insert a number into the B+Tree if it is not already in the tree. And
      * generates an animation for that insertion.
      * @param value a number to insert into the B+Tree.
-     * @param autoplay determines weather or not the animation plays when
-     * function is called.
      * @returns The on completion promise of the generated animation
-     * @dependency this.bPlusTreeRoot inserts value into this tree
-     * @dependency A svg element with the id "main-svg" in the DOM
-     * @dependency A div element with the id "sudo-code" in the DOM and its
-     * children. (defined in index.html file)
+     * @sideEffect sets this.currentAnimation to the newly created animation.    
+     * @sidEffect modifies this.bPlusTreeRoot by inserting a value into the tree.
+     * @sideEffect this.mainSvgId, manipulates the children of this DOM element
      * @sideEffect any currently animating algorithm step will be interrupted
      * and a new one corresponding to this method will begin.
      * @sideEffect all exit selections stored in this.exitSelection will
      * be removed from the DOM.
-     * @sideEffects Manipulates the DOM by adding svg elements and sudo code for animation.
-     * @sideEffects adds d3 selections to the exitSelections array for removal
-     * at before the next insertion animation is generated. Or before the
-     * insertion is undone.
-     * @sideEffect sets this.currentAnimation to the newly created animation.    
+     * @sideEffects adds d3 selections to the exitSelections array for removal.
      * */
-    private async insert(value: number, autoplay = false): Promise<unknown> {
+    private async insert(value: number): Promise<unknown> {
         //This needs to be done so that the old elements that are no longer relevant
         //do not interfere with the new animation. If this wasn't done then the new selections
         //could potentially be erroneously selecting old irrelevant elements.
@@ -362,7 +345,7 @@ export class AlgoVisualizer {
                 }
             )
 
-            //TODO create a system for animating switching between operation sudo code.
+            //TODO animate insert in parent
             this.insertInParent(targetNode, newNode.keys[0], newNode)
         }
         moveSudoCodeRectangle(10)
