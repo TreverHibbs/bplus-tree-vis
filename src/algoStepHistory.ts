@@ -1,3 +1,5 @@
+import { Timeline } from "./lib/anime.esm"
+
 /**
  * This interface defines a object that is used to store one atomic step of a algorithm
  * so that that step can be undone and redone.
@@ -7,9 +9,10 @@ export interface AlgoStep {
      * Implementation of this method should execute a atomic series of algorithm
      * steps and there corresponding animations.
      *
-     * @return A boolean that indicates success or not
+     * @return A Timeline of the generated animation of the algo step. Or null if the step
+     * was not successful.
      */
-    do: () => Promise<unknown>
+    do: () => Timeline | null
 
     /**
      * This should return the process and UI to its state from before the corresponding

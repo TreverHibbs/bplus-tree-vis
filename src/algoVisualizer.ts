@@ -152,8 +152,8 @@ export class AlgoVisualizer {
      * Insert a number into the B+Tree if it is not already in the tree. And
      * generates an animation for that insertion.
      * @param value a number to insert into the B+Tree.
-     * @returns The on completion promise of the generated animation
-     * @sideEffect sets this.currentAnimation to the newly created animation.    
+     * @returns The animejs timeline object that represents the animation of the
+     * insertion. Or null if the value to be inserted is already in the tree.
      * @sidEffect modifies this.bPlusTreeRoot by inserting a value into the tree.
      * @sideEffect this.mainSvgId, manipulates the children of this DOM element
      * @sideEffect any currently animating algorithm step will be interrupted
@@ -162,7 +162,7 @@ export class AlgoVisualizer {
      * be removed from the DOM.
      * @sideEffects adds d3 selections to the exitSelections array for removal.
      * */
-    private async insert(value: number): Promise<unknown> {
+    private insert(value: number): Timeline | null {
         //This needs to be done so that the old elements that are no longer relevant
         //do not interfere with the new animation. If this wasn't done then the new selections
         //could potentially be erroneously selecting old irrelevant elements.
@@ -238,8 +238,7 @@ export class AlgoVisualizer {
             const { found, node } = this.find(value)
 
             if (found) {
-                // Do not allow duplicates
-                return
+                return null
             } else {
                 targetNode = node
             }
@@ -351,9 +350,7 @@ export class AlgoVisualizer {
         moveSudoCodeRectangle(10)
         moveSudoCodeRectangle(10, true)
 
-        this.currentAnimation = timeline
-
-        return timeline.then(() => true)
+        return timeline
     }
 
     /**
@@ -459,23 +456,15 @@ export class AlgoVisualizer {
      * Delete a number from the B+Tree if it is in the tree. And
      * generates an animation for that deletion.
      * @param value a number to delete from the B+Tree.
-     * @param autoplay determines weather or not the animation plays when
-     * function is called.
-     * @returns The on completion promise of the generated animation, or
-     * a promise that results in null if the tree is empty or the value
-     * is not in the tree.
-     * @dependency this.bPlusTreeRoot delete value from this tree
-     * @sideEffect any currently animating algorithm step will be interrupted
-     * and a new one corresponding to this method will begin.
+     * @returns The timeline object that represents the animation of the
+     * deletion. Or null if the value to be deleted is not in the tree.
+     * @sideEffect this.bPlusTreeRoot delete value from this tree
+     * @sideEffect will play the generated timeline
      * @sideEffect all exit selections stored in this.exitSelection will
-     * be removed from the DOM.
-     * @sideEffects Manipulates the DOM by adding svg elements
-     * @sideEffects adds d3 selections to the exitSelections array for removal
-     * before the next operation animation is generated. Or before the
-     * operation is undone.
-     * @sideEffect sets this.currentAnimation to the newly created animation.     
+     * be removed from the DOM. And new elements may be added.
+     * @sideEffect manipulates the children of the DOM element corresponding to this.mainSvgId.
      * */
-    private async delete(value: number, autoplay = true): Promise<unknown | null> {
+    private delete(value: number): Timeline | null {
         let targetNode: bPlusTreeNode
         if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
             return null // nothing to delete
@@ -490,10 +479,8 @@ export class AlgoVisualizer {
             }
         }
 
-        this.deleteEntry(targetNode, value)
-
-        // -- Animation Section -- //
-        return this.animateOperation()
+        //TODO add animation to this method
+        return this.deleteEntry(targetNode, value)
     }
 
     /**
@@ -634,25 +621,25 @@ export class AlgoVisualizer {
     // Undoable Methods Section //
     /**
      * Inserts a value into the BPlus Tree and animates it. Also allows for the
-     * redoing undoing of that insert. Making sure that state is remembered for
-     * proper restoring.
+     * redoing undoing of that insert.
      * @param value the number to insert, duplicates can't be added to the tree
-     * @return The on completion promise of the generated animation
+     * @return The timeline of the generated animation or null if the value is a duplicate.
      * @dependency undefined behavior if another undoable method is called when
      * the current operations corresponding animation is not in its completed state.
-     * @dependency reads this.previousBPlusTreeRoot to set the closure for the
-     * created algo step.
+     * //TODO experiment with the below quirk.
      * @dependency if you call this method right after a previous animation generated by and
      * undoable method operation is completed the animation generated by this method will be wrong.
      * Wait at least 10 milliseconds after the completion of the on completion promise of 
      * the previous animation.
-     * @dependency reads this.previousValue to set the closure for the created algo step
-     * @sideEffect adds an AlgoStep object corresponding to this insert to this.algoStepHistory
-     * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before the last
+     * @sideEffect reads and then sets the this.previousBPlusTreeRoot to the state of the tree
+     * before the last undoable method call.
+     * @sideEffect reads and then sets the this.previousAnimationType to the type of this
      * undoable method call.
-     * @sideEffect sets the this.previousValue to the value given to the last undoable method call.
+     * @sideEffect reads and sets the this.previousValue to the value given to the last
+     * undoable method call.
+     * @sideEffect adds an AlgoStep object corresponding to this insert to this.algoStepHistory
      */
-    public async undoableInsert(value: number) {
+    public undoableInsert(value: number): Timeline | null {
         let valueBeforePreviousOperation: number | null = null
         let operationTypeBeforePreviousOperation: OperationType | null = null
 
@@ -731,7 +718,7 @@ export class AlgoVisualizer {
          * @sideEffect the global state this.previousBPlusTreeRoot will be set.
          * @sideEffect the global state this.previousValue will be set.
          */
-        const insertDo = async () => {
+        const insertDo = () => {
             // set the global state so that future undoable inserts can create
             // correct closures for undoing.
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
@@ -740,14 +727,18 @@ export class AlgoVisualizer {
             return this.insert(value)
         }
 
-        const insertAlgoStep: AlgoStep = {
-            do: insertDo,
-            undo: insertUndo
+        const generatedTimeline = insertDo()
+        // we don't want to save the algo step if the value to be inserted is already in the tree.
+        // Since nothing would happen and the undo and redo would be a noop.
+        if (generatedTimeline != null) {
+            const insertAlgoStep: AlgoStep = {
+                do: insertDo,
+                undo: insertUndo
+            }
+            this.algoStepHistory.addAlgoStep(insertAlgoStep)
         }
 
-        this.algoStepHistory.addAlgoStep(insertAlgoStep)
-
-        return insertAlgoStep.do()
+        return generatedTimeline
     }
 
     /**
@@ -765,13 +756,15 @@ export class AlgoVisualizer {
      * @dependency reads this.previousBPlusTreeRoot to set the closure for the
      * created algo step.
      * @dependency reads this.previousValue to set the closure for the created algo step
+     * @sideEffect reads and then sets the this.previousAnimationType to the type of this
+     * undoable method call.
      * @sideEffect adds an AlgoStep object corresponding to this delete to this.algoStepHistory
      * @sideEffect sets the this.previousBPlusTreeRoot to the state of the tree before 
      * the previous undoable method call.
      * @sideEffect sets the this.previousValue to the value given to the
      * previous undoable method call.
      */
-    public async undoableDelete(value: number) {
+    public undoableDelete(value: number) {
         let valueBeforePreviousOperation: number | null = null
         let operationTypeBeforePreviousOperation: OperationType | null = null
 
@@ -815,23 +808,28 @@ export class AlgoVisualizer {
          * @sideEffect the global state this.previousBPlusTreeRoot will be set.
          * @sideEffect the global state this.previousValue will be set.
          */
-        const deleteDo = async () => {
+        const deleteDo = () => {
             // set the global state so that future undoable operations can create
             // correct closures for undoing.
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
             this.previousValue = value
+            //TODO add this to side effects
             this.previousOperationType = "delete"
             return this.delete(value)
         }
 
-        const deleteAlgoStep: AlgoStep = {
-            do: deleteDo,
-            undo: deleteUndo
+        const generatedTimeline = deleteDo()
+        // we don't want to save the algo step if the value to be deleted is not in the tree.
+        // Since nothing would happen and the undo and redo would be a noop.
+        if (generatedTimeline != null) {
+            const deleteAlgoStep: AlgoStep = {
+                do: deleteDo,
+                undo: deleteUndo
+            }
+            this.algoStepHistory.addAlgoStep(deleteAlgoStep)
         }
 
-        this.algoStepHistory.addAlgoStep(deleteAlgoStep)
-
-        return deleteAlgoStep.do()
+        return generatedTimeline
     }
 
 
