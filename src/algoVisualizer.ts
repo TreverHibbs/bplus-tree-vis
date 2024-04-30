@@ -30,16 +30,27 @@ type OperationType = "insert" | "delete" | "insert-parent"
  * and style.css files of this project.
  */
 export class AlgoVisualizer {
-    /* number of pointers in a node */
-    private readonly n: number
+    // ** begin global variables section ** //
     //TODO maybe change this convention below.
     /* When the bplus tree is empty it contains a bplus tree node with an empty
     keys array */
     private bPlusTreeRoot: bPlusTreeNode = new bPlusTreeNode(true)
-    //Used in undo methods to restore the previous state of the tree and animation
+    // The next three variables are used in undo methods to restore the
+    // previous state of the tree data structure and DOM from before a
+    // operation was executed.
     private previousBPlusTreeRoot: bPlusTreeNode = this.bPlusTreeRoot
     private previousValue: number | null = null //represents a value that was inserted or deleted
     private previousOperationType: OperationType | null = null
+    // used to store d3 selections that will be removed at the start of a new animation.
+    // this will get rid of the DOM elements corresponding to the old animation.
+    private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
+        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
+        d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
+    public currentAnimation = createTimeline({})
+    // ** end global variables section ** //
+    // ** begin global constants section ** //
+    // number of pointers in a node
+    private readonly n: number
     // The following constants are used to generate the style of the bplus tree nodes.
     // You can change their value to change how the tree looks.
     private readonly keyRectWidth = 42
@@ -80,12 +91,7 @@ export class AlgoVisualizer {
      * of this object.
      */
     public readonly algoStepHistory = new AlgoStepHistory()
-    // ** mutable global variables section ** //
-    // used to store d3 selections that will be removed at the start of a new animation.
-    private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
-    public currentAnimation = createTimeline({})
+    // ** end global constants section ** //
 
 
     /**
@@ -640,28 +646,29 @@ export class AlgoVisualizer {
      * @sideEffect adds an AlgoStep object corresponding to this insert to this.algoStepHistory
      */
     public undoableInsert(value: number): Timeline | null {
-        let valueBeforePreviousOperation: number | null = null
-        let operationTypeBeforePreviousOperation: OperationType | null = null
-
+        let previousOperationValue: number | null = null
+        let previousOperationType: OperationType | null = null
         //set the closure variables for the algo step object.
-        const BPlusTreeRootStateBeforePreviousInsert = structuredClone(this.previousBPlusTreeRoot)
-        valueBeforePreviousOperation = this.previousValue
-        operationTypeBeforePreviousOperation = this.previousOperationType
+        const BPlusTreeBeforePreviousOperation = structuredClone(this.previousBPlusTreeRoot)
+        previousOperationValue = this.previousValue
+        previousOperationType = this.previousOperationType
 
         /**
          * Undoes the operations of the corresponding insert method call, which
          * is defined in the insertDo function definition. All state including
          * the DOM should be returned to exactly how it was.
-         * @sideEffect Remove Dom elements that were added by the insertDo function
-         * @sideEffect Restore the state of this.bPlusTreeRoot to what it was before
-         * the corresponding insertDo function was called.
+         * @return A Timeline of the generated animation for the previous operation. Or
+         * null if there is no previous operation in history.
+         * @dependencies uses the previousOperationValue, previousOperationType, and
+         * PreviousBPlusTree to recreate the previous operations execution.
+         * @sideEffect calls the operation method corresponding to the previousOperationType
          */
         const insertUndo = () => {
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
 
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeRootStateBeforePreviousInsert, (node) => {
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeBeforePreviousOperation, (node) => {
                 if (node.isLeaf) {
                     return []
                 } else {
@@ -697,15 +704,15 @@ export class AlgoVisualizer {
             this.createNewNodeText(textSelection.enter(), false)
 
             // return the global state to its state before the previous insert.
-            this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousInsert)
-            this.previousValue = valueBeforePreviousOperation
+            this.bPlusTreeRoot = structuredClone(BPlusTreeBeforePreviousOperation)
+            this.previousValue = previousOperationValue
 
-            if (valueBeforePreviousOperation == null) {
-                return
-            } else if (operationTypeBeforePreviousOperation == "insert") {
-                this.insert(valueBeforePreviousOperation)
-            } else if (operationTypeBeforePreviousOperation == "delete") {
-                this.delete(valueBeforePreviousOperation)
+            if (previousOperationValue == null) {
+                return null
+            } else if (previousOperationType == "insert") {
+                return this.insert(previousOperationValue)
+            } else if (previousOperationType == "delete") {
+                return this.delete(previousOperationValue)
             }
             return
         }
@@ -714,7 +721,8 @@ export class AlgoVisualizer {
          *
          * Executes an insert that can be undone later so that all sate
          * including the DOM is returned to its sate from before the method call.
-         * @returns The on completion promise of the generated animation
+         * @return A Timeline of the generated animation of the algo step. Or
+         * null if there is no next operation in history.
          * @sideEffect the global state this.previousBPlusTreeRoot will be set.
          * @sideEffect the global state this.previousValue will be set.
          */

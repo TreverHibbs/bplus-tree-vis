@@ -7,10 +7,10 @@ import { Timeline } from "./lib/anime.esm"
 export interface AlgoStep {
     /**
      * Implementation of this method should execute a atomic series of algorithm
-     * steps and there corresponding animations.
+     * steps and generate their corresponding animations.
      *
-     * @return A Timeline of the generated animation of the algo step. Or null if the step
-     * was not successful.
+     * @return A Timeline of the generated animation of the algo step. Or
+     * null if there is no next operation in history.
      */
     do: () => Timeline | null
 
@@ -18,9 +18,10 @@ export interface AlgoStep {
      * This should return the process and UI to its state from before the corresponding
      * do methods execution.
      * 
-     * @return A boolean that indicates success or not
+     * @return A Timeline of the generated animation for the previous operation. Or
+     * null if there is no previous operation in history.
      */
-    undo: () => void
+    undo: () => Timeline | null
 }
 
 /**
@@ -39,7 +40,6 @@ export class AlgoStepHistory {
      * @param step The AlgoStep to add to the history. Must have already been executed.
      * @sideEffect AlgoSteps after the current step index are removed from
      * the AlgoStep array.
-     *
      */
     public addAlgoStep(step: AlgoStep) {
         if (this.steps[this.currentStepIndex + 1]) {
@@ -53,27 +53,33 @@ export class AlgoStepHistory {
     /**
      * Executes the next algo step
      *
-     * @returns boolean indicates success
+     * @returns Timeline of the generated animation for the executed algo step. Or
+     * null if there is no next step.
      */
-    public stepForwards() {
-        if (this.steps[this.currentStepIndex + 1] === undefined) return false // no next step
-
-        this.steps[this.currentStepIndex + 1].do()
+    public stepForwards(): Timeline | null {
+        if (this.steps[this.currentStepIndex + 1] === undefined) return null // no next step
         this.currentStepIndex++
-        return true
+        const generatedTimeline = this.steps[this.currentStepIndex + 1].do()
+        if (generatedTimeline === null) {
+            throw new Error('null algo step made it into the history. This should not happen.')
+        }
+        return generatedTimeline
     }
 
     /**
      * Returns the application to its state from before the last algo step
      * execution.
      *
-     * @returns boolean indicates success
+     * @returns Timeline of the generated animation for the executed algo step. Or
+     * null if there is no next step.
      */
-    public stepBackwards() {
-        if (this.steps[this.currentStepIndex] === undefined) return false // oldest step
-
-        this.steps[this.currentStepIndex].undo()
+    public stepBackwards(): Timeline | null {
+        if (this.steps[this.currentStepIndex] === undefined) return null // oldest step
+        const generatedTimeline = this.steps[this.currentStepIndex].undo()
+        if (generatedTimeline === null) {
+            throw new Error('null algo step made it into the history. This should not happen.')
+        }
         this.currentStepIndex--
-        return true
+        return generatedTimeline
     }
 }
