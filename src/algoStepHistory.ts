@@ -58,11 +58,11 @@ export class AlgoStepHistory {
      */
     public stepForwards(): Timeline | null {
         if (this.steps[this.currentStepIndex + 1] === undefined) return null // no next step
-        this.currentStepIndex++
         const generatedTimeline = this.steps[this.currentStepIndex + 1].do()
         if (generatedTimeline === null) {
             throw new Error('null algo step made it into the history. This should not happen.')
         }
+        this.currentStepIndex++
         return generatedTimeline
     }
 
@@ -71,14 +71,11 @@ export class AlgoStepHistory {
      * execution.
      *
      * @returns Timeline of the generated animation for the executed algo step. Or
-     * null if there is no next step.
+     * null if there is no next step or when doing the first operation step.
      */
     public stepBackwards(): Timeline | null {
         if (this.steps[this.currentStepIndex] === undefined) return null // oldest step
         const generatedTimeline = this.steps[this.currentStepIndex].undo()
-        if (generatedTimeline === null) {
-            throw new Error('null algo step made it into the history. This should not happen.')
-        }
         this.currentStepIndex--
         return generatedTimeline
     }

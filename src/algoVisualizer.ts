@@ -46,7 +46,7 @@ export class AlgoVisualizer {
     private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
         d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
         d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
-    public currentAnimation = createTimeline({})
+    // public currentAnimation = createTimeline({})
     // ** end global variables section ** //
     // ** begin global constants section ** //
     // number of pointers in a node
@@ -65,7 +65,7 @@ export class AlgoVisualizer {
     private readonly lightBlue
     private readonly lightGreen
     /* in milliseconds */
-    private animationDuration = 5000
+    private animationDuration = 1000
     // end of style constants
     // The following constants are here to help the programmer to keep track of the
     // class and id names of the relevant elements in the DOM. This names are defined
@@ -711,10 +711,9 @@ export class AlgoVisualizer {
                 return null
             } else if (previousOperationType == "insert") {
                 return this.insert(previousOperationValue)
-            } else if (previousOperationType == "delete") {
+            } else {
                 return this.delete(previousOperationValue)
             }
-            return
         }
 
         /**
@@ -745,7 +744,6 @@ export class AlgoVisualizer {
             }
             this.algoStepHistory.addAlgoStep(insertAlgoStep)
         }
-
         return generatedTimeline
     }
 

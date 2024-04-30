@@ -12,7 +12,6 @@ import { Timeline } from "./lib/anime.esm"
 export const userInterface = () => {
     // ** global constants section ** //
     const algoVisualizer = new AlgoVisualizer(4)
-    const animationToggle = <HTMLInputElement>document.querySelector('#animation-toggle')
     const speedControlCheckboxes: NodeListOf<HTMLInputElement> = document.
         querySelectorAll('input[type="checkbox"][name="speed"]');
     // ** end global constants section ** // 
@@ -36,7 +35,7 @@ export const userInterface = () => {
                 currentAnimation = algoVisualizer.undoableInsert(num);
                 if (currentAnimation === null) return
                 //@ts-expect-error
-                currentAnimationOriginalDuration = generatedTimeline.duration
+                currentAnimationOriginalDuration = currentAnimation.duration
                 currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier).play()
                 await currentAnimation.then(() => true)
                 await new Promise(resolve => setTimeout(resolve, 10)); // Wait for 10 milliseconds
@@ -53,7 +52,7 @@ export const userInterface = () => {
             await numbers.reduce(async (previousPromise, num) => {
                 await previousPromise;
                 const currentAnimation = algoVisualizer.undoableDelete(num);
-                if(currentAnimation === null) return
+                if (currentAnimation === null) return
                 await currentAnimation.then(() => true)
                 await new Promise(resolve => setTimeout(resolve, 10)); // Wait for 10 milliseconds
             }, Promise.resolve());
@@ -73,15 +72,19 @@ export const userInterface = () => {
     const backButton = document.querySelector('#back-button')
     backButton?.addEventListener('click', () => {
         const stepBackReturn = algoVisualizer.algoStepHistory.stepBackwards()
-        if(stepBackReturn === null) return
+        if (stepBackReturn === null) return
         currentAnimation = stepBackReturn
+        currentAnimation.stretch(currentAnimation.duration / speedModifier)
+        currentAnimation.progress = 1
     })
 
     const forwardButton = document.querySelector('#forward-button')
     forwardButton?.addEventListener('click', () => {
         const stepForwardReturn = algoVisualizer.algoStepHistory.stepForwards()
-        if(stepForwardReturn === null) return
+        if (stepForwardReturn === null) return
         currentAnimation = stepForwardReturn
+        currentAnimation.stretch(currentAnimation.duration / speedModifier)
+        currentAnimation.play()
     })
 
     const timelineInput = <HTMLInputElement>document.querySelector('#timeline-input')
@@ -97,47 +100,46 @@ export const userInterface = () => {
     // Speed checkboxes listener
     speedControlCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener('mousedown', function (this: HTMLInputElement) {
-            const currentAnimeProgress = algoVisualizer.currentAnimation.progress
-            // If the checkbox button is already checked
             if (this.checked == false) {
                 // Make the checkboxes mutually exclusive
                 speedControlCheckboxes.forEach((checkbox) => {
                     checkbox.checked = false;
                 })
                 speedModifier = Number(this.value)
+                if (currentAnimation === null) return
+                const currentAnimeProgress = currentAnimation.progress
                 // Make it so that when a new speed modifier is selected and an animation is
                 // currently playing the animation speeds up at the current location in the animation.
                 // So that it looks seamless to the user.
-                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier)
+                currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier)
                 // if we don't restart here there is one frame where the animation appears to be at a
                 // different location than it should be. I don't know why this is.
-                algoVisualizer.currentAnimation.restart()
+                currentAnimation.restart()
                 if (currentAnimeProgress == 1) {
                     // for some reason setting progress to 1 doesn't seem to 
                     // do anything. Therefore in order for the animation to
                     // appear as though it is at the end we set the progress
                     // to 0.99999. A number very close to 1
-                    algoVisualizer.currentAnimation.progress = 0.99999
+                    currentAnimation.progress = 0.99999
                 } else {
-                    algoVisualizer.currentAnimation.progress = currentAnimeProgress
+                    currentAnimation.progress = currentAnimeProgress
                 }
             } else {
                 speedModifier = 1
-                algoVisualizer.currentAnimation.stretch(currentAnimationOriginalDuration)
+                if (currentAnimation === null) return
+                const currentAnimeProgress = currentAnimation.progress
+                currentAnimation.stretch(currentAnimationOriginalDuration)
                 // see comments above for clarification on this line
-                algoVisualizer.currentAnimation.restart()
+                currentAnimation.restart()
                 if (currentAnimeProgress == 1) {
                     // see comments above for clarification on this line
-                    algoVisualizer.currentAnimation.progress = 0.99999
+                    currentAnimation.progress = 0.99999
                 } else {
-                    algoVisualizer.currentAnimation.progress = currentAnimeProgress
+                    currentAnimation.progress = currentAnimeProgress
                 }
             }
         });
     });
-
-    animationToggle?.addEventListener('input', setAnimationToggle)
-
 
     /**
      *
