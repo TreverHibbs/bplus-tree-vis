@@ -83,7 +83,6 @@ export class AlgoVisualizer {
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
     //TODO make this a return value of the operation methods rather than a 
-    //public field.
     /**
      * allows control of the algorithm visualization. By calling the do and undo
      * methods of this object a user of this class can navigate the algorithm
@@ -661,13 +660,15 @@ export class AlgoVisualizer {
          * null if there is no previous operation in history.
          * @dependencies uses the previousOperationValue, previousOperationType, and
          * PreviousBPlusTree to recreate the previous operations execution.
-         * @sideEffect calls the operation method corresponding to the previousOperationType
+         * @sideEffect sets the global variables this.bPlusTreeRoot and this.previousValue
+         * to the state they were in before the previous operation.
+         * @sideEffect calls the operation method corresponding to the previousOperationType.
+         * Therefore all side effects of that method are relevant here.
          */
         const insertUndo = () => {
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
-
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeBeforePreviousOperation, (node) => {
                 if (node.isLeaf) {
                     return []
@@ -675,38 +676,31 @@ export class AlgoVisualizer {
                     return node.pointers
                 }
             }))
-
             const edgeSelection = select(this.mainSvgId)
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                 .data(rootHierarchyNode.links())
             edgeSelection.exit().remove()
-
             const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
             const leafNodeEdgeSelection = select(this.mainSvgId)
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.leafNodeEdgeClassName)
                 .data(leafNodeLinks)
             leafNodeEdgeSelection.exit().remove()
-
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
                 .data(rootHierarchyNode, (d) => d.data.id)
 
             nodeSelection.exit().remove()
             nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
-
             nodeSelection.attr("transform", (d) => {
                 return this.getNodeTransformString(d.x, d.y)
             })
-
             const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
             this.createNewNodeText(textSelection.enter(), false)
-
             // return the global state to its state before the previous insert.
             this.bPlusTreeRoot = structuredClone(BPlusTreeBeforePreviousOperation)
             this.previousValue = previousOperationValue
-
             if (previousOperationValue == null) {
                 return null
             } else if (previousOperationType == "insert") {
