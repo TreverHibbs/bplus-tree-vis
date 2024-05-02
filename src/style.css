@@ -86,12 +86,6 @@ body {
   padding-left: 1em;
 }
 
-#insert-sudo-code {
-}
-
-#insert-parent-sudo-code {
-}
-
 .sudo-code-rectangle {
   position: absolute;
   /* or absolute, fixed, or sticky */
@@ -110,7 +104,6 @@ body {
 #operations {
   padding: 1em;
   background-color: var(--pink);
-
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;

@@ -35,8 +35,8 @@ export class AlgoVisualizer {
     /* When the bplus tree is empty it contains a bplus tree node with an empty
     keys array */
     private bPlusTreeRoot: bPlusTreeNode = new bPlusTreeNode(true)
-    // The next three variables are used in undo methods to restore the
-    // previous state of the tree data structure and DOM from before a
+    // The next three variables are used in the undoable operation methods to
+    // restore the previous state of the tree data structure and DOM from before a
     // operation was executed.
     private previousBPlusTreeRoot: bPlusTreeNode = this.bPlusTreeRoot
     private previousValue: number | null = null //represents a value that was inserted or deleted
@@ -46,7 +46,6 @@ export class AlgoVisualizer {
     private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
         d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
         d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
-    // public currentAnimation = createTimeline({})
     // ** end global variables section ** //
     // ** begin global constants section ** //
     // number of pointers in a node
@@ -73,8 +72,8 @@ export class AlgoVisualizer {
     private readonly leafNodeEdgeClassName = "leaf-node-edge"
     private readonly edgeClassName = "edge"
     private readonly nodeClassName = "node"
-    //  All nodes are g elements so you can use this along with the d3 selection
-    //  function to select nodes.
+    // All nodes are g elements so you can use this along with the d3 selection
+    // function to select nodes.
     private readonly nodeSelector = "g.node"
     private readonly nodeRectClassName = this.nodeClassName + "-rect"
     private readonly keyTextClassName = "node-key-text"
@@ -82,7 +81,6 @@ export class AlgoVisualizer {
     // end of class and id names constants
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
-    //TODO make this a return value of the operation methods rather than a 
     /**
      * allows control of the algorithm visualization. By calling the do and undo
      * methods of this object a user of this class can navigate the algorithm
@@ -117,7 +115,6 @@ export class AlgoVisualizer {
             }
         })
     }
-
 
 
     // Operation Methods Section //
@@ -628,7 +625,7 @@ export class AlgoVisualizer {
      * Inserts a value into the BPlus Tree and animates it. Also allows for the
      * redoing undoing of that insert.
      * @param value the number to insert, duplicates can't be added to the tree
-     * @return The timeline of the generated animation or null if the value is a duplicate.
+     * @return The timeline of the generated animation or null if the value is not inserted.
      * @dependency undefined behavior if another undoable method is called when
      * the current operations corresponding animation is not in its completed state.
      * //TODO experiment with the below quirk.
@@ -643,6 +640,8 @@ export class AlgoVisualizer {
      * @sideEffect reads and sets the this.previousValue to the value given to the last
      * undoable method call.
      * @sideEffect adds an AlgoStep object corresponding to this insert to this.algoStepHistory
+     * @sideEffect calls the insert method to generate the animation. So all side effects of that
+     * method are relevant here.
      */
     public undoableInsert(value: number): Timeline | null {
         let previousOperationValue: number | null = null
@@ -716,8 +715,10 @@ export class AlgoVisualizer {
          * including the DOM is returned to its sate from before the method call.
          * @return A Timeline of the generated animation of the algo step. Or
          * null if there is no next operation in history.
-         * @sideEffect the global state this.previousBPlusTreeRoot will be set.
-         * @sideEffect the global state this.previousValue will be set.
+         * @sideEffect the global variables this.previousBPlusTreeRoot and
+         * this.previousValue will be modified.
+         * @sideEffect the insert method is called so all side effects of that method
+         * are relevant here.
          */
         const insertDo = () => {
             // set the global state so that future undoable inserts can create
@@ -741,6 +742,7 @@ export class AlgoVisualizer {
         return generatedTimeline
     }
 
+    //TODO when animating this update all comments
     /**
      * Deletes a value from the BPlus Tree and animates it. Also allows for the
      * redoing undoing of that delete. Making sure that state is remembered for
@@ -831,8 +833,6 @@ export class AlgoVisualizer {
 
         return generatedTimeline
     }
-
-
 
 
     // Helper Methods Section //
@@ -1038,8 +1038,6 @@ export class AlgoVisualizer {
         if (isTransparent == false) {
             transparencyValue = 1
         }
-
-
         const newGElementsSelection = select(this.mainSvgId).append("g")
             .attr("class", "node")
             .attr("id", String(node.id))
@@ -1303,16 +1301,17 @@ export class AlgoVisualizer {
         return timeline.then(() => true)
     }
 
-    //TODO consider getting rid of the factory part of this.
     /**
      *
      * Represents the sudo code rectangle that is used to provide a visual
-     * indication of where the animation is currently at in the sudo code.
+     * indication of where the animation is currently at in the sudo code. And
+     * displays the sudo code that corresponds to the operationType params value.
      * @param timeline the timeline to add the animations to
      * @param operationType the type of operation that the sudo code rectangle
      * is being used for.
-     * @dependency The specific css and html sudo code definitions located in the
+     * @dependency The specific css and html sudo code divs located in the
      * index.html file and the style.css files.
+     * @sideEffect edits the DOM structure of the sudo code div
      * @returns A function used to move the sudo code rectangle to a specific line
      */
     private createSudoCodeRectangleObj(timeline: Timeline, operationType: OperationType) {
