@@ -63,8 +63,11 @@ export class AlgoVisualizer {
     private readonly nodeChildrenGap = 200
     private readonly lightBlue
     private readonly lightGreen
-    /* in milliseconds */
-    private animationDuration = 1000
+    // The following constants are used to control the style of the animations
+    // in milliseconds
+    private readonly animationDuration = 1000
+    // in pixels
+    private readonly translateYDist = 40
     // end of style constants
     // The following constants are here to help the programmer to keep track of the
     // class and id names of the relevant elements in the DOM. This names are defined
@@ -75,8 +78,12 @@ export class AlgoVisualizer {
     // All nodes are g elements so you can use this along with the d3 selection
     // function to select nodes.
     private readonly nodeSelector = "g.node"
+    //used to prefix the id of the node because a valid DOM selector string
+    //cannot start with a number.
+    private readonly nodeIdPrefix = "n"
     private readonly nodeRectClassName = this.nodeClassName + "-rect"
     private readonly keyTextClassName = "node-key-text"
+    private readonly nodeTextSelector = "text." + this.keyTextClassName
     private readonly mainSvgId = "#main-svg"
     // end of class and id names constants
     /** used to get the x y coords of the trees nodes on the canvas */
@@ -115,6 +122,7 @@ export class AlgoVisualizer {
             }
         })
     }
+
 
 
     // Operation Methods Section //
@@ -185,6 +193,72 @@ export class AlgoVisualizer {
                 return node.pointers
             }
         }
+        /**
+         * A subsidiary procedure for the insert method
+         * @param leftNode A bPlusTreeNode to be placed to the left of the key value
+         * @param value The key value to insert into parent node
+         * @param rightNode A bPlusTreeNode to be placed to the right of the key value
+         * @dependency bPlusTreeChildrenDefinition
+         * @sideEffect potentially splits the parent node of leftNode and rightNode
+         * @sideEffects edits the contents of the pointers and keys arrays of
+         * the parent node, leftNode and rightNode.
+         * @sideEffect adds animation to timeline
+         */
+        const insertInParent = (leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode) => {
+            if (leftNode.parent == null) {
+                this.bPlusTreeRoot = new bPlusTreeNode(false)
+                this.bPlusTreeRoot.isLeaf = false
+                this.bPlusTreeRoot.pointers = [leftNode, rightNode]
+                this.bPlusTreeRoot.keys = [value]
+
+                leftNode.parent = this.bPlusTreeRoot
+                rightNode.parent = this.bPlusTreeRoot
+
+                return
+            }
+
+            const parentNode = leftNode.parent
+            const leftNodeIndex = parentNode.pointers.findIndex(element => element === leftNode)
+            if (parentNode.pointers.filter(element => element).length < this.n) {
+                parentNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
+                parentNode.keys.splice(leftNodeIndex, 0, value)
+            } else { // split
+                const tempKeys = parentNode.keys.slice()
+                const tempPointers = parentNode.pointers.slice()
+
+                tempPointers.splice(leftNodeIndex + 1, 0, rightNode)
+                tempKeys.splice(leftNodeIndex, 0, value)
+
+                parentNode.keys = []
+                parentNode.pointers = []
+
+                const newNode = new bPlusTreeNode(false)
+
+                parentNode.pointers = tempPointers.slice(0, Math.ceil((this.n + 1) / 2))
+                parentNode.keys = tempKeys.slice(0, Math.ceil((this.n + 1) / 2) - 1)
+
+                const middleKey = tempKeys[Math.ceil(((this.n + 1) / 2) - 1)]
+
+                newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
+                newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
+
+                newNode.parent = parentNode.parent
+
+                parentNode.pointers.forEach(node => {
+                    if (node) {
+                        node.parent = parentNode;
+                    }
+                });
+                newNode.pointers.forEach(node => {
+                    if (node) {
+                        node.parent = newNode;
+                    }
+                });
+
+                insertInParent(parentNode, middleKey, newNode)
+            }
+            return
+        }
 
         const moveSudoCodeRectangle = this.createSudoCodeRectangleObj(timeline, "insert")
         moveSudoCodeRectangle(1)
@@ -224,7 +298,7 @@ export class AlgoVisualizer {
                 timeline.add(
                     newSVGGElementsRectChildren[0],
                     {
-                        translateY: { from: "-40" }
+                        translateY: { from: "-" + this.translateYDist }
                     },
                     '<<'
                 )
@@ -268,7 +342,7 @@ export class AlgoVisualizer {
                 //@ts-expect-error
             ).add(textSelection.nodes(),
                 {
-                    translateY: { from: "-40" },
+                    translateY: { from: "-" + this.translateYDist },
                     duration: this.animationDuration * 2
                     //@ts-expect-error
                 }).set(textSelection.nodes(),
@@ -300,7 +374,8 @@ export class AlgoVisualizer {
             newNode.parent = targetNode.parent
 
             // animate node splitting
-            // first need to find the coordinates of the target node
+            // first need to find the coordinates of the target node so that the new node can be placed
+            // next to it.
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                 .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -316,14 +391,16 @@ export class AlgoVisualizer {
                     translateX: { to: targetNodeSelection.data()[0].x - this.nodeWidth },
                     translateY: { to: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5 },
                 }
-                //@ts-expect-error
-            ).add(
+            )
+            //@ts-expect-error
+            timeline.add(
                 newNodeElement,
                 {
                     opacity: { to: 1, ease: "outQuad" },
                 }
             )
 
+            // animate adding the new node to the tree
             const rectChildNodes: ChildNode[] = []
             newNodeElement.childNodes.forEach((child) => {
                 if (child.nodeName == "rect") {
@@ -334,20 +411,44 @@ export class AlgoVisualizer {
                 timeline.add(
                     rectChildNodes,
                     {
-                        translateY: { from: "-40" }
+                        translateY: { from: "-" + this.translateYDist }
                     },
                     '<<'
                 )
+                timeline.set(rectChildNodes,
+                    {
+                        fill: this.lightBlue
+                    }
+                )
             }
-            //@ts-expect-error
-            timeline.set(newNodeElement,
+
+            //animate transferring key values to the new node
+            const targetNodeTextSelection = targetNodeSelection.
+                selectAll(this.nodeTextSelector).data(d => d.data.keys)
+            timeline.add(targetNodeTextSelection.exit().nodes(),
                 {
-                    fill: this.lightBlue
+                    translateY: { to: "+" + this.translateYDist },
                 }
             )
+            //We need to get the location of the new nodes text elements
+            //so that we can know where the target nodes text elements
+            //should animate to. The target nodes text should animate
+            //to the corresponding text element in the new node.
+            const newNodeSelection = select("#" + newNodeElement.id)
+            const newNodeTextSelection = newNodeSelection.selectAll(this.nodeTextSelector).data(newNode.keys)
+            const newTextSelection = this.createNewNodeText(newNodeTextSelection.enter())
+            newTextSelection.nodes
+            // targetNodeTextSelection.exit().nodes().forEach((element, i) => {
+            //     const svgTextElement = element as SVGTextElement
+            //     const newSvgTextElement = newTextSelection.nodes()[i] as SVGTextElement
+            //     const distTranslateX = svgTextElement.getBBox().x - newSvgTextElement.getBBox().x
+            //     timeline.add(element, {
+            //         translateX: { to: "+" + distTranslateX }
+            //     })
+            // })
 
             //TODO animate insert in parent
-            this.insertInParent(targetNode, newNode.keys[0], newNode)
+            insertInParent(targetNode, newNode.keys[0], newNode)
         }
         moveSudoCodeRectangle(10)
         moveSudoCodeRectangle(10, true)
@@ -386,71 +487,6 @@ export class AlgoVisualizer {
         return
     }
 
-    /**
-     * 
-     * A subsidiary procedure for the insert method
-     * @param leftNode A bPlusTreeNode to be placed to the left of the key value
-     * @param value The key value to insert into parent node
-     * @param rightNode A bPlusTreeNode to be placed to the right of the key value
-     * @sideEffect potentially splits the parent node of leftNode and rightNode
-     * @sideEffects edits the contents of the pointers and keys arrays of
-     * the parent node, leftNode and rightNode.
-     */
-    private insertInParent(leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode) {
-        if (leftNode.parent == null) {
-            this.bPlusTreeRoot = new bPlusTreeNode(false)
-            this.bPlusTreeRoot.isLeaf = false
-            this.bPlusTreeRoot.pointers = [leftNode, rightNode]
-            this.bPlusTreeRoot.keys = [value]
-
-            leftNode.parent = this.bPlusTreeRoot
-            rightNode.parent = this.bPlusTreeRoot
-
-            return
-        }
-
-        const parentNode = leftNode.parent
-        const leftNodeIndex = parentNode.pointers.findIndex(element => element === leftNode)
-        if (parentNode.pointers.filter(element => element).length < this.n) {
-            parentNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
-            parentNode.keys.splice(leftNodeIndex, 0, value)
-        } else { // split
-            const tempKeys = parentNode.keys.slice()
-            const tempPointers = parentNode.pointers.slice()
-
-            tempPointers.splice(leftNodeIndex + 1, 0, rightNode)
-            tempKeys.splice(leftNodeIndex, 0, value)
-
-            parentNode.keys = []
-            parentNode.pointers = []
-
-            const newNode = new bPlusTreeNode(false)
-
-            parentNode.pointers = tempPointers.slice(0, Math.ceil((this.n + 1) / 2))
-            parentNode.keys = tempKeys.slice(0, Math.ceil((this.n + 1) / 2) - 1)
-
-            const middleKey = tempKeys[Math.ceil(((this.n + 1) / 2) - 1)]
-
-            newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
-            newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
-
-            newNode.parent = parentNode.parent
-
-            parentNode.pointers.forEach(node => {
-                if (node) {
-                    node.parent = parentNode;
-                }
-            });
-            newNode.pointers.forEach(node => {
-                if (node) {
-                    node.parent = newNode;
-                }
-            });
-
-            this.insertInParent(parentNode, middleKey, newNode)
-        }
-        return
-    }
 
 
     /**
@@ -1183,7 +1219,7 @@ export class AlgoVisualizer {
             timeline.add(
                 newSVGGElementsRectChildren[0],
                 {
-                    translateY: { from: "-40" }
+                    translateY: { from: "-" + this.translateYDist }
                 },
                 '<<'
             )
@@ -1204,7 +1240,7 @@ export class AlgoVisualizer {
             //@ts-expect-error
         ).add([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
             {
-                translateY: { from: "-40" },
+                translateY: { from: "-" + this.translateYDist },
                 duration: this.animationDuration * 2
                 //@ts-expect-error
             }).set([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],

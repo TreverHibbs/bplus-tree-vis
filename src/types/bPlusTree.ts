@@ -13,8 +13,10 @@ export class bPlusTreeNode {
     public isLeaf: boolean
     /** initialized to null */
     public parent: bPlusTreeNode | null = null
+    // This id needs to be prefixed by n because the id
+    // is used as a DOM id. And DOM ids cannot start with a number.
     /** incrementing id */
-    public id: number = nodeId++
+    public id: string = "n" + nodeId++
 
     /**
      * Initialize properties in new B+ tree node
