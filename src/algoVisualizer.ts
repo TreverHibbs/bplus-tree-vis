@@ -366,6 +366,7 @@ export class AlgoVisualizer {
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
             tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
+            const targetNodeKeysBeforeSplit = targetNode.keys.slice()
             tempNode.keys = targetNode.keys.slice(0, this.n - 1)
             this.insertInLeaf(tempNode, value)
 
@@ -443,16 +444,24 @@ export class AlgoVisualizer {
             //so that we can know where the target nodes text elements
             //should animate to. The target nodes text should animate
             //to the corresponding text element in the new node.
-            const newNodeSelection = select("#" + newNodeElement.id)
-            const newNodeTextSelection = newNodeSelection.selectAll(this.nodeTextSelector).data(newNode.keys)
-            const newTextSelection = this.createNewNodeText(newNodeTextSelection.enter())
-            newTextSelection.nodes
+            const correspondingNumbers: { targetIndex: number, newIndex: number }[] = []
+            targetNodeKeysBeforeSplit.forEach((targetElement, i) => {
+                newNode.keys.forEach((newElement, j) => {
+                    if (targetElement == newElement) {
+                        correspondingNumbers.push({ targetIndex: i, newIndex: j })
+                    }
+                })
+            })
+            // const newNodeSelection: d3.Selection<d3.BaseType, bPlusTreeNode, HTMLElement, any> =
+            //     select("#" + newNodeElement.id)
+            // const newNodeTextSelection = newNodeSelection.selectAll(this.nodeTextSelector).data(newNode.keys)
+            // const newTextElementSelection = this.createNewNodeText(newNodeTextSelection.enter())
+            //create a new array that maps the target nodes text elements to the new nodes text elements
             targetNodeTextSelection.exit().nodes().forEach((element, i) => {
                 const svgTextElement = element as SVGTextElement
-                const newSvgTextElement = newTextSelection.nodes()[i] as SVGTextElement
-                const distTranslateX = svgTextElement.getBBox().x - newSvgTextElement.getBBox().x
-                timeline.add(element, {
-                    translateX: { to: "+" + distTranslateX }
+                const distTranslateX = this.nodeWidth * 2 + ((this.keyRectWidth + this.pointerRectWidth) * ((correspondingNumbers[i].newIndex + 1) - (correspondingNumbers[i].targetIndex + 1)))
+                timeline.add(svgTextElement, {
+                    translateX: { to: "+" + Math.abs(distTranslateX) }
                 })
             })
 
@@ -929,7 +938,8 @@ export class AlgoVisualizer {
      * initially. This exists so that text reveal can be animated.
      * @return textElementSelection the selection of newly created text elements
      */
-    private createNewNodeText(newTextSelection: d3.Selection<d3.EnterElement, number, SVGGElement | d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>>,
+    private createNewNodeText(newTextSelection: d3.Selection<d3.EnterElement, number, SVGGElement | d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
+        d3.Selection<d3.EnterElement, number, d3.BaseType, bPlusTreeNode>,
         isTransparent = false): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
         const newSvgTextElement = newTextSelection.append("text")
         let textElementSelection = newSvgTextElement.attr("class", "node-key-text")
