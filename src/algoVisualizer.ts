@@ -106,6 +106,15 @@ export class AlgoVisualizer {
     constructor(nodeSize: number) {
         this.n = nodeSize
         this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * (this.n - 1) + this.pointerRectWidth
+        //move the origin of the SVG canvas to the left by half the node width
+        //so that the tree is centered on the canvas. It must be done like this because the
+        //nodes must keep there origin in the top left corner. Otherwise animejs will not work correctly
+        //because it overrides transforms in order to animate svg movement.
+        const svg: SVGSVGElement | null = document.querySelector(this.mainSvgId)
+        if (svg == null) throw new Error("main-svg element not found invalid html structure")
+        svg.viewBox
+        svg.setAttribute('viewBox',
+            `${svg.viewBox.baseVal.x + (this.nodeWidth / 2)} ${svg.viewBox.baseVal.y} ${svg.viewBox.baseVal.width} ${svg.viewBox.baseVal.height}`);
         const style = getComputedStyle(document.body)
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
@@ -438,14 +447,14 @@ export class AlgoVisualizer {
             const newNodeTextSelection = newNodeSelection.selectAll(this.nodeTextSelector).data(newNode.keys)
             const newTextSelection = this.createNewNodeText(newNodeTextSelection.enter())
             newTextSelection.nodes
-            // targetNodeTextSelection.exit().nodes().forEach((element, i) => {
-            //     const svgTextElement = element as SVGTextElement
-            //     const newSvgTextElement = newTextSelection.nodes()[i] as SVGTextElement
-            //     const distTranslateX = svgTextElement.getBBox().x - newSvgTextElement.getBBox().x
-            //     timeline.add(element, {
-            //         translateX: { to: "+" + distTranslateX }
-            //     })
-            // })
+            targetNodeTextSelection.exit().nodes().forEach((element, i) => {
+                const svgTextElement = element as SVGTextElement
+                const newSvgTextElement = newTextSelection.nodes()[i] as SVGTextElement
+                const distTranslateX = svgTextElement.getBBox().x - newSvgTextElement.getBBox().x
+                timeline.add(element, {
+                    translateX: { to: "+" + distTranslateX }
+                })
+            })
 
             //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
@@ -948,9 +957,9 @@ export class AlgoVisualizer {
      * @dependency this.nodeWidth The width of a bplus tree node
      * @return String The string meant to be used as the transform attribute
      */
-    private getNodeTransformString = (x: number, y: number) => {
-        return "translate(" + String(x - this.nodeWidth / 2) + "," + String(y) + ")"
-    }
+    // private getNodeTransformString = (x: number, y: number) => {
+    //     return "translate(" + String(x - this.nodeWidth / 2) + "," + String(y) + ")"
+    // }
 
     /**
      * Creates a string that represents the svg path for a B+ Tree node edge.
@@ -1078,7 +1087,11 @@ export class AlgoVisualizer {
             .attr("class", "node")
             .attr("id", String(node.id))
             .attr("transform-origin", "center")
-            .attr("transform", this.getNodeTransformString(x, y))
+            //TODO make this obsolete by changing the svg canvas origin based on node
+            //width. I need to do this because when animating the nodes the
+            //transform string is used. Making this attribute useless. and causing
+            //all nodes to shift right by the width of the node.
+            .attr("transform", "translate(" + String(x) + "," + String(y) + ")")
             .attr("opacity", transparencyValue)
 
         for (let i = 0; i < (this.n - 1); i++) {

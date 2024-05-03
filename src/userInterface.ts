@@ -156,4 +156,18 @@ export const userInterface = () => {
         //timelineInput?.setAttribute('max', String(currentAnimation?.children.length))
         return 1
     }
+
+    let svg = document.querySelector('svg'); // select the SVG element
+    if (svg == null) throw new Error('svg element not found')
+    svg.addEventListener('click', function (event) {
+        let point = svg.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+
+        const getScreenCTM = svg.getScreenCTM();
+        if(getScreenCTM === null) throw new Error('getScreenCTM returned null')
+        let svgPoint = point.matrixTransform(getScreenCTM.inverse());
+
+        console.log(`x: ${svgPoint.x}, y: ${svgPoint.y}`);
+    });
 }
