@@ -362,6 +362,19 @@ export class AlgoVisualizer {
         } else { //leaf node targetNode has n - 1 key values already, split it
             moveSudoCodeRectangle(7)
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
+            const nodeSelection = select(this.mainSvgId)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
+            const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
+            //animate target node moving to the left and down to make room for tmp and new node
+            //@ts-expect-error
+            timeline.add(
+                targetNodeSelection.nodes(),
+                {
+                    translateX: { to: targetNodeSelection.data()[0].x - this.nodeWidth },
+                    translateY: { to: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5 },
+                }
+            )
 
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
@@ -369,6 +382,27 @@ export class AlgoVisualizer {
             const targetNodeKeysBeforeSplit = targetNode.keys.slice()
             tempNode.keys = targetNode.keys.slice(0, this.n - 1)
             this.insertInLeaf(tempNode, value)
+            const tempNodeElement = this.createNodeElement(tempNode, targetNodeSelection.data()[0].x, targetNodeSelection.data()[0].y)
+
+            const tempNodeRectChildNodes: ChildNode[] = []
+            tempNodeElement.childNodes.forEach((child) => {
+                if (child.nodeName == "rect") {
+                    tempNodeRectChildNodes.push(child)
+                }
+            })
+            timeline.add(
+                tempNodeElement,
+                {
+                    translateY: { from: "-" + this.translateYDist },
+                    opacity: { to: 1, ease: "outQuad" },
+                }
+            )
+            timeline.set(
+                tempNodeRectChildNodes,
+                {
+                    fill: this.lightBlue
+                }
+            )
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
@@ -386,22 +420,10 @@ export class AlgoVisualizer {
             // animate node splitting
             // first need to find the coordinates of the target node so that the new node can be placed
             // next to it.
-            const nodeSelection = select(this.mainSvgId)
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
-            const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
             const newNodeElement = this.createNodeElement(newNode,
                 targetNodeSelection.data()[0].x + this.nodeWidth,
                 targetNodeSelection.data()[0].y + this.nodeHeight * 1.5)
 
-            //@ts-expect-error
-            timeline.add(
-                targetNodeSelection.nodes(),
-                {
-                    translateX: { to: targetNodeSelection.data()[0].x - this.nodeWidth },
-                    translateY: { to: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5 },
-                }
-            )
             //@ts-expect-error
             timeline.add(
                 newNodeElement,
