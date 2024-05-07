@@ -443,6 +443,34 @@ export class AlgoVisualizer {
                     }
                 )
             }
+            
+            //animate moving numbers to the temp node
+            //first move the target nodes svg element to the end of the main svg canvas
+            //so that its element appear on top of the temp node. This is done so that
+            //when moving the numbers they don't become hidden.
+            const mainSvg = document.querySelector(this.mainSvgId)
+            if(mainSvg == null) throw new Error("main-svg element not found invalid html structure")
+            mainSvg.appendChild(targetNodeSelection.nodes()[0])
+            const targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector)
+            timeline.add(
+                targetNodeTextSelection.nodes(),
+                {
+                    translateY: { to: "-" + this.nodeHeight * 3 },
+                }
+            )
+            timeline.add(
+                targetNodeTextSelection.nodes(),
+                {
+                    translateX: { to: "+" + this.nodeWidth }
+                }
+            )
+            timeline.add(
+                targetNodeTextSelection.nodes(),
+                {
+                    translateY: { to: "-" + this.nodeHeight * 1.5 },
+                }
+            )
+            //TODO finish animating moving target numbers to temp node.
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
