@@ -382,14 +382,21 @@ export class AlgoVisualizer {
             const targetNodeKeysBeforeSplit = targetNode.keys.slice()
             tempNode.keys = targetNode.keys.slice(0, this.n - 1)
             this.insertInLeaf(tempNode, value)
-            const tempNodeElement = this.createNodeElement(tempNode, targetNodeSelection.data()[0].x, targetNodeSelection.data()[0].y)
 
+            //animate adding the temp node to the visualization
+            //we have to get the temp node elements rect children so that we can animate
+            //the change of the nodes color.
+            const tempNodeElement = this.createNodeElement(tempNode, targetNodeSelection.data()[0].x,
+                targetNodeSelection.data()[0].y, true, true)
             const tempNodeRectChildNodes: ChildNode[] = []
             tempNodeElement.childNodes.forEach((child) => {
                 if (child.nodeName == "rect") {
                     tempNodeRectChildNodes.push(child)
                 }
             })
+            //@ts-expect-error
+            timeline.add("addTempNode")
+            //@ts-expect-error
             timeline.add(
                 tempNodeElement,
                 {
@@ -397,12 +404,45 @@ export class AlgoVisualizer {
                     opacity: { to: 1, ease: "outQuad" },
                 }
             )
+            //@ts-expect-error
             timeline.set(
                 tempNodeRectChildNodes,
                 {
                     fill: this.lightBlue
                 }
             )
+
+            // animate adding the new node to the tree
+            const newNodeElement = this.createNodeElement(newNode,
+                targetNodeSelection.data()[0].x + this.nodeWidth,
+                targetNodeSelection.data()[0].y + this.nodeHeight * 1.5)
+            timeline.add(
+                newNodeElement,
+                {
+                    opacity: { to: 1, ease: "outQuad" },
+                }, "addTempNode"
+            )
+            const rectChildNodes: ChildNode[] = []
+            newNodeElement.childNodes.forEach((child) => {
+                if (child.nodeName == "rect") {
+                    rectChildNodes.push(child)
+                }
+            })
+            if (rectChildNodes.length != 0) {
+                timeline.add(
+                    rectChildNodes,
+                    {
+                        translateY: { from: "-" + this.translateYDist }
+                    },
+                    "<<"
+                )
+                //@ts-expect-error
+                timeline.set(rectChildNodes,
+                    {
+                        fill: this.lightBlue
+                    }
+                )
+            }
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
@@ -417,75 +457,39 @@ export class AlgoVisualizer {
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
             newNode.parent = targetNode.parent
 
-            // animate node splitting
-            // first need to find the coordinates of the target node so that the new node can be placed
-            // next to it.
-            const newNodeElement = this.createNodeElement(newNode,
-                targetNodeSelection.data()[0].x + this.nodeWidth,
-                targetNodeSelection.data()[0].y + this.nodeHeight * 1.5)
-
-            //@ts-expect-error
-            timeline.add(
-                newNodeElement,
-                {
-                    opacity: { to: 1, ease: "outQuad" },
-                }
-            )
-
-            // animate adding the new node to the tree
-            const rectChildNodes: ChildNode[] = []
-            newNodeElement.childNodes.forEach((child) => {
-                if (child.nodeName == "rect") {
-                    rectChildNodes.push(child)
-                }
-            })
-            if (rectChildNodes.length != 0) {
-                timeline.add(
-                    rectChildNodes,
-                    {
-                        translateY: { from: "-" + this.translateYDist }
-                    },
-                    '<<'
-                )
-                timeline.set(rectChildNodes,
-                    {
-                        fill: this.lightBlue
-                    }
-                )
-            }
 
             //animate transferring key values to the new node
-            const targetNodeTextSelection = targetNodeSelection.
-                selectAll(this.nodeTextSelector).data(d => d.data.keys)
-            timeline.add(targetNodeTextSelection.exit().nodes(),
-                {
-                    translateY: { to: "+" + this.translateYDist },
-                }
-            )
+            // const targetNodeTextSelection = targetNodeSelection.
+            //     selectAll(this.nodeTextSelector).data(d => d.data.keys)
+            // timeline.add(targetNodeTextSelection.exit().nodes(),
+            //     {
+            //         translateY: { to: "+" + this.translateYDist },
+            //     }
+            // )
             //We need to get the location of the new nodes text elements
             //so that we can know where the target nodes text elements
             //should animate to. The target nodes text should animate
             //to the corresponding text element in the new node.
-            const correspondingNumbers: { targetIndex: number, newIndex: number }[] = []
-            targetNodeKeysBeforeSplit.forEach((targetElement, i) => {
-                newNode.keys.forEach((newElement, j) => {
-                    if (targetElement == newElement) {
-                        correspondingNumbers.push({ targetIndex: i, newIndex: j })
-                    }
-                })
-            })
+            // const correspondingNumbers: { targetIndex: number, newIndex: number }[] = []
+            // targetNodeKeysBeforeSplit.forEach((targetElement, i) => {
+            //     newNode.keys.forEach((newElement, j) => {
+            //         if (targetElement == newElement) {
+            //             correspondingNumbers.push({ targetIndex: i, newIndex: j })
+            //         }
+            //     })
+            // })
             // const newNodeSelection: d3.Selection<d3.BaseType, bPlusTreeNode, HTMLElement, any> =
             //     select("#" + newNodeElement.id)
             // const newNodeTextSelection = newNodeSelection.selectAll(this.nodeTextSelector).data(newNode.keys)
             // const newTextElementSelection = this.createNewNodeText(newNodeTextSelection.enter())
             //create a new array that maps the target nodes text elements to the new nodes text elements
-            targetNodeTextSelection.exit().nodes().forEach((element, i) => {
-                const svgTextElement = element as SVGTextElement
-                const distTranslateX = this.nodeWidth * 2 + ((this.keyRectWidth + this.pointerRectWidth) * ((correspondingNumbers[i].newIndex + 1) - (correspondingNumbers[i].targetIndex + 1)))
-                timeline.add(svgTextElement, {
-                    translateX: { to: "+" + Math.abs(distTranslateX) }
-                })
-            })
+            // targetNodeTextSelection.exit().nodes().forEach((element, i) => {
+            //     const svgTextElement = element as SVGTextElement
+            //     const distTranslateX = this.nodeWidth * 2 + ((this.keyRectWidth + this.pointerRectWidth) * ((correspondingNumbers[i].newIndex + 1) - (correspondingNumbers[i].targetIndex + 1)))
+            //     timeline.add(svgTextElement, {
+            //         translateX: { to: "+" + Math.abs(distTranslateX) }
+            //     })
+            // })
 
             //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
@@ -1106,11 +1110,14 @@ export class AlgoVisualizer {
      * @param x The x coordinate of the node. Defaults to 0.
      * @param y The y coordinate of the node. Defaults to 0.
      * @param isTransparent Toggles wether or not the node is transparent. Defaults to true.
+     * @param isTempNode Toggle wether or not the node needs room for an extra
+     * key. Defaults to false.
      *
      * @dependency this.n The size of a bplus tree node
      * @return SVGGElement The SVGGElement that was created
      */
-    private createNodeElement(node: bPlusTreeNode, x = 0, y = 0, isTransparent = true): SVGGElement {
+    private createNodeElement(node: bPlusTreeNode, x = 0, y = 0,
+        isTransparent = true, isTempNode = false): SVGGElement {
         let transparencyValue = 0
         if (isTransparent == false) {
             transparencyValue = 1
@@ -1150,6 +1157,19 @@ export class AlgoVisualizer {
             .attr("x", (this.n - 1) * (this.pointerRectWidth + this.keyRectWidth))
             .attr("y", 0)
             .attr("fill", this.lightGreen)
+
+        if (isTempNode) {
+            //add an extra key rectangle to the node
+            newGElementsSelection.append('rect')
+                .attr("class", this.nodeRectClassName)
+                .attr("width", this.keyRectWidth)
+                .attr("height", this.nodeHeight)
+                //place the extra key rectangle at the end of the node
+                .attr("x", (this.n - 1) * (this.pointerRectWidth + this.keyRectWidth) + this.pointerRectWidth)
+                .attr("y", 0)
+                .attr("fill", this.lightGreen)
+
+        }
 
         return newGElementsSelection.nodes()[0]
     }
