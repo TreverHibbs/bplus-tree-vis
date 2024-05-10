@@ -202,6 +202,129 @@ export class AlgoVisualizer {
                 return node.pointers
             }
         }
+
+        //TODO finish making this animate right
+        /**
+         *
+         * A sub procedure for the insert method
+         * @param targetNode The node to insert they key value into
+         * @param value The key value to insert
+         * @sideEffect Adds the value to the keys array of the targetNode
+         * @sideEffect adds animation to the timeline
+         */
+        const insertInLeaf = (targetNode: bPlusTreeNode, value: number) => {
+            //must generate the tree layout  and join the data with all the nodes.
+            //This must be done because the data is not bound to the svg element when
+            //it is created.
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
+            const nodeSelection = select(this.mainSvgId)
+                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
+            const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
+            let targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+                .data((d) => d.data.keys)
+            if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
+                //animate shifting all keys to the right
+                timeline.add(targetNodeTextSelection.nodes(),
+                    {
+                        TranslateX: { to: "+" + this.keyRectWidth + this.pointerRectWidth }
+                    }
+                )
+
+                // shift all values in keys to the right one spot.
+                for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
+                    if (targetNode.keys[i]) {
+                        targetNode.keys[i + 1] = targetNode.keys[i]
+                    }
+                }
+                targetNode.keys[0] = value
+
+                //animate adding the new key value to the leaf node
+                targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+                    .data((d) => d.data.keys)
+                const newTextSelection = this.createNewNodeText(targetNodeTextSelection.enter())
+                //@ts-expect-error
+                timeline.set(newTextSelection.nodes(),
+                    {
+                        opacity: 1
+                    }
+                    //@ts-expect-error
+                ).add(newTextSelection.nodes(),
+                    {
+                        translateY: { from: "-" + this.translateYDist },
+                        duration: this.animationDuration * 2
+                        //@ts-expect-error
+                    }).set(newTextSelection.nodes(),
+                        {
+                            fill: "#000000"
+                        }
+                    )
+            } else {
+                // insert value into targetNode.keys just after the 
+                // highest number that is less than or equal to value.
+                const highestNumberIndex = targetNode.keys.findIndex(element => element >= value)
+                // if find Index returns -1 then the last number in keys must be the
+                // greatest number that is less than or equal to value.
+                if (highestNumberIndex < 0) {
+                    targetNode.keys.push(value)
+
+                    //animate adding the new key value to the leaf node
+                    targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+                        .data((d) => d.data.keys)
+                    const newTextSelection = this.createNewNodeText(targetNodeTextSelection.enter())
+                    //@ts-expect-error
+                    timeline.set(newTextSelection.nodes(),
+                        {
+                            opacity: 1
+                        }
+                        //@ts-expect-error
+                    ).add(newTextSelection.nodes(),
+                        {
+                            translateY: { from: "-" + this.translateYDist },
+                            duration: this.animationDuration * 2
+                            //@ts-expect-error
+                        }).set(newTextSelection.nodes(),
+                            {
+                                fill: "#000000"
+                            }
+                        )
+                } else {
+                    //animate shifting keys to the right
+                    timeline.add(targetNodeTextSelection.nodes().slice(highestNumberIndex),
+                        {
+                            TranslateX: { to: "+" + this.keyRectWidth + this.pointerRectWidth }
+                        }
+                    )
+
+                    targetNode.keys.splice(highestNumberIndex, 0, value);
+
+                    //animate adding the new key value to the leaf node
+                    targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+                        .data((d) => d.data.keys)
+                    const newTextSelection = this.createNewNodeText(targetNodeTextSelection.enter())
+                    //@ts-expect-error
+                    timeline.set(newTextSelection.nodes(),
+                        {
+                            opacity: 1
+                        }
+                        //@ts-expect-error
+                    ).add(newTextSelection.nodes(),
+                        {
+                            translateY: { from: "-" + this.translateYDist },
+                            duration: this.animationDuration * 2
+                            //@ts-expect-error
+                        }).set(newTextSelection.nodes(),
+                            {
+                                fill: "#000000"
+                            }
+                        )
+                }
+            }
+
+
+            return
+        }
+
         /**
          * A subsidiary procedure for the insert method
          * @param leftNode A bPlusTreeNode to be placed to the left of the key value
@@ -333,32 +456,7 @@ export class AlgoVisualizer {
         // targetNode is ready to have the value inserted into it.
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
             moveSudoCodeRectangle(6)
-            this.insertInLeaf(targetNode, value)
-
-            //animate adding the new key value to the leaf node
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
-            const nodeSelection = select(this.mainSvgId)
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
-            const newNodesTextSelection = nodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-                .data((d) => d.data.keys)
-            const textSelection = this.createNewNodeText(newNodesTextSelection.enter(), true)
-            //@ts-expect-error
-            timeline.set(textSelection.nodes(),
-                {
-                    opacity: 1
-                }
-                //@ts-expect-error
-            ).add(textSelection.nodes(),
-                {
-                    translateY: { from: "-" + this.translateYDist },
-                    duration: this.animationDuration * 2
-                    //@ts-expect-error
-                }).set(textSelection.nodes(),
-                    {
-                        fill: "#000000"
-                    }
-                )
+            insertInLeaf(targetNode, value)
         } else { //leaf node targetNode has n - 1 key values already, split it
             moveSudoCodeRectangle(7)
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
@@ -381,7 +479,6 @@ export class AlgoVisualizer {
             tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
             const targetNodeKeysBeforeSplit = targetNode.keys.slice()
             tempNode.keys = targetNode.keys.slice(0, this.n - 1)
-            this.insertInLeaf(tempNode, value)
 
             //animate adding the temp node to the visualization
             //we have to get the temp node elements rect children so that we can animate
@@ -443,13 +540,13 @@ export class AlgoVisualizer {
                     }
                 )
             }
-            
+
             //animate moving numbers to the temp node
             //first move the target nodes svg element to the end of the main svg canvas
             //so that its element appear on top of the temp node. This is done so that
             //when moving the numbers they don't become hidden.
             const mainSvg = document.querySelector(this.mainSvgId)
-            if(mainSvg == null) throw new Error("main-svg element not found invalid html structure")
+            if (mainSvg == null) throw new Error("main-svg element not found invalid html structure")
             mainSvg.appendChild(targetNodeSelection.nodes()[0])
             const targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector)
             timeline.add(
@@ -470,7 +567,26 @@ export class AlgoVisualizer {
                     translateY: { to: "-" + this.nodeHeight * 1.5 },
                 }
             )
-            //TODO finish animating moving target numbers to temp node.
+            //After moving the text svg elements from the target node to the temp node
+            //hide the target node text elements and reveal the temp node text elements
+            //this is done so that insertInLeaf can make the right animation happen for the
+            //temp node.
+            const tempNodeSelection = select(tempNodeElement)
+            const tempNodeTextSelection = tempNodeSelection.selectAll(this.nodeTextSelector).data(tempNode.keys)
+            const tempNodeTextElementSelection = this.createNewNodeText(tempNodeTextSelection.enter(), true)
+            timeline.set(tempNodeTextElementSelection.nodes(),
+                {
+                    opacity: 1,
+                    fill: "#000000"
+                }
+            )
+            timeline.set(targetNodeTextSelection.nodes(),
+                {
+                    opacity: 0
+                }
+            )
+
+            insertInLeaf(tempNode, value)
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
@@ -528,36 +644,6 @@ export class AlgoVisualizer {
         return timeline
     }
 
-    /**
-     *
-     * A sub procedure for the insert method
-     * @param targetNode The node to insert they key value into
-     * @param value The key value to insert
-     * @sideEffect Adds the value to the keys array of the targetNode
-     */
-    private insertInLeaf(targetNode: bPlusTreeNode, value: number) {
-        if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
-            // shift all values in keys to the right one spot.
-            for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
-                if (targetNode.keys[i]) {
-                    targetNode.keys[i + 1] = targetNode.keys[i]
-                }
-            }
-            targetNode.keys[0] = value
-        } else {
-            // insert value into targetNode.keys just after the 
-            // highest number that is less than or equal to value.
-            const highestNumberIndex = targetNode.keys.findIndex(element => element >= value)
-            // if find Index returns -1 then the last number in keys must be the
-            // greatest number that is less than or equal to value.
-            if (highestNumberIndex < 0) {
-                targetNode.keys.push(value)
-            } else {
-                targetNode.keys.splice(highestNumberIndex, 0, value);
-            }
-        }
-        return
-    }
 
 
 
@@ -989,12 +1075,12 @@ export class AlgoVisualizer {
      * creates a new set of text dom elements for a B+ Tree node
      * @param newTextSelection A d3 selection of text data that are to be created.
      * @param isTransparent toggles wether or not text element is transparent
-     * initially. This exists so that text reveal can be animated.
+     * initially. This exists so that text reveal can be animated. Defaults to true.
      * @return textElementSelection the selection of newly created text elements
      */
     private createNewNodeText(newTextSelection: d3.Selection<d3.EnterElement, number, SVGGElement | d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
         d3.Selection<d3.EnterElement, number, d3.BaseType, bPlusTreeNode>,
-        isTransparent = false): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
+        isTransparent = true): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
         const newSvgTextElement = newTextSelection.append("text")
         let textElementSelection = newSvgTextElement.attr("class", "node-key-text")
             // Calculate the x coordinate of the text based on its index in the
