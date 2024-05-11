@@ -203,7 +203,6 @@ export class AlgoVisualizer {
             }
         }
 
-        //TODO finish making this animate right
         /**
          *
          * A sub procedure for the insert method
@@ -222,14 +221,18 @@ export class AlgoVisualizer {
                 .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
             let targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-                .data((d) => d.data.keys)
+            //see the createNewNodeText method for an explanation of why t is appended to get the id of the
+            //text element
+                .data((d) => d.data.keys, function (d) {return d ? "t" + d : (this as SVGTextElement).id})
             if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
-                //animate shifting all keys to the right
-                timeline.add(targetNodeTextSelection.nodes(),
-                    {
-                        TranslateX: { to: "+" + this.keyRectWidth + this.pointerRectWidth }
-                    }
-                )
+                //animate shifting keys to the right
+                targetNodeTextSelection.nodes().forEach((element) => {
+                    timeline.add(element,
+                        {
+                            x: String(Number(element.getAttribute("x")) + this.keyRectWidth + this.pointerRectWidth)
+                        }, "<<"
+                    )
+                })
 
                 // shift all values in keys to the right one spot.
                 for (let i = (targetNode.keys.length - 1); i >= 0; i--) {
@@ -239,22 +242,20 @@ export class AlgoVisualizer {
                 }
                 targetNode.keys[0] = value
 
-                //animate adding the new key value to the leaf node
-                targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-                    .data((d) => d.data.keys)
-                const newTextSelection = this.createNewNodeText(targetNodeTextSelection.enter())
+                const newSVGTextElement = this.createNewNodeText(value, 0)
+                targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
                 //@ts-expect-error
-                timeline.set(newTextSelection.nodes(),
+                timeline.set(newSVGTextElement,
                     {
                         opacity: 1
                     }
                     //@ts-expect-error
-                ).add(newTextSelection.nodes(),
+                ).add(newSVGTextElement,
                     {
                         translateY: { from: "-" + this.translateYDist },
                         duration: this.animationDuration * 2
                         //@ts-expect-error
-                    }).set(newTextSelection.nodes(),
+                    }).set(newSVGTextElement,
                         {
                             fill: "#000000"
                         }
@@ -269,59 +270,57 @@ export class AlgoVisualizer {
                     targetNode.keys.push(value)
 
                     //animate adding the new key value to the leaf node
-                    targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-                        .data((d) => d.data.keys)
-                    const newTextSelection = this.createNewNodeText(targetNodeTextSelection.enter())
+                    const newSVGTextElement = this.createNewNodeText(value, targetNode.keys.length - 1)
+                    targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
                     //@ts-expect-error
-                    timeline.set(newTextSelection.nodes(),
+                    timeline.set(newSVGTextElement,
                         {
                             opacity: 1
                         }
                         //@ts-expect-error
-                    ).add(newTextSelection.nodes(),
+                    ).add(newSVGTextElement,
                         {
                             translateY: { from: "-" + this.translateYDist },
                             duration: this.animationDuration * 2
                             //@ts-expect-error
-                        }).set(newTextSelection.nodes(),
+                        }).set(newSVGTextElement,
                             {
                                 fill: "#000000"
                             }
                         )
                 } else {
                     //animate shifting keys to the right
-                    timeline.add(targetNodeTextSelection.nodes().slice(highestNumberIndex),
-                        {
-                            TranslateX: { to: "+" + this.keyRectWidth + this.pointerRectWidth }
-                        }
-                    )
+                    targetNodeTextSelection.nodes().slice(highestNumberIndex).forEach((element) => {
+                        timeline.add(element,
+                            {
+                                x: String(Number(element.getAttribute("x")) + this.keyRectWidth + this.pointerRectWidth)
+                            }, "<<"
+                        )
+                    })
 
                     targetNode.keys.splice(highestNumberIndex, 0, value);
 
                     //animate adding the new key value to the leaf node
-                    targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-                        .data((d) => d.data.keys)
-                    const newTextSelection = this.createNewNodeText(targetNodeTextSelection.enter())
+                    const newSVGTextElement = this.createNewNodeText(value, highestNumberIndex)
+                    targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
                     //@ts-expect-error
-                    timeline.set(newTextSelection.nodes(),
+                    timeline.set(newSVGTextElement,
                         {
                             opacity: 1
                         }
                         //@ts-expect-error
-                    ).add(newTextSelection.nodes(),
+                    ).add(newSVGTextElement,
                         {
                             translateY: { from: "-" + this.translateYDist },
                             duration: this.animationDuration * 2
                             //@ts-expect-error
-                        }).set(newTextSelection.nodes(),
+                        }).set(newSVGTextElement,
                             {
                                 fill: "#000000"
                             }
                         )
                 }
             }
-
-
             return
         }
 
@@ -1072,29 +1071,34 @@ export class AlgoVisualizer {
     }
 
     /**
-     * creates a new set of text dom elements for a B+ Tree node
-     * @param newTextSelection A d3 selection of text data that are to be created.
+     * creates a svg text element for a B+ Tree node and gives it an
+     * id of t followed by the value. eg. t1, t2, t3...ex
+     * @param value A number that you want represented by a text element.
+     * @param valuePosition Where the text element should be placed in a node.
+     * eg. 0 is the first element in the node, 1 is the second element in the node...
      * @param isTransparent toggles wether or not text element is transparent
      * initially. This exists so that text reveal can be animated. Defaults to true.
-     * @return textElementSelection the selection of newly created text elements
+     * @return SVGTextElement The text element that was created
      */
-    private createNewNodeText(newTextSelection: d3.Selection<d3.EnterElement, number, SVGGElement | d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<d3.EnterElement, number, d3.BaseType, bPlusTreeNode>,
-        isTransparent = true): d3.Selection<SVGTextElement, number, d3.BaseType, unknown> {
-        const newSvgTextElement = newTextSelection.append("text")
-        let textElementSelection = newSvgTextElement.attr("class", "node-key-text")
-            // Calculate the x coordinate of the text based on its index in the
-            // key array.
-            .attr("x", (_, i) => { return this.pointerRectWidth + (this.keyRectWidth / 2) + i * (this.keyRectWidth + this.pointerRectWidth) })
-            .attr("y", this.nodeHeight / 2)
-            .attr("fill", "#48D016")
-            .html(d => { return d ? String(d) : "" })
+    private createNewNodeText(value: number, valuePosition: number,
+        isTransparent = true): SVGTextElement {
+        const newSVGTextElement = document.createElementNS(SVG_NS, "text")
+        newSVGTextElement.setAttribute("class", "node-key-text")
+        newSVGTextElement.setAttribute("x", String(this.pointerRectWidth +
+            (this.keyRectWidth / 2) +
+            valuePosition * (this.keyRectWidth + this.pointerRectWidth)))
+        newSVGTextElement.setAttribute("y", String(this.nodeHeight / 2))
+        newSVGTextElement.setAttribute("fill", "#48D016")
+        //a text element needs an ID so that later the right key data can be
+        //associated with it using d3 selection.
+        newSVGTextElement.setAttribute("id", "t" + value)
+        newSVGTextElement.textContent = String(value)
 
         if (isTransparent) {
-            textElementSelection = textElementSelection.attr("opacity", 0)
+            newSVGTextElement.setAttribute("opacity", 0)
         }
 
-        return textElementSelection
+        return newSVGTextElement
     }
 
     /**
