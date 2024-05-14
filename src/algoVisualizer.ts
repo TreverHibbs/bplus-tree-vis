@@ -221,9 +221,9 @@ export class AlgoVisualizer {
                 .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
             let targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-            //see the createNewNodeText method for an explanation of why t is appended to get the id of the
-            //text element
-                .data((d) => d.data.keys, function (d) {return d ? "t" + d : (this as SVGTextElement).id})
+                //see the createNewNodeText method for an explanation of why t is appended to get the id of the
+                //text element
+                .data((d) => d.data.keys, function (d) { return d ? "t" + d : (this as SVGTextElement).id })
             if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
                 //animate shifting keys to the right
                 targetNodeTextSelection.nodes().forEach((element) => {
@@ -570,16 +570,20 @@ export class AlgoVisualizer {
             //hide the target node text elements and reveal the temp node text elements
             //this is done so that insertInLeaf can make the right animation happen for the
             //temp node.
-            const tempNodeSelection = select(tempNodeElement)
-            const tempNodeTextSelection = tempNodeSelection.selectAll(this.nodeTextSelector).data(tempNode.keys)
-            const tempNodeTextElementSelection = this.createNewNodeText(tempNodeTextSelection.enter(), true)
-            timeline.set(tempNodeTextElementSelection.nodes(),
+            const tempNodeTextElements: SVGTextElement[] = []
+            tempNode.keys.forEach((key: number, i: number) => {
+                tempNodeTextElements.push(this.createNewNodeText(key, i))
+                tempNodeElement.appendChild(tempNodeTextElements[i])
+            })
+            timeline.set(
+                tempNodeTextElements,
                 {
                     opacity: 1,
                     fill: "#000000"
                 }
             )
-            timeline.set(targetNodeTextSelection.nodes(),
+            timeline.set(
+                targetNodeTextSelection.nodes(),
                 {
                     opacity: 0
                 }
@@ -600,39 +604,25 @@ export class AlgoVisualizer {
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
             newNode.parent = targetNode.parent
 
-
-            //animate transferring key values to the new node
-            // const targetNodeTextSelection = targetNodeSelection.
-            //     selectAll(this.nodeTextSelector).data(d => d.data.keys)
-            // timeline.add(targetNodeTextSelection.exit().nodes(),
-            //     {
-            //         translateY: { to: "+" + this.translateYDist },
-            //     }
-            // )
-            //We need to get the location of the new nodes text elements
-            //so that we can know where the target nodes text elements
-            //should animate to. The target nodes text should animate
-            //to the corresponding text element in the new node.
-            // const correspondingNumbers: { targetIndex: number, newIndex: number }[] = []
-            // targetNodeKeysBeforeSplit.forEach((targetElement, i) => {
-            //     newNode.keys.forEach((newElement, j) => {
-            //         if (targetElement == newElement) {
-            //             correspondingNumbers.push({ targetIndex: i, newIndex: j })
-            //         }
-            //     })
-            // })
-            // const newNodeSelection: d3.Selection<d3.BaseType, bPlusTreeNode, HTMLElement, any> =
-            //     select("#" + newNodeElement.id)
-            // const newNodeTextSelection = newNodeSelection.selectAll(this.nodeTextSelector).data(newNode.keys)
-            // const newTextElementSelection = this.createNewNodeText(newNodeTextSelection.enter())
-            //create a new array that maps the target nodes text elements to the new nodes text elements
-            // targetNodeTextSelection.exit().nodes().forEach((element, i) => {
-            //     const svgTextElement = element as SVGTextElement
-            //     const distTranslateX = this.nodeWidth * 2 + ((this.keyRectWidth + this.pointerRectWidth) * ((correspondingNumbers[i].newIndex + 1) - (correspondingNumbers[i].targetIndex + 1)))
-            //     timeline.add(svgTextElement, {
-            //         translateX: { to: "+" + Math.abs(distTranslateX) }
-            //     })
-            // })
+            //animate the key text elements moving from the temp node into
+            //the new node and the target node elements
+            timeline.set(tempNodeTextElements, { opacity: 0 })
+            timeline.set(toTargetNodeText, { opacity: 1 })
+            timeline.add(toTargetNodeText,
+                {
+                    translateY: { to: "-" + this.nodeHeight * 1.5 },
+                }
+            )
+            timeline.add(toTargetNodeText,
+                {
+                    translateX: { to: "-" + this.nodeWidth },
+                }
+            )
+            timeline.add(toTargetNodeText,
+                {
+                    translateY: { to: "+" + this.nodeHeight * 2 },
+                }
+            )
 
             //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
@@ -1008,7 +998,6 @@ export class AlgoVisualizer {
             // correct closures for undoing.
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
             this.previousValue = value
-            //TODO add this to side effects
             this.previousOperationType = "delete"
             return this.delete(value)
         }
@@ -1088,7 +1077,12 @@ export class AlgoVisualizer {
             (this.keyRectWidth / 2) +
             valuePosition * (this.keyRectWidth + this.pointerRectWidth)))
         newSVGTextElement.setAttribute("y", String(this.nodeHeight / 2))
-        newSVGTextElement.setAttribute("fill", "#48D016")
+        //Since we won't be animating adding the text we need it to be black
+        if (isTransparent) {
+            newSVGTextElement.setAttribute("fill", "#48D016")
+        } else {
+            newSVGTextElement.setAttribute("fill", "#000000")
+        }
         //a text element needs an ID so that later the right key data can be
         //associated with it using d3 selection.
         newSVGTextElement.setAttribute("id", "t" + value)
@@ -1244,10 +1238,6 @@ export class AlgoVisualizer {
             .attr("class", "node")
             .attr("id", String(node.id))
             .attr("transform-origin", "center")
-            //TODO make this obsolete by changing the svg canvas origin based on node
-            //width. I need to do this because when animating the nodes the
-            //transform string is used. Making this attribute useless. and causing
-            //all nodes to shift right by the width of the node.
             .attr("transform", "translate(" + String(x) + "," + String(y) + ")")
             .attr("opacity", transparencyValue)
 
