@@ -541,51 +541,50 @@ export class AlgoVisualizer {
             }
 
             //animate moving numbers to the temp node
-            //first move the target nodes svg element to the end of the main svg canvas
-            //so that its element appear on top of the temp node. This is done so that
-            //when moving the numbers they don't become hidden.
             const mainSvg = document.querySelector(this.mainSvgId)
             if (mainSvg == null) throw new Error("main-svg element not found invalid html structure")
-            mainSvg.appendChild(targetNodeSelection.nodes()[0])
+            //TODO refactor so that the temp node element is the one that is
+            //rendered on top of the new node and target node elements.
             const targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector)
-            timeline.add(
+            const tempNodeTextElements: SVGTextElement[] = []
+            tempNode.keys.forEach((key: number, i: number) => {
+                tempNodeTextElements.push(this.createNewNodeText(key, i))
+                //place the new text elements on top of their corresponding target node text elements.
+                //This is done to provide the illusion of moving the text elements from the target node
+                //to the temp node. Without having to make target node elements render on top of the temp
+                //node elements. I am doing it this way because I don't want to complicate the animation
+                //by requiring the target node elements to render on top of the temp node elements.
+                tempNodeTextElements[i].setAttribute("x",
+                    String(Number(tempNodeTextElements[i].getAttribute("x")) - this.nodeWidth))
+                tempNodeTextElements[i].setAttribute("y",
+                    String(Number(tempNodeTextElements[i].getAttribute("y")) + this.nodeHeight * 1.5))
+                tempNodeElement.appendChild(tempNodeTextElements[i])
+            })
+            //place the tempNodeTextElements on top of the target node text elements
+            //so that the animation can move them to the temp node.
+            timeline.set(tempNodeTextElements, { opacity: 1, fill: "#000000" })
+            timeline.set(
                 targetNodeTextSelection.nodes(),
                 {
-                    translateY: { to: "-" + this.nodeHeight * 3 },
+                    opacity: 0,
                 }
             )
             timeline.add(
-                targetNodeTextSelection.nodes(),
+                tempNodeTextElements,
+                {
+                    translateY: { to: "-" + this.nodeHeight * 3 }
+                }
+            )
+            timeline.add(
+                tempNodeTextElements,
                 {
                     translateX: { to: "+" + this.nodeWidth }
                 }
             )
             timeline.add(
-                targetNodeTextSelection.nodes(),
-                {
-                    translateY: { to: "-" + this.nodeHeight * 1.5 },
-                }
-            )
-            //After moving the text svg elements from the target node to the temp node
-            //hide the target node text elements and reveal the temp node text elements
-            //this is done so that insertInLeaf can make the right animation happen for the
-            //temp node.
-            const tempNodeTextElements: SVGTextElement[] = []
-            tempNode.keys.forEach((key: number, i: number) => {
-                tempNodeTextElements.push(this.createNewNodeText(key, i))
-                tempNodeElement.appendChild(tempNodeTextElements[i])
-            })
-            timeline.set(
                 tempNodeTextElements,
                 {
-                    opacity: 1,
-                    fill: "#000000"
-                }
-            )
-            timeline.set(
-                targetNodeTextSelection.nodes(),
-                {
-                    opacity: 0
+                    translateY: { to: "-" + this.nodeHeight * 1.5 },
                 }
             )
 
@@ -606,23 +605,23 @@ export class AlgoVisualizer {
 
             //animate the key text elements moving from the temp node into
             //the new node and the target node elements
-            timeline.set(tempNodeTextElements, { opacity: 0 })
-            timeline.set(toTargetNodeText, { opacity: 1 })
-            timeline.add(toTargetNodeText,
-                {
-                    translateY: { to: "-" + this.nodeHeight * 1.5 },
-                }
-            )
-            timeline.add(toTargetNodeText,
-                {
-                    translateX: { to: "-" + this.nodeWidth },
-                }
-            )
-            timeline.add(toTargetNodeText,
-                {
-                    translateY: { to: "+" + this.nodeHeight * 2 },
-                }
-            )
+            // timeline.set(tempNodeTextElements, { opacity: 0 })
+            // timeline.set(toTargetNodeText, { opacity: 1 })
+            // timeline.add(toTargetNodeText,
+            //     {
+            //         translateY: { to: "-" + this.nodeHeight * 1.5 },
+            //     }
+            // )
+            // timeline.add(toTargetNodeText,
+            //     {
+            //         translateX: { to: "-" + this.nodeWidth },
+            //     }
+            // )
+            // timeline.add(toTargetNodeText,
+            //     {
+            //         translateY: { to: "+" + this.nodeHeight * 2 },
+            //     }
+            // )
 
             //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
