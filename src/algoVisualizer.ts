@@ -607,21 +607,59 @@ export class AlgoVisualizer {
             //the new node and the target node elements
             // timeline.set(tempNodeTextElements, { opacity: 0 })
             // timeline.set(toTargetNodeText, { opacity: 1 })
-            // timeline.add(toTargetNodeText,
-            //     {
-            //         translateY: { to: "-" + this.nodeHeight * 1.5 },
-            //     }
-            // )
-            // timeline.add(toTargetNodeText,
-            //     {
-            //         translateX: { to: "-" + this.nodeWidth },
-            //     }
-            // )
-            // timeline.add(toTargetNodeText,
-            //     {
-            //         translateY: { to: "+" + this.nodeHeight * 2 },
-            //     }
-            // )
+            // get the text elements from the temp node element that
+            //should be move to the target node
+            const toTargetNodeText: SVGTextElement[] = []
+            tempNode.keys.slice(0, Math.ceil(this.n / 2)).forEach((key: number) => {
+                const textElement: SVGTextElement | null = document.querySelector("#" + tempNode.id + " #t" + key)
+                if (textElement == null) throw new Error("Bad dom state")
+                toTargetNodeText.push(textElement)
+            })
+            timeline.add(toTargetNodeText,
+                {
+                    translateY: { to: "-" + this.nodeHeight * 3 },
+                }
+            )
+            timeline.add(toTargetNodeText,
+                {
+                    translateX: { to: 0 },
+                }
+            )
+            timeline.add(toTargetNodeText,
+                {
+                    translateY: { to: 0 },
+                }
+            )
+            //TODO figure out how to animate the text element that is added to the temp
+            //node.
+            //Make sure that the temp node will render on top of the target node element
+            //and new node element
+            if (tempNodeElement.parentNode != null) {
+                tempNodeElement.parentNode.appendChild(tempNodeElement)
+            }else{
+                throw new Error("bad dom structure")
+            }
+            const toNewNodeText: SVGTextElement[] = []
+            tempNode.keys.slice(Math.ceil(this.n / 2), this.n).forEach((key: number) => {
+                const textElement: SVGTextElement | null = document.querySelector("#" + tempNode.id + " #t" + key)
+                if (textElement == null) throw new Error("Bad dom state")
+                toNewNodeText.push(textElement)
+            })
+            timeline.add(toNewNodeText,
+                {
+                    translateY: { to: "-" + this.nodeHeight * 3 },
+                }
+            )
+            timeline.add(toNewNodeText,
+                {
+                    translateX: { to: "+" + (this.nodeWidth + this.keyRectWidth + (this.pointerRectWidth * 2)) },
+                }
+            )
+            timeline.add(toNewNodeText,
+                {
+                    translateY: { to: 0 },
+                }
+            )
 
             //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
