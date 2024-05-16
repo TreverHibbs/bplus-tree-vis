@@ -43,9 +43,7 @@ export class AlgoVisualizer {
     private previousOperationType: OperationType | null = null
     // used to store d3 selections that will be removed at the start of a new animation.
     // this will get rid of the DOM elements corresponding to the old animation.
-    private exitSelections: (d3.Selection<SVGTextElement, unknown, SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<SVGPathElement, unknown, d3.BaseType, d3.HierarchyPointNode<bPlusTreeNode>> |
-        d3.Selection<SVGGElement, unknown, d3.BaseType, unknown>)[] = []
+    private exitSelections: d3.Selection<any, any, any, any>[] = []
     // ** end global variables section ** //
     // ** begin global constants section ** //
     // number of pointers in a node
@@ -210,8 +208,10 @@ export class AlgoVisualizer {
          * @param value The key value to insert
          * @sideEffect Adds the value to the keys array of the targetNode
          * @sideEffect adds animation to the timeline
+         * @return SVGTextElement | null The text element created for
+         * the inserted value or null if the value was not inserted
          */
-        const insertInLeaf = (targetNode: bPlusTreeNode, value: number) => {
+        const insertInLeaf = (targetNode: bPlusTreeNode, value: number): SVGTextElement | null => {
             //must generate the tree layout  and join the data with all the nodes.
             //This must be done because the data is not bound to the svg element when
             //it is created.
@@ -220,17 +220,23 @@ export class AlgoVisualizer {
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                 .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
-            let targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+            const targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
                 //see the createNewNodeText method for an explanation of why t is appended to get the id of the
                 //text element
                 .data((d) => d.data.keys, function (d) { return d ? "t" + d : (this as SVGTextElement).id })
             if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
                 //animate shifting keys to the right
-                targetNodeTextSelection.nodes().forEach((element) => {
+                let animePos = "<<"
+                targetNodeTextSelection.nodes().forEach((element, i) => {
+                    if(i == 0){
+                        animePos = "<"
+                    }else{
+                        animePos = "<<"
+                    }
                     timeline.add(element,
                         {
                             x: String(Number(element.getAttribute("x")) + this.keyRectWidth + this.pointerRectWidth)
-                        }, "<<"
+                        }, animePos
                     )
                 })
 
@@ -260,6 +266,7 @@ export class AlgoVisualizer {
                             fill: "#000000"
                         }
                     )
+                return newSVGTextElement
             } else {
                 // insert value into targetNode.keys just after the 
                 // highest number that is less than or equal to value.
@@ -288,6 +295,7 @@ export class AlgoVisualizer {
                                 fill: "#000000"
                             }
                         )
+                    return newSVGTextElement
                 } else {
                     //animate shifting keys to the right
                     targetNodeTextSelection.nodes().slice(highestNumberIndex).forEach((element) => {
@@ -319,9 +327,10 @@ export class AlgoVisualizer {
                                 fill: "#000000"
                             }
                         )
+                    return newSVGTextElement
                 }
             }
-            return
+            return null
         }
 
         /**
@@ -545,50 +554,50 @@ export class AlgoVisualizer {
             if (mainSvg == null) throw new Error("main-svg element not found invalid html structure")
             //TODO refactor so that the temp node element is the one that is
             //rendered on top of the new node and target node elements.
-            const targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector)
+            let targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector).data(targetNode.keys,
+                function (d) { return d ? "t" + d : (this as SVGTextElement).id })
             const tempNodeTextElements: SVGTextElement[] = []
             tempNode.keys.forEach((key: number, i: number) => {
                 tempNodeTextElements.push(this.createNewNodeText(key, i))
-                //place the new text elements on top of their corresponding target node text elements.
-                //This is done to provide the illusion of moving the text elements from the target node
-                //to the temp node. Without having to make target node elements render on top of the temp
-                //node elements. I am doing it this way because I don't want to complicate the animation
-                //by requiring the target node elements to render on top of the temp node elements.
-                tempNodeTextElements[i].setAttribute("x",
-                    String(Number(tempNodeTextElements[i].getAttribute("x")) - this.nodeWidth))
-                tempNodeTextElements[i].setAttribute("y",
-                    String(Number(tempNodeTextElements[i].getAttribute("y")) + this.nodeHeight * 1.5))
                 tempNodeElement.appendChild(tempNodeTextElements[i])
             })
             //place the tempNodeTextElements on top of the target node text elements
             //so that the animation can move them to the temp node.
-            timeline.set(tempNodeTextElements, { opacity: 1, fill: "#000000" })
-            timeline.set(
-                targetNodeTextSelection.nodes(),
-                {
-                    opacity: 0,
-                }
-            )
+            //@ts-expect-error
+            timeline.set(tempNodeTextElements, {
+                opacity: 1,
+                fill: "#000000",
+                translateX: { to: "-" + this.nodeWidth },
+                translateY: { to: "+" + this.nodeHeight * 1.5 },
+            })
+            //@ts-expect-error
+            timeline.set(targetNodeTextSelection.nodes(), { opacity: 0 })
+            //animate moving the text elements form target node to temp node
+            //@ts-expect-error
             timeline.add(
                 tempNodeTextElements,
                 {
-                    translateY: { to: "-" + this.nodeHeight * 3 }
+                    translateY: { to: "-" + this.nodeHeight }
                 }
             )
+            //@ts-expect-error
             timeline.add(
                 tempNodeTextElements,
                 {
-                    translateX: { to: "+" + this.nodeWidth }
+                    translateX: { to: 0 }
                 }
             )
+            //@ts-expect-error
             timeline.add(
                 tempNodeTextElements,
                 {
-                    translateY: { to: "-" + this.nodeHeight * 1.5 },
+                    translateY: { to: 0 },
                 }
             )
 
-            insertInLeaf(tempNode, value)
+            const newTempNodeTextElement = insertInLeaf(tempNode, value)
+            if (newTempNodeTextElement == null) throw new Error("bad state")
+            tempNodeTextElements.push(newTempNodeTextElement)
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
@@ -603,10 +612,6 @@ export class AlgoVisualizer {
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
             newNode.parent = targetNode.parent
 
-            //animate the key text elements moving from the temp node into
-            //the new node and the target node elements
-            // timeline.set(tempNodeTextElements, { opacity: 0 })
-            // timeline.set(toTargetNodeText, { opacity: 1 })
             // get the text elements from the temp node element that
             //should be move to the target node
             const toTargetNodeText: SVGTextElement[] = []
@@ -615,51 +620,113 @@ export class AlgoVisualizer {
                 if (textElement == null) throw new Error("Bad dom state")
                 toTargetNodeText.push(textElement)
             })
+            //animate moving the correct temp node text elements to target node
+            //@ts-expect-error
             timeline.add(toTargetNodeText,
                 {
-                    translateY: { to: "-" + this.nodeHeight * 3 },
+                    translateY: { to: "-" + this.nodeHeight * 1.5 },
                 }
             )
+            //@ts-expect-error
             timeline.add(toTargetNodeText,
                 {
-                    translateX: { to: 0 },
+                    translateX: { to: "-" + this.nodeWidth },
                 }
             )
+            //@ts-expect-error
             timeline.add(toTargetNodeText,
                 {
-                    translateY: { to: 0 },
+                    translateY: { to: "+" + this.nodeHeight * 1.5 },
                 }
             )
-            //TODO figure out how to animate the text element that is added to the temp
-            //node.
             //Make sure that the temp node will render on top of the target node element
             //and new node element
             if (tempNodeElement.parentNode != null) {
                 tempNodeElement.parentNode.appendChild(tempNodeElement)
-            }else{
+            } else {
                 throw new Error("bad dom structure")
             }
+            //get the text elements from the temp node that should go tot he new node
+            //and animate them going to the new node.
             const toNewNodeText: SVGTextElement[] = []
             tempNode.keys.slice(Math.ceil(this.n / 2), this.n).forEach((key: number) => {
                 const textElement: SVGTextElement | null = document.querySelector("#" + tempNode.id + " #t" + key)
                 if (textElement == null) throw new Error("Bad dom state")
                 toNewNodeText.push(textElement)
             })
+            //@ts-expect-error
             timeline.add(toNewNodeText,
                 {
-                    translateY: { to: "-" + this.nodeHeight * 3 },
+                    translateY: { to: "-" + this.nodeHeight * 1.5 },
                 }
             )
+            //@ts-expect-error
             timeline.add(toNewNodeText,
                 {
-                    translateX: { to: "+" + (this.nodeWidth + this.keyRectWidth + (this.pointerRectWidth * 2)) },
+                    translateX: { to: "+" + (this.keyRectWidth + this.pointerRectWidth * 2) },
                 }
             )
+            //@ts-expect-error
             timeline.add(toNewNodeText,
                 {
-                    translateY: { to: 0 },
+                    translateY: { to: `+${this.nodeHeight * 1.5}` },
                 }
             )
+            //replace the temp node text elements with their corresponding new node and
+            //target node text elements. Also animate the removal of the temp node.
+            newNode.keys.forEach((key: number, i: number) => {
+                newNodeElement.appendChild(this.createNewNodeText(key, i))
+            })
+            const newNodeTextElements = Array.from(newNodeElement.childNodes).filter((child) => {
+                return child.nodeName == "text"
+            })
+            //update the keys of the target node
+            targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector).data(targetNode.keys,
+                function (d) { return d ? "t" + d : (this as SVGTextElement).id })
+            this.exitSelections.push(targetNodeTextSelection.exit())
+            //reposition the text elements that already existed in the target node
+            //and remain to their right position in the node.
+            targetNodeTextSelection.nodes().forEach((nodeElement) => {
+                const indexInKeyArray = targetNode.keys.findIndex(
+                    (keyElement) => {
+                        if (nodeElement == null) throw new Error("bad dom state")
+                        return keyElement == Number((nodeElement as Element).textContent)
+                    }
+                )
+                timeline.set(nodeElement, {
+                    x: String(this.pointerRectWidth +
+                        (this.keyRectWidth / 2) +
+                        indexInKeyArray * (this.keyRectWidth + this.pointerRectWidth))
+                })
+            })
+            //create the new nodes in the target node.
+            const targetNodeNewTextElements: SVGTextElement[] = []
+            const targetNodeElement = targetNodeSelection.nodes()[0]
+            targetNodeTextSelection.enter().data().forEach((enterKey: number) => {
+                const indexInKeyArray = targetNode.keys.findIndex(
+                    (keyElement) => { return keyElement == enterKey }
+                )
+                const newTextElement = this.createNewNodeText(enterKey, indexInKeyArray)
+                targetNodeElement.appendChild(newTextElement)
+                targetNodeNewTextElements.push(newTextElement)
+            })
+            //@ts-expect-error
+            timeline.set([...targetNodeTextSelection.nodes(),
+            ...newNodeTextElements, ...targetNodeNewTextElements],
+                { opacity: 1, fill: "#000000" })
+            //@ts-expect-error
+            timeline.set(tempNodeTextElements, { opacity: 0 })
+
+            //animate the removal of the temp node
+            //@ts-expect-error
+            timeline.set(Array.from(tempNodeElement.childNodes).filter((child) => { return child.nodeName == "rect" }), {
+                fill: "#F97287"
+            })
+            //@ts-expect-error
+            timeline.add(tempNodeElement, {
+                translateY: { to: "+" + this.translateYDist },
+                opacity: 0,
+            })
 
             //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
