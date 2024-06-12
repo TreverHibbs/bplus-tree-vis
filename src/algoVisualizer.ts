@@ -63,11 +63,13 @@ export class AlgoVisualizer {
     private readonly nodeChildrenGap = 200
     private readonly lightBlue
     private readonly lightGreen
+    private readonly textColor = "#000000"
     // The following constants are used to control the style of the animations
     // in milliseconds
     private readonly animationDuration = 1000
     // in pixels
     private readonly translateYDist = 40
+    private readonly opacityEaseType = "outQuad"
     // end of style constants
     // The following constants are here to help the programmer to keep track of the
     // class and id names of the relevant elements in the DOM. This names are defined
@@ -265,7 +267,7 @@ export class AlgoVisualizer {
                         //@ts-expect-error
                     }).set(newSVGTextElement,
                         {
-                            fill: "#000000"
+                            fill: this.textColor
                         }
                     )
                 return newSVGTextElement
@@ -294,7 +296,7 @@ export class AlgoVisualizer {
                             //@ts-expect-error
                         }).set(newSVGTextElement,
                             {
-                                fill: "#000000"
+                                fill: this.textColor
                             }
                         )
                     return newSVGTextElement
@@ -330,7 +332,7 @@ export class AlgoVisualizer {
                             //@ts-expect-error
                         }).set(newSVGTextElement,
                             {
-                                fill: "#000000"
+                                fill: this.textColor
                             }
                         )
                     return newSVGTextElement
@@ -351,7 +353,7 @@ export class AlgoVisualizer {
          * @sideEffect adds animation to timeline
          */
         const insertInParent = (leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode) => {
-            if (leftNode.parent == null) {
+            if (leftNode.parent == null) { //case where left node is the root of the tree
                 this.bPlusTreeRoot = new bPlusTreeNode(false)
                 this.bPlusTreeRoot.isLeaf = false
                 this.bPlusTreeRoot.pointers = [leftNode, rightNode]
@@ -379,7 +381,7 @@ export class AlgoVisualizer {
                 timeline.add(
                     newRootElement,
                     {
-                        opacity: { to: 1, ease: "outQuad" },
+                        opacity: { to: 1, ease: this.opacityEaseType },
                         transform: "translate(0,0)"
                     }, "<"
                 )
@@ -412,6 +414,17 @@ export class AlgoVisualizer {
                     },
                     "<<"
                 )
+
+                //animate adding links and number values to the new root node
+                const newTextElement = this.createNewNodeText(this.bPlusTreeRoot.keys[0], 0)
+                newRootElement.appendChild(newTextElement)
+                timeline.add(newTextElement,
+                    {
+                        opacity: { to: 1, ease: this.opacityEaseType },
+                        translateY: { from: `-${this.translateYDist}` },
+                    }, "<")
+                timeline.set(newTextElement,
+                    { fill: this.textColor }, "<")
 
                 return
             }
@@ -480,7 +493,7 @@ export class AlgoVisualizer {
             timeline.add(
                 [...newNodes],
                 {
-                    opacity: { to: 1, ease: "outQuad" },
+                    opacity: { to: 1, ease: this.opacityEaseType },
                 }
             )
             const newSVGGElementsRectChildren = newNodes.map((element) => {
@@ -569,7 +582,7 @@ export class AlgoVisualizer {
             timeline.add(
                 tempNodeElement,
                 {
-                    opacity: { to: 1, ease: "outQuad" },
+                    opacity: { to: 1, ease: this.opacityEaseType },
                     transform: "translate(0,0)"
                 }, "<"
             )
@@ -588,7 +601,7 @@ export class AlgoVisualizer {
             timeline.add(
                 newNodeElement,
                 {
-                    opacity: { to: 1, ease: "outQuad" },
+                    opacity: { to: 1, ease: this.opacityEaseType },
                 }, "addTempNode"
             )
             const rectChildNodes: ChildNode[] = []
@@ -630,7 +643,7 @@ export class AlgoVisualizer {
             //@ts-expect-error
             timeline.set(tempNodeTextElements, {
                 opacity: 1,
-                fill: "#000000",
+                fill: this.textColor,
                 translateX: { to: "-" + this.nodeWidth },
                 translateY: { to: "+" + this.nodeHeight * 1.5 },
             })
@@ -778,7 +791,7 @@ export class AlgoVisualizer {
             //@ts-expect-error
             timeline.set([...targetNodeTextSelection.nodes(),
             ...newNodeTextElements, ...targetNodeNewTextElements],
-                { opacity: 1, fill: "#000000" })
+                { opacity: 1, fill: this.textColor })
             //@ts-expect-error
             timeline.set(tempNodeTextElements, { opacity: 0 })
 
@@ -790,7 +803,7 @@ export class AlgoVisualizer {
             timeline.add(
                 tempNodeElement,
                 {
-                    opacity: { to: 0, ease: "outQuad" },
+                    opacity: { to: 0, ease: this.opacityEaseType },
                     transform: `translate(0,${this.translateYDist})`
                 }, "<"
             )
@@ -1252,7 +1265,7 @@ export class AlgoVisualizer {
         if (isTransparent) {
             newSVGTextElement.setAttribute("fill", "#48D016")
         } else {
-            newSVGTextElement.setAttribute("fill", "#000000")
+            newSVGTextElement.setAttribute("fill", this.textColor)
         }
         //a text element needs an ID so that later the right key data can be
         //associated with it using d3 selection.
@@ -1549,7 +1562,7 @@ export class AlgoVisualizer {
         timeline.add(
             [...newNodes],
             {
-                opacity: { to: 1, ease: "outQuad" },
+                opacity: { to: 1, ease: this.opacityEaseType },
             }
         )
         const newSVGGElementsRectChildren = newNodes.nodes().map((element) => {
@@ -1592,7 +1605,7 @@ export class AlgoVisualizer {
                 //@ts-expect-error
             }).set([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
                 {
-                    fill: "#000000"
+                    fill: this.textColor
                 }
             )
         moveSudoCodeRectangle(9)
