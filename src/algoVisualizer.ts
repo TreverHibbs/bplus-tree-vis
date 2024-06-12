@@ -8,6 +8,8 @@
 
 import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
+//anime.esm file must have the .ts extension in order for the ts
+//compiler to find its declaration file.
 import { createTimeline, svg as animeSvg, Timeline } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
 import { select } from "d3-selection"
@@ -55,7 +57,7 @@ export class AlgoVisualizer {
     private readonly pointerRectWidth = 14
     private readonly nodeWidth: number
     //multiplied by node width to get gap value
-    private readonly nodeSiblingsGap = 1.1
+    private readonly nodeSiblingsGap = 1.5
     private readonly nodeParentsGap = 2
     //added to the node size height to create a gap between parents and children.
     private readonly nodeChildrenGap = 200
@@ -218,19 +220,19 @@ export class AlgoVisualizer {
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
+                .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
             const targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
                 //see the createNewNodeText method for an explanation of why t is appended to get the id of the
                 //text element
-                .data((d) => d.data.keys, function (d) { return d ? "t" + d : (this as SVGTextElement).id })
+                .data((d) => d.data.keys, function(d) { return d ? "t" + d : (this as SVGTextElement).id })
             if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
                 //animate shifting keys to the right
                 let animePos = "<<"
                 targetNodeTextSelection.nodes().forEach((element, i) => {
-                    if(i == 0){
+                    if (i == 0) {
                         animePos = "<"
-                    }else{
+                    } else {
                         animePos = "<<"
                     }
                     timeline.add(element,
@@ -298,11 +300,15 @@ export class AlgoVisualizer {
                     return newSVGTextElement
                 } else {
                     //animate shifting keys to the right
-                    targetNodeTextSelection.nodes().slice(highestNumberIndex).forEach((element) => {
+                    targetNodeTextSelection.nodes().slice(highestNumberIndex).forEach((element, i) => {
+                        let position = "<<"
+                        if (i == 0) {
+                            position = "<"
+                        }
                         timeline.add(element,
                             {
                                 x: String(Number(element.getAttribute("x")) + this.keyRectWidth + this.pointerRectWidth)
-                            }, "<<"
+                            }, position
                         )
                     })
 
@@ -353,6 +359,59 @@ export class AlgoVisualizer {
 
                 leftNode.parent = this.bPlusTreeRoot
                 rightNode.parent = this.bPlusTreeRoot
+
+                //get the positions of the left and right node so that they can
+                //be moved to their new correct positions.
+                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                const nodeSelection = select(this.mainSvgId)
+                    .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                    .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
+                const leftNodeSelection = nodeSelection.filter((d) => d.data === leftNode)
+                const rightNodeSelection = nodeSelection.filter((d) => d.data === rightNode)
+
+                //animate adding a new root node to the tree.
+                const newRootElement = this.createNodeElement(this.bPlusTreeRoot)
+                timeline.set(newRootElement,
+                    {
+                        transform: `translate(0,${-this.translateYDist})`
+                    }, "<"
+                )
+                timeline.add(
+                    newRootElement,
+                    {
+                        opacity: { to: 1, ease: "outQuad" },
+                        transform: "translate(0,0)"
+                    }, "<"
+                )
+                const rootElementRectElements: ChildNode[] = []
+                newRootElement.childNodes.forEach((child) => {
+                    if (child.nodeName == "rect") {
+                        rootElementRectElements.push(child)
+                    }
+                })
+                timeline.set(rootElementRectElements,
+                    {
+                        fill: this.lightBlue
+                    }, "<"
+                )
+
+                //animate moving the left and right nodes to their right places
+                timeline.add(leftNodeSelection.node(),
+                    {
+                        transform: () => {
+                            return `translate( ${String(leftNodeSelection.data()[0].x)} , ${String(leftNodeSelection.data()[0].y)} )`
+                        }
+                    },
+                    "<"
+                )
+                timeline.add(rightNodeSelection.node(),
+                    {
+                        transform: () => {
+                            return "translate(" + String(rightNodeSelection.data()[0].x) + "," + String(rightNodeSelection.data()[0].y) + ")"
+                        }
+                    },
+                    "<<"
+                )
 
                 return
             }
@@ -413,7 +472,7 @@ export class AlgoVisualizer {
                 bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
+                .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
             const newNodes = nodeSelection.enter().data().map((node) => {
                 return this.createNodeElement(node.data)
             })
@@ -470,15 +529,16 @@ export class AlgoVisualizer {
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                .data(rootHierarchyNode, function (d) { return d ? d.data.id : (this as SVGGElement).id })
+                .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
             //animate target node moving to the left and down to make room for tmp and new node
             //@ts-expect-error
             timeline.add(
                 targetNodeSelection.nodes(),
                 {
-                    translateX: { to: targetNodeSelection.data()[0].x - this.nodeWidth },
-                    translateY: { to: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5 },
+                    transform: () => {
+                        return `translate( ${targetNodeSelection.data()[0].x - this.nodeWidth} , ${targetNodeSelection.data()[0].y + this.nodeHeight * 1.5} )`
+                    }
                 }
             )
 
@@ -501,13 +561,17 @@ export class AlgoVisualizer {
             })
             //@ts-expect-error
             timeline.add("addTempNode")
-            //@ts-expect-error
+            timeline.set(tempNodeElement,
+                {
+                    transform: `translate(0,${-this.translateYDist})`
+                }, "<"
+            )
             timeline.add(
                 tempNodeElement,
                 {
-                    translateY: { from: "-" + this.translateYDist },
                     opacity: { to: 1, ease: "outQuad" },
-                }
+                    transform: "translate(0,0)"
+                }, "<"
             )
             //@ts-expect-error
             timeline.set(
@@ -555,7 +619,7 @@ export class AlgoVisualizer {
             //TODO refactor so that the temp node element is the one that is
             //rendered on top of the new node and target node elements.
             let targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector).data(targetNode.keys,
-                function (d) { return d ? "t" + d : (this as SVGTextElement).id })
+                function(d) { return d ? "t" + d : (this as SVGTextElement).id })
             const tempNodeTextElements: SVGTextElement[] = []
             tempNode.keys.forEach((key: number, i: number) => {
                 tempNodeTextElements.push(this.createNewNodeText(key, i))
@@ -682,7 +746,7 @@ export class AlgoVisualizer {
             })
             //update the keys of the target node
             targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector).data(targetNode.keys,
-                function (d) { return d ? "t" + d : (this as SVGTextElement).id })
+                function(d) { return d ? "t" + d : (this as SVGTextElement).id })
             this.exitSelections.push(targetNodeTextSelection.exit())
             //reposition the text elements that already existed in the target node
             //and remain to their right position in the node.
@@ -693,6 +757,7 @@ export class AlgoVisualizer {
                         return keyElement == Number((nodeElement as Element).textContent)
                     }
                 )
+                //@ts-expect-error
                 timeline.set(nodeElement, {
                     x: String(this.pointerRectWidth +
                         (this.keyRectWidth / 2) +
@@ -722,11 +787,13 @@ export class AlgoVisualizer {
             timeline.set(Array.from(tempNodeElement.childNodes).filter((child) => { return child.nodeName == "rect" }), {
                 fill: "#F97287"
             })
-            //@ts-expect-error
-            timeline.add(tempNodeElement, {
-                translateY: { to: "+" + this.translateYDist },
-                opacity: 0,
-            })
+            timeline.add(
+                tempNodeElement,
+                {
+                    opacity: { to: 0, ease: "outQuad" },
+                    transform: `translate(0,${this.translateYDist})`
+                }, "<"
+            )
 
             //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
@@ -1322,6 +1389,9 @@ export class AlgoVisualizer {
      * exists to keep all styling of bplus tree nodes in one spot. The origin of
      * the node is at its top left corner. By default all nodes are made invisible when created
      * so that they can later be revealed in an animation.
+     * To animate a node created by this method using animejs v4 you must animate its transform
+     * attribute as astring. This mean you can not use the animejs built in transform animation
+     * syntax sugar. :(
      * @param node The bPlusTreeNode to create an svg element for.
      * @param x The x coordinate of the node. Defaults to 0.
      * @param y The y coordinate of the node. Defaults to 0.
