@@ -435,7 +435,7 @@ export class AlgoVisualizer {
                 const newLinks = edgeSelection.enter().data()
                 const newPathElements: SVGPathElement[] = []
                 newLinks.forEach((link) => {
-                    newPathElements.push(this.createNewEdgeSvgElement(link))
+                    newPathElements.push(this.createNewEdgeSvgElement(link, false, false))
                 })
                 newPathElements.forEach((pathElement) => {
                     this.mainSvg.appendChild(pathElement)
@@ -1315,16 +1315,21 @@ export class AlgoVisualizer {
      * @param target the d3 hierarchy node that should be at the end of the edge
      * @return the string meant to be used as the d attribute of an svg path element
      */
-    private generateEdgePathFN = (source: d3.HierarchyPointNode<bPlusTreeNode>, target: d3.HierarchyPointNode<bPlusTreeNode>) => {
+    private generateEdgePathFN = (source: d3.HierarchyPointNode<bPlusTreeNode>,
+        target: d3.HierarchyPointNode<bPlusTreeNode>) => {
         const targetIndex = source.data.pointers.indexOf(target.data)
 
-        const sourceX = (source.x - ((this.nodeWidth / 2) - (this.pointerRectWidth / 2))) + ((this.pointerRectWidth + this.keyRectWidth) * targetIndex)
+        const sourceX = (source.x +
+            (this.pointerRectWidth / 2) +
+            ((this.pointerRectWidth + this.keyRectWidth) * targetIndex))
         const sourceY = source.y + this.nodeHeight / 2
+
+        const targetX = target.x + this.nodeWidth / 2
 
         const path = d3Path()
         path.moveTo(sourceX, sourceY)
         //draw a solid circle with a radius of 2 at the source of the edge
-        path.bezierCurveTo(sourceX, sourceY + 70, target.x, target.y - 50, target.x, target.y)
+        path.bezierCurveTo(sourceX, sourceY + 70, targetX, target.y - 50, targetX, target.y)
 
         return path.toString()
     }
