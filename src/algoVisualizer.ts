@@ -87,6 +87,7 @@ export class AlgoVisualizer {
     private readonly keyTextClassName = "node-key-text"
     private readonly nodeTextSelector = "text." + this.keyTextClassName
     private readonly mainSvgId = "#main-svg"
+    private readonly mainSvg: SVGSVGElement
     // end of class and id names constants
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
@@ -112,11 +113,12 @@ export class AlgoVisualizer {
         //so that the tree is centered on the canvas. It must be done like this because the
         //nodes must keep there origin in the top left corner. Otherwise animejs will not work correctly
         //because it overrides transforms in order to animate svg movement.
-        const svg: SVGSVGElement | null = document.querySelector(this.mainSvgId)
-        if (svg == null) throw new Error("main-svg element not found invalid html structure")
-        svg.viewBox
-        svg.setAttribute('viewBox',
-            `${svg.viewBox.baseVal.x + (this.nodeWidth / 2)} ${svg.viewBox.baseVal.y} ${svg.viewBox.baseVal.width} ${svg.viewBox.baseVal.height}`);
+        const mainSvgTmp: SVGSVGElement | null = document.querySelector(this.mainSvgId)
+        if (mainSvgTmp == null) throw new Error("main-svg element not found invalid html structure")
+        this.mainSvg = mainSvgTmp
+        this.mainSvg.viewBox
+        this.mainSvg.setAttribute('viewBox',
+            `${this.mainSvg.viewBox.baseVal.x + (this.nodeWidth / 2)} ${this.mainSvg.viewBox.baseVal.y} ${this.mainSvg.viewBox.baseVal.width} ${this.mainSvg.viewBox.baseVal.height}`);
         const style = getComputedStyle(document.body)
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
@@ -425,6 +427,19 @@ export class AlgoVisualizer {
                     }, "<")
                 timeline.set(newTextElement,
                     { fill: this.textColor }, "<")
+                //create svg elements for new edges
+                //first find out which links are the new links
+                const edgeSelection = select(this.mainSvgId)
+                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                    .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
+                const newLinks = edgeSelection.enter().data()
+                const newPathElements: SVGPathElement[] = []
+                newLinks.forEach((link) => {
+                    newPathElements.push(this.createNewEdgeSvgElement(link))
+                })
+                newPathElements.forEach((pathElement) => {
+                    this.mainSvg.appendChild(pathElement)
+                })
 
                 return
             }
@@ -1296,19 +1311,20 @@ export class AlgoVisualizer {
     /**
      * Creates a string that represents the svg path for a B+ Tree node edge.
      * Do not change interface createNewEdgeSvgElements depends on it.
-     * @param d A d3 datum that contains the source and target data for a B+ Tree edge.
-     * @return The string meant to be used as the d attribute of an svg path element.
+     * @param source the d3 hierarchy node that should be at the start of the edge
+     * @param target the d3 hierarchy node that should be at the end of the edge
+     * @return the string meant to be used as the d attribute of an svg path element
      */
-    private generateEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
-        const targetIndex = d.source.data.pointers.indexOf(d.target.data)
+    private generateEdgePathFN = (source: d3.HierarchyPointNode<bPlusTreeNode>, target: d3.HierarchyPointNode<bPlusTreeNode>) => {
+        const targetIndex = source.data.pointers.indexOf(target.data)
 
-        const sourceX = (d.source.x - ((this.nodeWidth / 2) - (this.pointerRectWidth / 2))) + ((this.pointerRectWidth + this.keyRectWidth) * targetIndex)
-        const sourceY = d.source.y + this.nodeHeight / 2
+        const sourceX = (source.x - ((this.nodeWidth / 2) - (this.pointerRectWidth / 2))) + ((this.pointerRectWidth + this.keyRectWidth) * targetIndex)
+        const sourceY = source.y + this.nodeHeight / 2
 
         const path = d3Path()
         path.moveTo(sourceX, sourceY)
         //draw a solid circle with a radius of 2 at the source of the edge
-        path.bezierCurveTo(sourceX, sourceY + 70, d.target.x, d.target.y - 50, d.target.x, d.target.y)
+        path.bezierCurveTo(sourceX, sourceY + 70, target.x, target.y - 50, target.x, target.y)
 
         return path.toString()
     }
@@ -1357,43 +1373,46 @@ export class AlgoVisualizer {
     }
 
     /**
-     * Creates a new set of svg elements for B+ Tree edges.
-     * @param edgeSelection A selection of svg path elements that correspond to
-     * a B+ Tree edges.
-     * @param areLeafNodeEdges toggles wether or not the edges are to be
-     * generated for links between leaf node siblings or not.
-     * @param isTransparent toggles wether or not the edges are transparent
-     * initially. This exists so that edge reveal can be animated.
-     * @return newEdgesSvgElements the selection of newly created svg path
-     * elements
+     * Creates a new svg element for B+ Tree edge. Gives every new path element
+     * an ID of the form "1-2" where 1 and 2 are the ids of the source and
+     * target b plus tree nodes respectively.
+     * @param link a d3 hierarchy node link
+     * @param areLeafNodeEdges toggles wether or not the edge is to be
+     * generated for a link between leaf node siblings or not. defaults
+     * to false
+     * @param isTransparent toggles wether or not the edge is transparent
+     * initially. This exists so that edge reveal can be animated. defaults
+     * to true
+     * @return the created svg path element
      * @dependency this.nodeWidth The width of a bplus tree node
      * @dependency this.nodeHeight The height of a bplus tree node
      * @dependency this.pointerRectWidth The width of a bplus tree pointer
      * rectangle
      * @dependency this.keyRectWidth The width of a bplus tree key rectangle
      */
-    private createNewEdgeSvgElements(edgeSelection: d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown>,
-        areLeafNodeEdges = false, isTransparent = true): d3.Selection<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>, d3.BaseType, unknown> {
+    private createNewEdgeSvgElement(link: d3.HierarchyPointLink<bPlusTreeNode>,
+        areLeafNodeEdges = false, isTransparent = true): SVGPathElement {
         let className = this.edgeClassName
         let edgePathFnGenerator = this.generateEdgePathFN
 
         if (areLeafNodeEdges) {
-            edgePathFnGenerator = this.generateLeafEdgePathFN
+            // TODO refactor genreate Leaf edge pathFN
+            // edgePathFnGenerator = this.generateLeafEdgePathFN
             className = this.leafNodeEdgeClassName
         }
 
-        const newEdges = edgeSelection.enter().append("path")
-            .attr("class", className)
-            .attr("d", edgePathFnGenerator)
-            .attr("fill", "none")
-            .attr("id", (d) => { return this.edgeClassName + "-" + String(d.source.data.id) + "-" + String(d.target.data.id) })
-            .attr("stroke", "black")
-            .attr("stroke-width", "2px")
-            .attr("marker-end", "url(#arrow)")
-            .attr("marker-start", "url(#circle)")
-            .attr("opacity", isTransparent ? 0 : 1) //make edges invisible by default so that they can be animated in later")
+        const newSVGPathElement = document.createElementNS(SVG_NS, "path")
+        newSVGPathElement.setAttribute("class", className)
+        newSVGPathElement.setAttribute("d", edgePathFnGenerator(link.source, link.target))
+        newSVGPathElement.setAttribute("fill", "none")
+        newSVGPathElement.setAttribute("id", `${link.source.data.id}-${link.target.data.id}`)
+        newSVGPathElement.setAttribute("stroke", "black")
+        newSVGPathElement.setAttribute("stroke-width", "2px")
+        newSVGPathElement.setAttribute("marker-end", "url(#arrow)")
+        newSVGPathElement.setAttribute("marker-start", "url(#circle)")
+        newSVGPathElement.setAttribute("opacity", isTransparent ? "0" : "1")
 
-        return newEdges
+        return newSVGPathElement
     }
 
     /**
