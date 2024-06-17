@@ -343,6 +343,8 @@ export class AlgoVisualizer {
             return null
         }
 
+        //TODO figure out why when animating a split some of the numbers disabear after first
+        //time animating. So that on rewind and play numbers are missing.
         /**
          * A subsidiary procedure for the insert method
          * @param leftNode A bPlusTreeNode to be placed to the left of the key value
@@ -440,7 +442,25 @@ export class AlgoVisualizer {
                 newPathElements.forEach((pathElement) => {
                     this.mainSvg.appendChild(pathElement)
                 })
-
+                // this set statement needs to be here so that the timeline
+                // knows that I want mark-end and marker-start to be none
+                // before the end of the animation. Otherwise when rewinding
+                // their values will remain what they were set to at the end.
+                timeline.set(newPathElements,
+                    {
+                        "marker-end": "none",
+                        "marker-start": "none",
+                    }, "<")
+                timeline.add(animeSvg.createDrawable(newPathElements),
+                    {
+                        draw: "0 1",
+                    }
+                    , "<")
+                timeline.set(newPathElements,
+                    {
+                        "marker-end": "url(#arrow)",
+                        "marker-start": "url(#circle)",
+                    }, "<")
                 return
             }
 
@@ -1413,8 +1433,8 @@ export class AlgoVisualizer {
         newSVGPathElement.setAttribute("id", `${link.source.data.id}-${link.target.data.id}`)
         newSVGPathElement.setAttribute("stroke", "black")
         newSVGPathElement.setAttribute("stroke-width", "2px")
-        newSVGPathElement.setAttribute("marker-end", "url(#arrow)")
-        newSVGPathElement.setAttribute("marker-start", "url(#circle)")
+        // newSVGPathElement.setAttribute("marker-end", "url(#arrow)")
+        // newSVGPathElement.setAttribute("marker-start", "url(#circle)")
         newSVGPathElement.setAttribute("opacity", isTransparent ? "0" : "1")
 
         return newSVGPathElement
