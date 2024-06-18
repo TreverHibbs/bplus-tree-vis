@@ -419,7 +419,7 @@ export class AlgoVisualizer {
                     "<<"
                 )
 
-                //animate adding links and number values to the new root node
+                //animate adding number value to the new root node
                 const newTextElement = this.createNewNodeText(this.bPlusTreeRoot.keys[0], 0)
                 newRootElement.appendChild(newTextElement)
                 timeline.add(newTextElement,
@@ -429,7 +429,8 @@ export class AlgoVisualizer {
                     }, "<")
                 timeline.set(newTextElement,
                     { fill: this.textColor }, "<")
-                //create svg elements for new edges
+
+                //animate adding new link edges to root node
                 //first find out which links are the new links
                 const edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
@@ -461,14 +462,94 @@ export class AlgoVisualizer {
                         "marker-end": "url(#arrow)",
                         "marker-start": "url(#circle)",
                     }, "<")
+
                 return
             }
 
             const parentNode = leftNode.parent
             const leftNodeIndex = parentNode.pointers.findIndex(element => element === leftNode)
-            if (parentNode.pointers.filter(element => element).length < this.n) {
+            //TODO animate this part of insert in parent
+            if (parentNode.pointers.filter(element => element).length < this.n) { //case where neither left or right node is the root
                 parentNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
                 parentNode.keys.splice(leftNodeIndex, 0, value)
+
+                // ** Animate Insert Parent No Split Section ** //
+                //get the positions of the left and right node so that they can
+                //be moved to their new correct positions.
+                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                const nodeSelection = select(this.mainSvgId)
+                    .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                    .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
+
+                //get edge selection so their position can be updated
+                const edgeSelection = select(this.mainSvgId)
+                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
+
+                //animate moving every node and edge to its new correct place
+                nodeSelection.each(function(hierarchyNode, i) {
+                    let animationPos = "<"
+                    if (i > 0) {
+                        animationPos = "<<"
+                    }
+                    timeline.add(this,
+                        {
+                            transform: `translate(${hierarchyNode.x},${hierarchyNode.y})`
+                        }, animationPos)
+                })
+                const self = this
+                edgeSelection.each(function(link) {
+                    const animationPos = "<<"
+                    timeline.add(this,
+                        {
+                            d: animeSvg.morphTo(self.generateMorphToPath(link))
+                        }, animationPos)
+                })
+
+                //animate adding key value to parent node
+                const parentNodeElement = document.querySelector(`#${parentNode.id}`)
+                if (parentNodeElement == null) throw new Error("parent node SVG element not found bad DOM state")
+                const newTextElement = this.createNewNodeText(value, leftNodeIndex)
+                parentNodeElement.appendChild(newTextElement)
+                timeline.add(newTextElement,
+                    {
+                        opacity: { to: 1, ease: this.opacityEaseType },
+                        translateY: { from: `-${this.translateYDist}` },
+                    }, "<")
+                timeline.set(newTextElement,
+                    { fill: this.textColor }, "<")
+
+                //animate adding new edge to parent node
+                //first find out which links are the new links
+                const newLinks = edgeSelection.enter().data()
+                const newPathElements: SVGPathElement[] = []
+                newLinks.forEach((link) => {
+                    newPathElements.push(this.createNewEdgeSvgElement(link, false, false))
+                })
+                newPathElements.forEach((pathElement) => {
+                    this.mainSvg.appendChild(pathElement)
+                })
+                // this set statement needs to be here so that the timeline
+                // knows that I want mark-end and marker-start to be none
+                // before the end of the animation. Otherwise when rewinding
+                // their values will remain what they were set to at the end.
+                timeline.set(newPathElements,
+                    {
+                        "marker-end": "none",
+                        "marker-start": "none",
+                    }, "<")
+                timeline.add(animeSvg.createDrawable(newPathElements),
+                    {
+                        draw: "0 1",
+                    }
+                    , "<")
+                timeline.set(newPathElements,
+                    {
+                        "marker-end": "url(#arrow)",
+                        "marker-start": "url(#circle)",
+                    }, "<")
+
+                //TODO animate this split
             } else { // split
                 const tempKeys = parentNode.keys.slice()
                 const tempPointers = parentNode.pointers.slice()
@@ -574,7 +655,7 @@ export class AlgoVisualizer {
             insertInLeaf(targetNode, value)
         } else { //leaf node targetNode has n - 1 key values already, split it
             moveSudoCodeRectangle(7)
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                 .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -607,18 +688,20 @@ export class AlgoVisualizer {
                     tempNodeRectChildNodes.push(child)
                 }
             })
+            const tempNodeElementX = targetNodeSelection.data()[0].x
+            const tempNodeElementY = targetNodeSelection.data()[0].y
             //@ts-expect-error
             timeline.add("addTempNode")
             timeline.set(tempNodeElement,
                 {
-                    transform: `translate(0,${-this.translateYDist})`
+                    transform: `translate(${tempNodeElementX} ,${tempNodeElementY - this.translateYDist})`
                 }, "<"
             )
             timeline.add(
                 tempNodeElement,
                 {
                     opacity: { to: 1, ease: this.opacityEaseType },
-                    transform: "translate(0,0)"
+                    transform: `translate(${tempNodeElementX},${tempNodeElementY})`
                 }, "<"
             )
             //@ts-expect-error
@@ -664,8 +747,6 @@ export class AlgoVisualizer {
             //animate moving numbers to the temp node
             const mainSvg = document.querySelector(this.mainSvgId)
             if (mainSvg == null) throw new Error("main-svg element not found invalid html structure")
-            //TODO refactor so that the temp node element is the one that is
-            //rendered on top of the new node and target node elements.
             let targetNodeTextSelection = targetNodeSelection.selectAll(this.nodeTextSelector).data(targetNode.keys,
                 function(d) { return d ? "t" + d : (this as SVGTextElement).id })
             const tempNodeTextElements: SVGTextElement[] = []
@@ -839,7 +920,7 @@ export class AlgoVisualizer {
                 tempNodeElement,
                 {
                     opacity: { to: 0, ease: this.opacityEaseType },
-                    transform: `translate(0,${this.translateYDist})`
+                    transform: `translate(${tempNodeElementX},${tempNodeElementY + this.translateYDist})`
                 }, "<"
             )
 
@@ -1359,12 +1440,13 @@ export class AlgoVisualizer {
      * in a call to the morphTo method of the animejs library.
      * @param d A d3 datum that contains the source and target data for a B+ Tree edge.
      * @param isLeaf Changes the path generator function to match the case of leaf edge vs node edge.
+     * defaults to false
      * @sideEffect Adds a path element as a child of the defs element of the main svg element.
      * @sideEffect Throws error on failure to select the defs element.
      * @return The created path element
      */
     private generateMorphToPath = (d: d3.HierarchyPointLink<bPlusTreeNode>, isLeaf = false) => {
-        let pathString = this.generateEdgePathFN(d)
+        let pathString = this.generateEdgePathFN(d.source, d.target)
         if (isLeaf) {
             pathString = this.generateLeafEdgePathFN(d)
         }
