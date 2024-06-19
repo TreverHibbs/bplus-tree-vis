@@ -583,6 +583,22 @@ export class AlgoVisualizer {
                     }
                 });
 
+                //generate animation for the splitting of the parent node
+                //first animate moving the parent node down and to the left inorder
+                //to make room for the temp node coming in.
+                const parentNodeSelection = select(`#${parentNode.id}`)
+                if (parentNodeSelection.node() == null) throw new Error("parent node element not found bad state")
+                const parentNodeData = parentNodeSelection.data()[0] as d3.HierarchyPointNode<bPlusTreeNode>
+                timeline.add(
+                    parentNodeSelection.node(),
+                    {
+                        transform: () => {
+                            return `translate( ${parentNodeData.x - this.nodeWidth} , ${parentNodeData.y + this.nodeHeight * 1.5})`
+                        }
+                    }, "<"
+                )
+
+
                 insertInParent(parentNode, middleKey, newNode)
             }
             return
