@@ -500,9 +500,12 @@ export class AlgoVisualizer {
                 const self = this
                 edgeSelection.each(function(link) {
                     const animationPos = "<<"
+                    //get targetIndex for link
+                    const targetIndex = link.source.data.pointers.indexOf(link.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(link))
+                            d: animeSvg.morphTo(self.generateMorphToPath(link.source.x,
+                                link.source.y, link.target.x, link.target.y, targetIndex))
                         }, animationPos)
                 })
 
@@ -598,8 +601,24 @@ export class AlgoVisualizer {
                     }, "<"
                 )
 
+                //animate moving edge nodes attached to parent node as well
+                const edgeSelection = select(this.mainSvgId)
+                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                edgeSelection.filter(function(hierarchyPointLink: d3.HierarchyPointLink<bPlusTreeNode>) {
+                    return hierarchyPointLink.source.data.id == parentNodeData.data.id
+                })
+                const self = this
+                edgeSelection.each(function(link) {
+                    const animationPos = "<<"
+                    const targetIndex = link.source.data.pointers.indexOf(link.target.data)
+                    timeline.add(this,
+                        {
+                            d: animeSvg.morphTo(self.generateMorphToPath(link.source.x,
+                                link.source.y, link.target.x - 50, link.target.y, targetIndex))
+                        }, animationPos)
+                })
 
-                insertInParent(parentNode, middleKey, newNode)
+                // insertInParent(parentNode, middleKey, newNode)
             }
             return
         }
@@ -1425,46 +1444,29 @@ export class AlgoVisualizer {
     //     return "translate(" + String(x - this.nodeWidth / 2) + "," + String(y) + ")"
     // }
 
-    /**
-     * Creates a string that represents the svg path for a B+ Tree node edge.
-     * Do not change interface createNewEdgeSvgElements depends on it.
-     * @param source the d3 hierarchy node that should be at the start of the edge
-     * @param target the d3 hierarchy node that should be at the end of the edge
-     * @return the string meant to be used as the d attribute of an svg path element
-     */
-    private generateEdgePathFN = (source: d3.HierarchyPointNode<bPlusTreeNode>,
-        target: d3.HierarchyPointNode<bPlusTreeNode>) => {
-        const targetIndex = source.data.pointers.indexOf(target.data)
-
-        const sourceX = (source.x +
-            (this.pointerRectWidth / 2) +
-            ((this.pointerRectWidth + this.keyRectWidth) * targetIndex))
-        const sourceY = source.y + this.nodeHeight / 2
-
-        const targetX = target.x + this.nodeWidth / 2
-
-        const path = d3Path()
-        path.moveTo(sourceX, sourceY)
-        //draw a solid circle with a radius of 2 at the source of the edge
-        path.bezierCurveTo(sourceX, sourceY + 70, targetX, target.y - 50, targetX, target.y)
-
-        return path.toString()
-    }
 
     /**
      * Create a svg path element and insert it into the DOM so that it can be used
      * in a call to the morphTo method of the animejs library.
-     * @param d A d3 datum that contains the source and target data for a B+ Tree edge.
+     * @param sourceX the x coordinate of the source B+ Tree node SVG element.
+     * @param sourceY the y coordinate of the source B+ Tree node SVG element.
+     * @param targetX the x coordinate of the target B+ Tree node SVG element.
+     * @param targetY the y coordinate of the target B+ Tree node SVG element.
+     * @param targetIndex the index of the target node in the source nodes
+     * pointer array. This determines the right offset of the source position
+     * of the generated path element.
      * @param isLeaf Changes the path generator function to match the case of leaf edge vs node edge.
      * defaults to false
      * @sideEffect Adds a path element as a child of the defs element of the main svg element.
      * @sideEffect Throws error on failure to select the defs element.
      * @return The created path element
      */
-    private generateMorphToPath = (d: d3.HierarchyPointLink<bPlusTreeNode>, isLeaf = false) => {
-        let pathString = this.generateEdgePathFN(d.source, d.target)
+    private generateMorphToPath = (sourceX: number, sourceY: number,
+        targetX: number, targetY: number, targetIndex: number, isLeaf = false) => {
+        let pathString = this.generateEdgePathFN(sourceX, sourceY, targetX, targetY, targetIndex)
         if (isLeaf) {
-            pathString = this.generateLeafEdgePathFN(d)
+            // TODO refactor this function to not include these helper functions.
+            // pathString = this.generateLeafEdgePathFN(d)
         }
 
         let svgElement = document.createElementNS(SVG_NS, "path");
@@ -1478,6 +1480,36 @@ export class AlgoVisualizer {
         defsElement.appendChild(svgElement);
         return svgElement
     }
+
+
+    /**
+     * Creates a string that represents the svg path for a B+ Tree node edge.
+     * Do not change interface createNewEdgeSvgElements depends on it.
+     * @param sourceX the x coordinate of the source B+ Tree node SVG element.
+     * @param sourceY the y coordinate of the source B+ Tree node SVG element.
+     * @param targetX the x coordinate of the target B+ Tree node SVG element.
+     * @param targetY the y coordinate of the target B+ Tree node SVG element.
+     * @param targetIndex the index of the target node in the source nodes
+     * pointer array. This determines the right offset of the source position
+     * of the generated path string.
+     * @return the string meant to be used as the d attribute of an svg path element
+     */
+    private generateEdgePathFN = (sourceX: number, sourceY: number,
+        targetX: number, targetY: number, targetIndex: number) => {
+        sourceX = (sourceX +
+            (this.pointerRectWidth / 2) +
+            ((this.pointerRectWidth + this.keyRectWidth) * targetIndex))
+        sourceY = sourceY + this.nodeHeight / 2
+
+        targetX = targetX + this.nodeWidth / 2
+
+        const path = d3Path()
+        path.moveTo(sourceX, sourceY)
+        path.bezierCurveTo(sourceX, sourceY + 70, targetX, targetY - 50, targetX, targetY)
+
+        return path.toString()
+    }
+
 
     /**
      * Creates a string that represents the svg path for a B+ Tree leaf edge.
@@ -1526,7 +1558,9 @@ export class AlgoVisualizer {
 
         const newSVGPathElement = document.createElementNS(SVG_NS, "path")
         newSVGPathElement.setAttribute("class", className)
-        newSVGPathElement.setAttribute("d", edgePathFnGenerator(link.source, link.target))
+        const targetIndex = link.source.data.pointers.indexOf(link.target.data)
+        newSVGPathElement.setAttribute("d", edgePathFnGenerator(link.source.x, link.source.y,
+            link.target.x, link.target.y, targetIndex))
         newSVGPathElement.setAttribute("fill", "none")
         newSVGPathElement.setAttribute("id", `${link.source.data.id}-${link.target.data.id}`)
         newSVGPathElement.setAttribute("stroke", "black")
