@@ -586,7 +586,7 @@ export class AlgoVisualizer {
                     }
                 });
 
-                //generate animation for the splitting of the parent node
+                // ** generate animation for the splitting of the parent node section ** //
                 //first animate moving the parent node down and to the left inorder
                 //to make room for the temp node coming in.
                 const parentNodeSelection = select(`#${parentNode.id}`)
@@ -601,9 +601,14 @@ export class AlgoVisualizer {
                     }, "<"
                 )
 
-                //animate moving edge nodes attached to parent node as well
+                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
                 const edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
+
+                //TODO continue animating and debug this block here. source is sometimes
+                //undefined
+                //animate moving edge nodes attached to parent node as well
                 edgeSelection.filter(function(hierarchyPointLink: d3.HierarchyPointLink<bPlusTreeNode>) {
                     return hierarchyPointLink.source.data.id == parentNodeData.data.id
                 })
