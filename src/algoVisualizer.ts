@@ -497,6 +497,7 @@ export class AlgoVisualizer {
                             transform: `translate(${hierarchyNode.x},${hierarchyNode.y})`
                         }, animationPos)
                 })
+
                 const self = this
                 edgeSelection.each(function(link) {
                     const animationPos = "<<"
@@ -554,24 +555,186 @@ export class AlgoVisualizer {
 
                 //TODO animate this split
             } else { // split
-                const tempKeys = parentNode.keys.slice()
-                const tempPointers = parentNode.pointers.slice()
+                // when splitting make every DOM element of the B+ tree
+                // transparent so that all that the user sees are the nodes being split
+                // this way hopefully things don't get so confusing.
 
-                tempPointers.splice(leftNodeIndex + 1, 0, rightNode)
-                tempKeys.splice(leftNodeIndex, 0, value)
+                const tempNode = new bPlusTreeNode(true)
+                tempNode.keys = parentNode.keys.slice()
+                tempNode.pointers = parentNode.pointers.slice()
+
+                tempNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
+                tempNode.keys.splice(leftNodeIndex, 0, value)
 
                 parentNode.keys = []
                 parentNode.pointers = []
 
                 const newNode = new bPlusTreeNode(false)
 
-                parentNode.pointers = tempPointers.slice(0, Math.ceil((this.n + 1) / 2))
-                parentNode.keys = tempKeys.slice(0, Math.ceil((this.n + 1) / 2) - 1)
+                // ** animation section ** //
+                // generate animations for adding the temp node and new node
+                // and moving the parent nodes text into the temp node
+                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                const edgeSelection = select(this.mainSvgId)
+                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
+                const nodeSelection = select(this.mainSvgId)
+                    .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+                    .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
+                this.exitSelections.push(edgeSelection.exit())
+                this.exitSelections.push(nodeSelection.exit())
 
-                const middleKey = tempKeys[Math.ceil(((this.n + 1) / 2) - 1)]
+                //first make all other B+ Tree Dom elements transparent
+                const parentNodeSelection = select(`#${parentNode.id}`)
+                const parentNodeElement = (parentNodeSelection.node() as SVGGElement | null)
+                if (parentNodeElement == null) throw new Error("bad state")
+                const otherNodeSelection = nodeSelection.filter(function() {
+                    return (this !== parentNodeElement)
+                })
+                timeline.add(otherNodeSelection.nodes(),
+                    { opacity: 0.25 }, "<")
+                timeline.add([...edgeSelection.nodes(), ...edgeSelection.enter().nodes(), ...edgeSelection.exit().nodes()],
+                    { opacity: 0.25 }, "<")
 
-                newNode.pointers = tempPointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
-                newNode.keys = tempKeys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
+                //first animate moving the parent node down and to the left inorder
+                //to make room for the temp node coming in.
+                const parentNodeData = parentNodeSelection.data()[0] as d3.HierarchyPointNode<bPlusTreeNode>
+                timeline.add(
+                    parentNodeElement,
+                    {
+                        transform: () => {
+                            return `translate( ${parentNodeData.x - this.nodeWidth} , ${parentNodeData.y + this.nodeHeight * 1.5})`
+                        }
+                    }, "<"
+                )
+
+                //animate adding the temp node to the visualization
+                //we have to get the temp node elements rect children so that we can animate
+                //the change of the nodes color.
+                const tempNodeElement = this.createNodeElement(tempNode, parentNodeData.x,
+                    parentNodeData.y, true, true)
+                const tempNodeRectChildNodes: ChildNode[] = []
+                tempNodeElement.childNodes.forEach((child) => {
+                    if (child.nodeName == "rect") {
+                        tempNodeRectChildNodes.push(child)
+                    }
+                })
+
+                const tempNodeElementX = parentNodeData.x
+                const tempNodeElementY = parentNodeData.y
+                //@ts-expect-error
+                timeline.add("addTempNode")
+                timeline.set(tempNodeElement,
+                    {
+                        transform: `translate(${tempNodeElementX} ,${tempNodeElementY - this.translateYDist})`
+                    }, "<"
+                )
+                timeline.add(
+                    tempNodeElement,
+                    {
+                        opacity: { to: 1, ease: this.opacityEaseType },
+                        transform: `translate(${tempNodeElementX},${tempNodeElementY})`
+                    }, "<"
+                )
+                //@ts-expect-error
+                timeline.set(
+                    tempNodeRectChildNodes,
+                    {
+                        fill: this.lightBlue
+                    }
+                )
+
+                // animate adding the new node to the tree
+                const newNodeElement = this.createNodeElement(newNode,
+                    parentNodeData.x + this.nodeWidth,
+                    parentNodeData.y + this.nodeHeight * 1.5)
+                timeline.add(
+                    newNodeElement,
+                    {
+                        opacity: { to: 1, ease: this.opacityEaseType },
+                    }, "addTempNode"
+                )
+                const rectChildNodes: ChildNode[] = []
+                newNodeElement.childNodes.forEach((child) => {
+                    if (child.nodeName == "rect") {
+                        rectChildNodes.push(child)
+                    }
+                })
+                if (rectChildNodes.length != 0) {
+                    timeline.add(
+                        rectChildNodes,
+                        {
+                            translateY: { from: "-" + this.translateYDist }
+                        },
+                        "<<"
+                    )
+                    //@ts-expect-error
+                    timeline.set(rectChildNodes,
+                        {
+                            fill: this.lightBlue
+                        }
+                    )
+                }
+
+                //TODO debug this figure out how to move the 
+                //text over without 12 showing up to early.
+                //animate moving numbers to the temp node
+                const mainSvg = document.querySelector(this.mainSvgId)
+                if (mainSvg == null) throw new Error("main-svg element not found invalid html structure")
+                let parentNodeTextSelection = parentNodeSelection.selectAll(this.nodeTextSelector).data(targetNode.keys,
+                    function(d) { return d ? "t" + d : (this as SVGTextElement).id })
+                const tempNodeTextElements: SVGTextElement[] = []
+                tempNode.keys.forEach((key: number, i: number) => {
+                    tempNodeTextElements.push(this.createNewNodeText(key, i))
+                    tempNodeElement.appendChild(tempNodeTextElements[i])
+                })
+                //place the tempNodeTextElements on top of the target node text elements
+                //so that the animation can move them to the temp node.
+                //@ts-expect-error
+                timeline.set(tempNodeTextElements, {
+                    opacity: 1,
+                    fill: this.textColor,
+                    translateX: { to: "-" + this.nodeWidth },
+                    translateY: { to: "+" + this.nodeHeight * 1.5 },
+                })
+                //@ts-expect-error
+                timeline.set(parentNodeTextSelection.nodes(), { opacity: 0 })
+                //animate moving the text elements form target node to temp node
+                //@ts-expect-error
+                timeline.add(
+                    tempNodeTextElements,
+                    {
+                        translateY: { to: "-" + this.nodeHeight }
+                    }
+                )
+                //@ts-expect-error
+                timeline.add(
+                    tempNodeTextElements,
+                    {
+                        translateX: { to: 0 }
+                    }
+                )
+                //@ts-expect-error
+                timeline.add(
+                    tempNodeTextElements,
+                    {
+                        translateY: { to: 0 },
+                    }
+                )
+
+                //animate adding new value to temp node
+                const newTempNodeTextElement = insertInLeaf(tempNode, value)
+                if (newTempNodeTextElement == null) throw new Error("bad state")
+                tempNodeTextElements.push(newTempNodeTextElement)
+                // ** end of animation section ** //
+
+                parentNode.pointers = tempNode.pointers.slice(0, Math.ceil((this.n + 1) / 2))
+                parentNode.keys = tempNode.keys.slice(0, Math.ceil((this.n + 1) / 2) - 1)
+
+                const middleKey = tempNode.keys[Math.ceil(((this.n + 1) / 2) - 1)]
+
+                newNode.pointers = tempNode.pointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
+                newNode.keys = tempNode.keys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
 
                 newNode.parent = parentNode.parent
 
@@ -586,42 +749,125 @@ export class AlgoVisualizer {
                     }
                 });
 
-                // ** generate animation for the splitting of the parent node section ** //
-                //first animate moving the parent node down and to the left inorder
-                //to make room for the temp node coming in.
-                const parentNodeSelection = select(`#${parentNode.id}`)
-                if (parentNodeSelection.node() == null) throw new Error("parent node element not found bad state")
-                const parentNodeData = parentNodeSelection.data()[0] as d3.HierarchyPointNode<bPlusTreeNode>
-                timeline.add(
-                    parentNodeSelection.node(),
+                // ** Animation Section ** //
+                // get the text elements from the temp node element that
+                //should be move to the target node
+                const toTargetNodeText: SVGTextElement[] = []
+                tempNode.keys.slice(0, Math.ceil(this.n / 2)).forEach((key: number) => {
+                    const textElement: SVGTextElement | null = document.querySelector("#" + tempNode.id + " #t" + key)
+                    if (textElement == null) throw new Error("Bad dom state")
+                    toTargetNodeText.push(textElement)
+                })
+                //animate moving the correct temp node text elements to target node
+                //@ts-expect-error
+                timeline.add(toTargetNodeText,
                     {
-                        transform: () => {
-                            return `translate( ${parentNodeData.x - this.nodeWidth} , ${parentNodeData.y + this.nodeHeight * 1.5})`
+                        translateY: { to: "-" + this.nodeHeight * 1.5 },
+                    }
+                )
+                //@ts-expect-error
+                timeline.add(toTargetNodeText,
+                    {
+                        translateX: { to: "-" + this.nodeWidth },
+                    }
+                )
+                //@ts-expect-error
+                timeline.add(toTargetNodeText,
+                    {
+                        translateY: { to: "+" + this.nodeHeight * 1.5 },
+                    }
+                )
+                //Make sure that the temp node will render on top of the target node element
+                //and new node element
+                if (tempNodeElement.parentNode != null) {
+                    tempNodeElement.parentNode.appendChild(tempNodeElement)
+                } else {
+                    throw new Error("bad dom structure")
+                }
+                //get the text elements from the temp node that should go tot he new node
+                //and animate them going to the new node.
+                const toNewNodeText: SVGTextElement[] = []
+                tempNode.keys.slice(Math.ceil(this.n / 2), this.n).forEach((key: number) => {
+                    const textElement: SVGTextElement | null = document.querySelector("#" + tempNode.id + " #t" + key)
+                    if (textElement == null) throw new Error("Bad dom state")
+                    toNewNodeText.push(textElement)
+                })
+                //@ts-expect-error
+                timeline.add(toNewNodeText,
+                    {
+                        translateY: { to: "-" + this.nodeHeight * 1.5 },
+                    }
+                )
+                //@ts-expect-error
+                timeline.add(toNewNodeText,
+                    {
+                        translateX: { to: "+" + (this.keyRectWidth + this.pointerRectWidth * 2) },
+                    }
+                )
+                //@ts-expect-error
+                timeline.add(toNewNodeText,
+                    {
+                        translateY: { to: `+${this.nodeHeight * 1.5}` },
+                    }
+                )
+                //replace the temp node text elements with their corresponding new node and
+                //target node text elements. Also animate the removal of the temp node.
+                newNode.keys.forEach((key: number, i: number) => {
+                    newNodeElement.appendChild(this.createNewNodeText(key, i))
+                })
+                const newNodeTextElements = Array.from(newNodeElement.childNodes).filter((child) => {
+                    return child.nodeName == "text"
+                })
+                //update the keys of the target node
+                parentNodeTextSelection = parentNodeSelection.selectAll(this.nodeTextSelector).data(targetNode.keys,
+                    function(d) { return d ? "t" + d : (this as SVGTextElement).id })
+                this.exitSelections.push(parentNodeTextSelection.exit())
+                //reposition the text elements that already existed in the target node
+                //and remain to their right position in the node.
+                parentNodeTextSelection.nodes().forEach((nodeElement) => {
+                    const indexInKeyArray = targetNode.keys.findIndex(
+                        (keyElement) => {
+                            if (nodeElement == null) throw new Error("bad dom state")
+                            return keyElement == Number((nodeElement as Element).textContent)
                         }
+                    )
+                    //@ts-expect-error
+                    timeline.set(nodeElement, {
+                        x: String(this.pointerRectWidth +
+                            (this.keyRectWidth / 2) +
+                            indexInKeyArray * (this.keyRectWidth + this.pointerRectWidth))
+                    })
+                })
+                //create the new nodes in the target node.
+                const targetNodeNewTextElements: SVGTextElement[] = []
+                parentNodeTextSelection.enter().data().forEach((enterKey: number) => {
+                    const indexInKeyArray = targetNode.keys.findIndex(
+                        (keyElement) => { return keyElement == enterKey }
+                    )
+                    const newTextElement = this.createNewNodeText(enterKey, indexInKeyArray)
+                    parentNodeElement.appendChild(newTextElement)
+                    targetNodeNewTextElements.push(newTextElement)
+                })
+                //@ts-expect-error
+                timeline.set([...parentNodeTextSelection.nodes(),
+                ...newNodeTextElements, ...targetNodeNewTextElements],
+                    { opacity: 1, fill: this.textColor })
+                //@ts-expect-error
+                timeline.set(tempNodeTextElements, { opacity: 0 })
+
+                //animate the removal of the temp node
+                //@ts-expect-error
+                timeline.set(Array.from(tempNodeElement.childNodes).filter((child) => { return child.nodeName == "rect" }), {
+                    fill: "#F97287"
+                })
+                timeline.add(
+                    tempNodeElement,
+                    {
+                        opacity: { to: 0, ease: this.opacityEaseType },
+                        transform: `translate(${tempNodeElementX},${tempNodeElementY + this.translateYDist})`
                     }, "<"
                 )
 
-                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
-                const edgeSelection = select(this.mainSvgId)
-                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
-
-                //TODO continue animating and debug this block here. source is sometimes
-                //undefined
-                //animate moving edge nodes attached to parent node as well
-                edgeSelection.filter(function(hierarchyPointLink: d3.HierarchyPointLink<bPlusTreeNode>) {
-                    return hierarchyPointLink.source.data.id == parentNodeData.data.id
-                })
-                const self = this
-                edgeSelection.each(function(link) {
-                    const animationPos = "<<"
-                    const targetIndex = link.source.data.pointers.indexOf(link.target.data)
-                    timeline.add(this,
-                        {
-                            d: animeSvg.morphTo(self.generateMorphToPath(link.source.x,
-                                link.source.y, link.target.x - 50, link.target.y, targetIndex))
-                        }, animationPos)
-                })
 
                 // insertInParent(parentNode, middleKey, newNode)
             }
@@ -828,6 +1074,7 @@ export class AlgoVisualizer {
                 }
             )
 
+            //animate adding new value to temp node
             const newTempNodeTextElement = insertInLeaf(tempNode, value)
             if (newTempNodeTextElement == null) throw new Error("bad state")
             tempNodeTextElements.push(newTempNodeTextElement)
