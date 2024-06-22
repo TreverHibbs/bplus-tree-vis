@@ -372,8 +372,6 @@ export class AlgoVisualizer {
                 const nodeSelection = select(this.mainSvgId)
                     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                     .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
-                const leftNodeSelection = nodeSelection.filter((d) => d.data === leftNode)
-                const rightNodeSelection = nodeSelection.filter((d) => d.data === rightNode)
 
                 //animate adding a new root node to the tree.
                 const newRootElement = this.createNodeElement(this.bPlusTreeRoot)
@@ -401,23 +399,42 @@ export class AlgoVisualizer {
                     }, "<"
                 )
 
-                //animate moving the left and right nodes to their right places
-                timeline.add(leftNodeSelection.node(),
-                    {
-                        transform: () => {
-                            return `translate( ${String(leftNodeSelection.data()[0].x)} , ${String(leftNodeSelection.data()[0].y)} )`
-                        }
-                    },
-                    "<"
-                )
-                timeline.add(rightNodeSelection.node(),
-                    {
-                        transform: () => {
-                            return "translate(" + String(rightNodeSelection.data()[0].x) + "," + String(rightNodeSelection.data()[0].y) + ")"
-                        }
-                    },
-                    "<<"
-                )
+                //animate moving every node to its right spot.
+                nodeSelection.each(function(nodeData, i) {
+                    let timelinePos = "<<"
+                    if (i == 0) {
+                        timelinePos = "<"
+                    }
+
+                    timeline.add(this,
+                        {
+                            transform: `translate( ${String(nodeData.x)} , ${String(nodeData.y)} )`
+                        }, timelinePos)
+                })
+
+                //animate moving every edge to its right spot
+                let edgeSelection = select(this.mainSvgId)
+                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                    .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
+                const self = this
+                edgeSelection.each(function(edgeData, i) {
+                    let timelinePos = "<<"
+                    if (i == 0) {
+                        timelinePos = "<"
+                    }
+                    const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                    timeline.add(this,
+                        {
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
+                                edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
+                        }, timelinePos)
+                })
+
+                //remove no longer needed edges
+                edgeSelection.exit().each(function() {
+                    timeline.set(this, { opacity: 0 }, "<<")
+                })
+                this.exitSelections.push(edgeSelection.exit())
 
                 //animate adding number value to the new root node
                 const newTextElement = this.createNewNodeText(this.bPlusTreeRoot.keys[0], 0)
@@ -432,7 +449,7 @@ export class AlgoVisualizer {
 
                 //animate adding new link edges to root node
                 //first find out which links are the new links
-                const edgeSelection = select(this.mainSvgId)
+                edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
                 const newLinks = edgeSelection.enter().data()
@@ -553,7 +570,7 @@ export class AlgoVisualizer {
                         "marker-start": "url(#circle)",
                     }, "<")
 
-                //TODO animate this split
+                //TODO animate the edges moving arroun betweentemp nodes and regular nodes
             } else { // split
                 // when splitting make every DOM element of the B+ tree
                 // transparent so that all that the user sees are the nodes being split
@@ -731,6 +748,8 @@ export class AlgoVisualizer {
                 parentNode.pointers = tempNode.pointers.slice(0, Math.ceil((this.n + 1) / 2))
                 parentNode.keys = tempNode.keys.slice(0, Math.ceil((this.n + 1) / 2) - 1)
 
+                const middleKey = tempNode.keys[Math.ceil(((this.n + 1) / 2) - 1)]
+
                 newNode.pointers = tempNode.pointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
                 newNode.keys = tempNode.keys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
 
@@ -870,7 +889,7 @@ export class AlgoVisualizer {
                 // ** End of animation section ** //
 
 
-                // insertInParent(parentNode, middleKey, newNode)
+                insertInParent(parentNode, middleKey, newNode)
             }
             return
         }
