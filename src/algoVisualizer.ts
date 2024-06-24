@@ -570,11 +570,14 @@ export class AlgoVisualizer {
                         "marker-start": "url(#circle)",
                     }, "<")
 
-                //TODO animate the edges moving arroun betweentemp nodes and regular nodes
+                //TODO animate the edges moving arround between temp nodes and regular nodes
             } else { // split
                 // when splitting make every DOM element of the B+ tree
                 // transparent so that all that the user sees are the nodes being split
                 // this way hopefully things don't get so confusing.
+
+                // set this for d3 callback functions
+                const self = this
 
                 const tempNode = new bPlusTreeNode(true)
                 tempNode.keys = parentNode.keys.slice()
@@ -599,13 +602,13 @@ export class AlgoVisualizer {
                 const parentNodeSelection = select(`#${parentNode.id}`)
                 const parentNodeElement = (parentNodeSelection.node() as SVGGElement | null)
                 if (parentNodeElement == null) throw new Error("bad state")
-                const otherNodeSelection = nodeSelection.filter(function() {
-                    return (this !== parentNodeElement)
-                })
-                timeline.add(otherNodeSelection.nodes(),
-                    { opacity: 0.25 }, "<")
-                timeline.add([...edgeSelection.nodes(), ...edgeSelection.enter().nodes(), ...edgeSelection.exit().nodes()],
-                    { opacity: 0.25 }, "<")
+                // const otherNodeSelection = nodeSelection.filter(function() {
+                //     return (this !== parentNodeElement)
+                // })
+                // timeline.add(otherNodeSelection.nodes(),
+                //     { opacity: 0.25 }, "<")
+                // timeline.add([...edgeSelection.nodes(), ...edgeSelection.enter().nodes(), ...edgeSelection.exit().nodes()],
+                //     { opacity: 0.25 }, "<")
 
                 //first animate moving the parent node down and to the left inorder
                 //to make room for the temp node coming in.
@@ -618,6 +621,20 @@ export class AlgoVisualizer {
                         }
                     }, "<"
                 )
+
+                //TODO move the style of the split animation to global constants.
+                //also animate edges moving with parent node down and to the left
+                const parentNodePointerEdges = edgeSelection.filter(function(edgeData) {
+                    return (edgeData.source.data.id == parentNode.id)
+                })
+                parentNodePointerEdges.each(function(edgeData) {
+                    const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                    timeline.add(this,
+                        {
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
+                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
+                        }, "<<")
+                })
 
                 //animate adding the temp node to the visualization
                 //we have to get the temp node elements rect children so that we can animate
