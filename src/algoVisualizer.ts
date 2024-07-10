@@ -69,6 +69,9 @@ export class AlgoVisualizer {
     private readonly animationDuration = 1000
     // in pixels
     private readonly translateYDist = 40
+    //determines how far the nodes involved in a split move
+    private readonly splitXDist: number
+    private readonly splitYDist = this.nodeHeight * 1.5
     private readonly opacityEaseType = "outQuad"
     // end of style constants
     // The following constants are here to help the programmer to keep track of the
@@ -109,6 +112,7 @@ export class AlgoVisualizer {
     constructor(nodeSize: number) {
         this.n = nodeSize
         this.nodeWidth = (this.keyRectWidth + this.pointerRectWidth) * (this.n - 1) + this.pointerRectWidth
+        this.splitXDist = this.nodeWidth
         //move the origin of the SVG canvas to the left by half the node width
         //so that the tree is centered on the canvas. It must be done like this because the
         //nodes must keep there origin in the top left corner. Otherwise animejs will not work correctly
@@ -412,7 +416,6 @@ export class AlgoVisualizer {
                         }, timelinePos)
                 })
 
-                //animate moving every edge to its right spot
                 let edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
@@ -485,7 +488,6 @@ export class AlgoVisualizer {
 
             const parentNode = leftNode.parent
             const leftNodeIndex = parentNode.pointers.findIndex(element => element === leftNode)
-            //TODO animate this part of insert in parent
             if (parentNode.pointers.filter(element => element).length < this.n) { //case where neither left or right node is the root
                 parentNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
                 parentNode.keys.splice(leftNodeIndex, 0, value)
@@ -570,7 +572,7 @@ export class AlgoVisualizer {
                         "marker-start": "url(#circle)",
                     }, "<")
 
-                //TODO animate the edges moving arround between temp nodes and regular nodes
+                //TODO animate the edges moving around between temp nodes and regular nodes
             } else { // split
                 // when splitting make every DOM element of the B+ tree
                 // transparent so that all that the user sees are the nodes being split
@@ -586,8 +588,8 @@ export class AlgoVisualizer {
                 const newNode = new bPlusTreeNode(false)
 
                 // ** animation section ** //
-                // generate animations for adding the temp node and new node
-                // and moving the parent nodes text into the temp node
+
+                //get the necessary data and elements for the following animation
                 const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
                 const edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
@@ -597,11 +599,28 @@ export class AlgoVisualizer {
                     .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
                 this.exitSelections.push(edgeSelection.exit())
                 this.exitSelections.push(nodeSelection.exit())
-
-                //first make all other B+ Tree DOM elements transparent
                 const parentNodeSelection = select(`#${parentNode.id}`)
                 const parentNodeElement = (parentNodeSelection.node() as SVGGElement | null)
                 if (parentNodeElement == null) throw new Error("bad state")
+                const parentNodeData = parentNodeSelection.data()[0] as d3.HierarchyPointNode<bPlusTreeNode>
+                const tempNodeElement = this.createNodeElement(tempNode, parentNodeData.x,
+                    parentNodeData.y, true, true)
+                const parentNodePointerEdges = edgeSelection.filter(function(edgeData) {
+                    return (edgeData.source.data.id == parentNode.id)
+                })
+
+                //Make sure that the temp node will render on top of the parent node element
+                //and new node element
+                if (tempNodeElement.parentNode != null) {
+                    tempNodeElement.parentNode.appendChild(tempNodeElement)
+                } else {
+                    throw new Error("bad dom structure")
+                }
+                //then make sure that parents pointers render on top of the temp node element
+                const parentNodePointerEdgesElements = parentNodePointerEdges.nodes()
+                tempNodeElement.parentNode.append(...parentNodePointerEdgesElements)
+
+                //first make all other B+ Tree DOM elements transparent
                 // const otherNodeSelection = nodeSelection.filter(function() {
                 //     return (this !== parentNodeElement)
                 // })
@@ -610,9 +629,10 @@ export class AlgoVisualizer {
                 // timeline.add([...edgeSelection.nodes(), ...edgeSelection.enter().nodes(), ...edgeSelection.exit().nodes()],
                 //     { opacity: 0.25 }, "<")
 
+                // generate animations for adding the temp node and new node
+                // and moving the parent nodes text into the temp node
                 //first animate moving the parent node down and to the left inorder
                 //to make room for the temp node coming in.
-                const parentNodeData = parentNodeSelection.data()[0] as d3.HierarchyPointNode<bPlusTreeNode>
                 timeline.add(
                     parentNodeElement,
                     {
@@ -622,32 +642,26 @@ export class AlgoVisualizer {
                     }, "<"
                 )
 
-                //TODO move the style of the split animation to global constants.
                 //also animate edges moving with parent node down and to the left
-                const parentNodePointerEdges = edgeSelection.filter(function(edgeData) {
-                    return (edgeData.source.data.id == parentNode.id)
-                })
                 parentNodePointerEdges.each(function(edgeData) {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
-                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.splitXDist,
+                                edgeData.source.y + self.splitYDist, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, "<<")
                 })
 
                 //animate adding the temp node to the visualization
                 //we have to get the temp node elements rect children so that we can animate
-                //the change of the nodes color.
-                const tempNodeElement = this.createNodeElement(tempNode, parentNodeData.x,
-                    parentNodeData.y, true, true)
+                //the change of the nodes color. This can't be done by editing the parent g elment
+                //like when changing its position.
                 const tempNodeRectChildNodes: ChildNode[] = []
                 tempNodeElement.childNodes.forEach((child) => {
                     if (child.nodeName == "rect") {
                         tempNodeRectChildNodes.push(child)
                     }
                 })
-
                 const tempNodeElementX = parentNodeData.x
                 const tempNodeElementY = parentNodeData.y
                 //@ts-expect-error
@@ -704,8 +718,6 @@ export class AlgoVisualizer {
                     )
                 }
 
-                //TODO debug this figure out how to move the 
-                //text over without 12 showing up to early.
                 //animate moving numbers to the temp node
                 const mainSvg = document.querySelector(this.mainSvgId)
                 if (mainSvg == null) throw new Error("main-svg element not found invalid html structure")
@@ -747,6 +759,22 @@ export class AlgoVisualizer {
                     tempNodeTextElements,
                     {
                         translateY: { to: 0 },
+                    }
+                )
+
+                //Animate moving the pointer edges to the temp node from the parent node
+                parentNodePointerEdges.each(
+                    function(edgeData, i) {
+                        if (i > Math.ceil(self.n / 2)) {
+                            return
+                        }
+                        const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                        timeline.add(this,
+                            {
+                                d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
+                                    edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
+                            }, "<<"
+                        )
                     }
                 )
 
@@ -811,13 +839,19 @@ export class AlgoVisualizer {
                         translateY: { to: "+" + this.nodeHeight * 1.5 },
                     }
                 )
-                //Make sure that the temp node will render on top of the parent node element
-                //and new node element
-                if (tempNodeElement.parentNode != null) {
-                    tempNodeElement.parentNode.appendChild(tempNodeElement)
-                } else {
-                    throw new Error("bad dom structure")
-                }
+
+                // //animate moving pointer edges to the parent node
+                // parentNodePointerEdges.each(
+                //     function(edgeData) {
+                //         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                //         timeline.add(this,
+                //             {
+                //                 d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
+                //                     edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
+                //             }, "<<"
+                //         )
+                //     }
+                // )
 
                 //get the text elements from the temp node that should go to the new node
                 //and animate them going to the new node.
@@ -906,6 +940,10 @@ export class AlgoVisualizer {
                 // ** End of animation section ** //
 
 
+                //TODO I found out that the edges move to their correct spots early
+                //because of the creation of new animations for the same edges after
+                //the first animation is created for them. Investigate this and look
+                //for solutions
                 insertInParent(parentNode, middleKey, newNode)
             }
             return
@@ -1254,6 +1292,13 @@ export class AlgoVisualizer {
         }
         moveSudoCodeRectangle(10)
         moveSudoCodeRectangle(10, true)
+
+        // this is required because morphTo is used to animate edges.
+        // it has the side effect of setting a starting position for
+        // the timeline. This method call will prevent that from
+        // moving edges to the wrong place before the animation is
+        // played.
+        timeline.init()
 
         return timeline
     }
