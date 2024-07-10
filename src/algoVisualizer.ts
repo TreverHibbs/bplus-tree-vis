@@ -590,8 +590,8 @@ export class AlgoVisualizer {
                 // ** animation section ** //
 
                 //get the necessary data and elements for the following animation
-                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
-                const edgeSelection = select(this.mainSvgId)
+                let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                let edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
                 const nodeSelection = select(this.mainSvgId)
@@ -744,10 +744,11 @@ export class AlgoVisualizer {
                     }
                 )
 
-                //Animate moving the pointer edges to the temp node from the parent node
+                //Animate moving the pointer edges from parent node to temp node
+                //TODO figure out who the last parent edge does not move with the others
                 parentNodePointerEdges.each(
                     function(edgeData, i) {
-                        if (i > Math.ceil(self.n / 2)) return
+                        if (i > (Math.ceil((self.n + 1) / 2) - 1)) return
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                         timeline.add(this,
                             {
@@ -795,28 +796,39 @@ export class AlgoVisualizer {
                 // get the text elements from the temp node element that
                 //should be moved to the parent node
                 const toParentNodeText: SVGTextElement[] = []
-                tempNode.keys.slice(0, Math.ceil(this.n / 2)).forEach((key: number) => {
+                tempNode.keys.slice(0, Math.ceil((this.n + 1) / 2) - 1).forEach((key: number) => {
                     const textElement: SVGTextElement | null = document.querySelector("#" + tempNode.id + " #t" + key)
                     if (textElement == null) throw new Error("Bad dom state")
                     toParentNodeText.push(textElement)
                 })
+
                 //animate moving the correct temp node text elements to parent node
                 //@ts-expect-error
                 timeline.add(toParentNodeText,
                     {
-                        translateY: { to: "-" + this.nodeHeight * 1.5 },
-                    }
-                )
-                //@ts-expect-error
-                timeline.add(toParentNodeText,
-                    {
+                        translateY: { to: "+" + this.nodeHeight * 1.5 },
                         translateX: { to: "-" + this.nodeWidth },
                     }
                 )
-                //@ts-expect-error
-                timeline.add(toParentNodeText,
-                    {
-                        translateY: { to: "+" + this.nodeHeight * 1.5 },
+
+                //animate moving the correct temp node edges to the parent node
+                rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                edgeSelection = select(this.mainSvgId)
+                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
+                const toParentNodeEdges = edgeSelection.filter(function(edgeData) {
+                    return (edgeData.source.data.id == parentNode.id)
+                })
+                toParentNodeEdges.each(
+                    function(edgeData, i) {
+                        if (i > Math.ceil(self.n / 2)) return
+                        const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                        timeline.add(this,
+                            {
+                                d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
+                                    edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
+                            }, "<<"
+                        )
                     }
                 )
 
