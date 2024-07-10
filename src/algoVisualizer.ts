@@ -196,9 +196,6 @@ export class AlgoVisualizer {
         this.exitSelections.forEach(selection => {
             selection.remove()
         })
-        // used to ensure labels are unique so that animations can be
-        // placed at the right label even if recursion get deep.
-        let labelId = 0
         const timeline = createTimeline({
             autoplay: false,
             defaults: {
@@ -738,44 +735,25 @@ export class AlgoVisualizer {
                 timeline.set(parentNodeTextSelection.nodes(), { opacity: 0 })
 
                 // animate moving the text elements from parent node to temp node
-                // first create label so that edges animations can be synced with text
-                const toTempNodeLabel = `toTempNodeLabel${(labelId++).toString()}`
-                //@ts-expect-error
-                timeline.add(toTempNodeLabel)
-                //@ts-expect-error
-                timeline.add(
-                    tempNodeTextElements,
-                    {
-                        translateY: { to: "-" + this.nodeHeight }
-                    }
-                )
-                //@ts-expect-error
-                timeline.add(
-                    tempNodeTextElements,
-                    {
-                        translateX: { to: 0 }
-                    }
-                )
                 //@ts-expect-error
                 timeline.add(
                     tempNodeTextElements,
                     {
                         translateY: { to: 0 },
+                        translateX: { to: 0 }
                     }
                 )
 
                 //Animate moving the pointer edges to the temp node from the parent node
                 parentNodePointerEdges.each(
                     function(edgeData, i) {
-                        let timelinePos = "<<"
-                        if (i == 0) timelinePos = toTempNodeLabel
                         if (i > Math.ceil(self.n / 2)) return
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                         timeline.add(this,
                             {
                                 d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
                                     edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
-                            }, timelinePos
+                            }, "<<"
                         )
                     }
                 )
