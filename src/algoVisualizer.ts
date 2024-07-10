@@ -196,6 +196,9 @@ export class AlgoVisualizer {
         this.exitSelections.forEach(selection => {
             selection.remove()
         })
+        // used to ensure labels are unique so that animations can be
+        // placed at the right label even if recursion get deep.
+        let labelId = 0
         const timeline = createTimeline({
             autoplay: false,
             defaults: {
@@ -609,17 +612,6 @@ export class AlgoVisualizer {
                     return (edgeData.source.data.id == parentNode.id)
                 })
 
-                //Make sure that the temp node will render on top of the parent node element
-                //and new node element
-                if (tempNodeElement.parentNode != null) {
-                    tempNodeElement.parentNode.appendChild(tempNodeElement)
-                } else {
-                    throw new Error("bad dom structure")
-                }
-                //then make sure that parents pointers render on top of the temp node element
-                const parentNodePointerEdgesElements = parentNodePointerEdges.nodes()
-                tempNodeElement.parentNode.append(...parentNodePointerEdgesElements)
-
                 //first make all other B+ Tree DOM elements transparent
                 // const otherNodeSelection = nodeSelection.filter(function() {
                 //     return (this !== parentNodeElement)
@@ -729,7 +721,12 @@ export class AlgoVisualizer {
                     tempNodeElement.appendChild(tempNodeTextElements[i])
                 })
                 //place the tempNodeTextElements on top of the parent node text elements
-                //so that the animation can move them to the temp node.
+                //so that the animation can move them to the temp node. With out the 
+                //number elements being obscured
+                newNodeElement.insertAdjacentElement("afterend", tempNodeElement)
+                const toTempNodeLabel = (labelId++).toString()
+                //@ts-expect-error
+                timeline.add(toTempNodeLabel)
                 //@ts-expect-error
                 timeline.set(tempNodeTextElements, {
                     opacity: 1,
@@ -740,6 +737,11 @@ export class AlgoVisualizer {
                 //@ts-expect-error
                 timeline.set(parentNodeTextSelection.nodes(), { opacity: 0 })
                 //animate moving the text elements from parent node to temp node
+                // first create label so that edges animations can be synced with text
+                // TODO find a good thing to use as an ID so this label is unique in 
+                // the timeline
+                //@ts-expect-error
+                timeline.add("textToTemp")
                 //@ts-expect-error
                 timeline.add(
                     tempNodeTextElements,
@@ -765,9 +767,9 @@ export class AlgoVisualizer {
                 //Animate moving the pointer edges to the temp node from the parent node
                 parentNodePointerEdges.each(
                     function(edgeData, i) {
-                        if (i > Math.ceil(self.n / 2)) {
-                            return
-                        }
+                        let timelinePos = "<<"
+                        if (i == 0) timelinePos = "<"
+                        if (i > Math.ceil(self.n / 2)) return
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                         timeline.add(this,
                             {
@@ -1932,7 +1934,12 @@ export class AlgoVisualizer {
         if (isTransparent == false) {
             transparencyValue = 1
         }
-        const newGElementsSelection = select(this.mainSvgId).append("g")
+        // new node elements are placed before all the edge path elements
+        // because nodes must always be rendered below the edges to get the
+        // desired visual results.
+        const insertBeforeElement = this.mainSvg.querySelector(":scope > path")
+        const newGElementsSelection = select(this.mainSvgId).insert("g",
+            insertBeforeElement ? `:scope > ${insertBeforeElement?.tagName}` : undefined)
             .attr("class", "node")
             .attr("id", String(node.id))
             .attr("transform-origin", "center")
