@@ -720,13 +720,13 @@ export class AlgoVisualizer {
                     tempNodeTextElements.push(this.createNewNodeText(key, i))
                     tempNodeElement.appendChild(tempNodeTextElements[i])
                 })
-                //place the tempNodeTextElements on top of the parent node text elements
-                //so that the animation can move them to the temp node. With out the 
-                //number elements being obscured
+                // place the temp node before the new node so that when the numbers
+                // are animated from the temp node to the new node they don't get
+                // placed behind the node element.
                 newNodeElement.insertAdjacentElement("afterend", tempNodeElement)
-                const toTempNodeLabel = (labelId++).toString()
-                //@ts-expect-error
-                timeline.add(toTempNodeLabel)
+
+                //place the text elements of the temp node on their corresponding
+                //test elements in the parent node element.
                 //@ts-expect-error
                 timeline.set(tempNodeTextElements, {
                     opacity: 1,
@@ -736,12 +736,12 @@ export class AlgoVisualizer {
                 })
                 //@ts-expect-error
                 timeline.set(parentNodeTextSelection.nodes(), { opacity: 0 })
-                //animate moving the text elements from parent node to temp node
+
+                // animate moving the text elements from parent node to temp node
                 // first create label so that edges animations can be synced with text
-                // TODO find a good thing to use as an ID so this label is unique in 
-                // the timeline
+                const toTempNodeLabel = `toTempNodeLabel${(labelId++).toString()}`
                 //@ts-expect-error
-                timeline.add("textToTemp")
+                timeline.add(toTempNodeLabel)
                 //@ts-expect-error
                 timeline.add(
                     tempNodeTextElements,
@@ -768,14 +768,14 @@ export class AlgoVisualizer {
                 parentNodePointerEdges.each(
                     function(edgeData, i) {
                         let timelinePos = "<<"
-                        if (i == 0) timelinePos = "<"
+                        if (i == 0) timelinePos = toTempNodeLabel
                         if (i > Math.ceil(self.n / 2)) return
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                         timeline.add(this,
                             {
                                 d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
                                     edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
-                            }, "<<"
+                            }, timelinePos
                         )
                     }
                 )
