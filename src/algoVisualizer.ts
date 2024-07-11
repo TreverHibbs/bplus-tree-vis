@@ -12,7 +12,7 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 //compiler to find its declaration file.
 import { createTimeline, svg as animeSvg, Timeline } from "./lib/anime.esm"
 import { tree, hierarchy } from "d3-hierarchy"
-import { select } from "d3-selection"
+import { select, selectAll } from "d3-selection"
 import { path as d3Path } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -591,13 +591,13 @@ export class AlgoVisualizer {
 
                 //get the necessary data and elements for the following animation
                 let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
-                let edgeSelection = select(this.mainSvgId)
+                let edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
                 const nodeSelection = select(this.mainSvgId)
                     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                     .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
-                this.exitSelections.push(edgeSelection.exit())
+                this.exitSelections.push(edgeSelectionEnterUpdate.exit())
                 this.exitSelections.push(nodeSelection.exit())
                 const parentNodeSelection = select(`#${parentNode.id}`)
                 const parentNodeElement = (parentNodeSelection.node() as SVGGElement | null)
@@ -605,7 +605,7 @@ export class AlgoVisualizer {
                 const parentNodeData = parentNodeSelection.data()[0] as d3.HierarchyPointNode<bPlusTreeNode>
                 const tempNodeElement = this.createNodeElement(tempNode, parentNodeData.x,
                     parentNodeData.y, true, true)
-                const parentNodePointerEdges = edgeSelection.filter(function(edgeData) {
+                const parentNodePointerEdges = edgeSelectionEnterUpdate.filter(function(edgeData) {
                     return (edgeData.source.data.id == parentNode.id)
                 })
 
@@ -745,10 +745,9 @@ export class AlgoVisualizer {
                 )
 
                 //Animate moving the pointer edges from parent node to temp node
-                //TODO figure out who the last parent edge does not move with the others
+                //TODO figure out why the last parent edge does not move with the others
                 parentNodePointerEdges.each(
-                    function(edgeData, i) {
-                        if (i > (Math.ceil((self.n + 1) / 2) - 1)) return
+                    function(edgeData) {
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                         timeline.add(this,
                             {
@@ -813,10 +812,10 @@ export class AlgoVisualizer {
 
                 //animate moving the correct temp node edges to the parent node
                 rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
-                edgeSelection = select(this.mainSvgId)
+                edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
-                const toParentNodeEdges = edgeSelection.filter(function(edgeData) {
+                const toParentNodeEdges = edgeSelectionEnterUpdate.filter(function(edgeData) {
                     return (edgeData.source.data.id == parentNode.id)
                 })
                 toParentNodeEdges.each(
