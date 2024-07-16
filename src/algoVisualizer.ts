@@ -94,6 +94,13 @@ export class AlgoVisualizer {
     // end of class and id names constants
     /** used to get the x y coords of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
+    // ** DESIGN NOTE ** //
+    // A d3 link is associated with and id stored in its target node.
+    // This field is present in the bPlusTreeNode object. This is done
+    // so that SVGPathElements can be associated with d3 link objects.
+    // this variable is used as an incrementing id for new edge
+    // SVGPathElements.
+    private edgeIdCount = 0
     /**
      * allows control of the algorithm visualization. By calling the do and undo
      * methods of this object a user of this class can navigate the algorithm
@@ -362,6 +369,8 @@ export class AlgoVisualizer {
          */
         const insertInParent = (leftNode: bPlusTreeNode, value: number, rightNode: bPlusTreeNode) => {
             if (leftNode.parent == null) { //case where left node is the root of the tree
+                const self = this
+
                 this.bPlusTreeRoot = new bPlusTreeNode(false)
                 this.bPlusTreeRoot.isLeaf = false
                 this.bPlusTreeRoot.pointers = [leftNode, rightNode]
@@ -418,8 +427,15 @@ export class AlgoVisualizer {
 
                 let edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                    .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
-                const self = this
+                    .data(rootHierarchyNode.links(), function(d) {
+                        if (d) {
+                            // when this is true it must be a new link hence bind a new id to that link.
+                            if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                            return d.target.data.edgeId
+                        } else {
+                            return (this as SVGPathElement).id
+                        }
+                    })
                 edgeSelection.each(function(edgeData, i) {
                     let timelinePos = "<<"
                     if (i == 0) {
@@ -454,7 +470,14 @@ export class AlgoVisualizer {
                 //first find out which links are the new links
                 edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                    .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
+                    .data(rootHierarchyNode.links(), function(d) {
+                        if (d) {
+                            if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                            return d.target.data.edgeId
+                        } else {
+                            return (this as SVGPathElement).id
+                        }
+                    })
                 const newLinks = edgeSelection.enter().data()
                 const newPathElements: SVGPathElement[] = []
                 newLinks.forEach((link) => {
@@ -489,6 +512,8 @@ export class AlgoVisualizer {
             const parentNode = leftNode.parent
             const leftNodeIndex = parentNode.pointers.findIndex(element => element === leftNode)
             if (parentNode.pointers.filter(element => element).length < this.n) { //case where neither left or right node is the root
+                const self = this
+
                 parentNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
                 parentNode.keys.splice(leftNodeIndex, 0, value)
 
@@ -503,7 +528,14 @@ export class AlgoVisualizer {
                 //get edge selection so their position can be updated
                 const edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
+                    .data(rootHierarchyNode.links(), function(d) {
+                        if (d) {
+                            if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                            return d.target.data.edgeId
+                        } else {
+                            return (this as SVGPathElement).id
+                        }
+                    })
 
                 //animate moving every node and edge to its new correct place
                 nodeSelection.each(function(hierarchyNode, i) {
@@ -517,7 +549,6 @@ export class AlgoVisualizer {
                         }, animationPos)
                 })
 
-                const self = this
                 edgeSelection.each(function(link) {
                     const animationPos = "<<"
                     //get targetIndex for link
@@ -593,7 +624,14 @@ export class AlgoVisualizer {
                 let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
                 let edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
+                    .data(rootHierarchyNode.links(), function(d) {
+                        if (d) {
+                            if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                            return d.target.data.edgeId
+                        } else {
+                            return (this as SVGPathElement).id
+                        }
+                    })
                 const nodeSelection = select(this.mainSvgId)
                     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                     .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -745,7 +783,6 @@ export class AlgoVisualizer {
                 )
 
                 //Animate moving the pointer edges from parent node to temp node
-                //TODO figure out why the last parent edge does not move with the others
                 parentNodePointerEdges.each(
                     function(edgeData) {
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
@@ -814,7 +851,14 @@ export class AlgoVisualizer {
                 rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
                 edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                    .data(rootHierarchyNode.links(), function(d) { return d ? `${d.source.data.id}-${d.target.data.id}` : (this as SVGPathElement).id })
+                    .data(rootHierarchyNode.links(), function(d) {
+                        if (d) {
+                            if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                            return d.target.data.edgeId
+                        } else {
+                            return (this as SVGPathElement).id
+                        }
+                    })
                 const toParentNodeEdges = edgeSelectionEnterUpdate.filter(function(edgeData) {
                     return (edgeData.source.data.id == parentNode.id)
                 })
@@ -1681,6 +1725,26 @@ export class AlgoVisualizer {
     // Helper Methods Section //
 
     /**
+     * returns the ID that should be used to find corresponding bPlusTreeNode and
+     * SVGPathElement. Intended to be used in a call to d3 data method call.
+     * @param svgPathEl The element that is to be joined to the corresponding
+     * link data.
+     * @param d The link that contains the two node that are the end point and
+     * starting point of the svgPathElement. The target node should contain the
+     * ID of the SVGPathElement
+     * @sideEffect May increment the edgeIdCount global variable.
+     * @returns The id of a yet to be created or existing SVGPathElement
+     */
+    private linkDataFunc(svgPathEl: SVGPathElement, d: d3.HierarchyPointLink<bPlusTreeNode>) {
+        if (d) {
+            if (d.target.data.edgeId == null) d.target.data.edgeId = `${this.edgeIdCount++}`
+            return d.target.data.edgeId
+        } else {
+            return svgPathEl.id
+        }
+    }
+
+    /**
      * Generates a list of links that represent a pair of leaf nodes that should
      * have a edge between them.
      * @param rootHierarchyNode A d3 node that represents the root node of the tree.
@@ -1865,6 +1929,8 @@ export class AlgoVisualizer {
      * initially. This exists so that edge reveal can be animated. defaults
      * to true
      * @return the created svg path element
+     * @dependency this.edgePathId an incrementing id counter for edge path
+     * elements
      * @dependency this.nodeWidth The width of a bplus tree node
      * @dependency this.nodeHeight The height of a bplus tree node
      * @dependency this.pointerRectWidth The width of a bplus tree pointer
@@ -1877,7 +1943,7 @@ export class AlgoVisualizer {
         let edgePathFnGenerator = this.generateEdgePathFN
 
         if (areLeafNodeEdges) {
-            // TODO refactor genreate Leaf edge pathFN
+            // TODO refactor generate Leaf edge pathFN
             // edgePathFnGenerator = this.generateLeafEdgePathFN
             className = this.leafNodeEdgeClassName
         }
@@ -1888,7 +1954,7 @@ export class AlgoVisualizer {
         newSVGPathElement.setAttribute("d", edgePathFnGenerator(link.source.x, link.source.y,
             link.target.x, link.target.y, targetIndex))
         newSVGPathElement.setAttribute("fill", "none")
-        newSVGPathElement.setAttribute("id", `${link.source.data.id}-${link.target.data.id}`)
+        newSVGPathElement.setAttribute("id", `${link.target.data.edgeId}`)
         newSVGPathElement.setAttribute("stroke", "black")
         newSVGPathElement.setAttribute("stroke-width", "2px")
         // newSVGPathElement.setAttribute("marker-end", "url(#arrow)")

@@ -17,6 +17,10 @@ export class bPlusTreeNode {
     // is used as a DOM id. And DOM ids cannot start with a number.
     /** incrementing id */
     public id: string = "n" + nodeId++
+    /** The id of the internal edges SVGPathElement that
+     * points to this node instance. If no such edge exists
+     * then set to null*/
+    public edgeId: string | null = null
 
     /**
      * Initialize properties in new B+ tree node
