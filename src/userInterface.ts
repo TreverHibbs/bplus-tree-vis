@@ -74,6 +74,7 @@ export const userInterface = () => {
         const stepBackReturn = algoVisualizer.algoStepHistory.stepBackwards()
         if (stepBackReturn === null) return
         currentAnimation = stepBackReturn
+        //@ts-ignore
         currentAnimation.stretch(currentAnimation.duration / speedModifier)
         currentAnimation.progress = 1
     })
@@ -83,6 +84,7 @@ export const userInterface = () => {
         const stepForwardReturn = algoVisualizer.algoStepHistory.stepForwards()
         if (stepForwardReturn === null) return
         currentAnimation = stepForwardReturn
+        //@ts-ignore
         currentAnimation.stretch(currentAnimation.duration / speedModifier)
         currentAnimation.play()
     })
@@ -91,6 +93,7 @@ export const userInterface = () => {
     timelineInput?.addEventListener('input', () => {
         // console.debug('input event fired')
         if (currentAnimation) {
+            //@ts-ignore
             currentAnimation.seek(timelineInput.valueAsNumber * currentAnimation.duration)
         }
     })
@@ -99,7 +102,7 @@ export const userInterface = () => {
     // again for example when the animation already finished.
     // Speed checkboxes listener
     speedControlCheckboxes.forEach((checkbox) => {
-        checkbox.addEventListener('mousedown', function (this: HTMLInputElement) {
+        checkbox.addEventListener('mousedown', function(this: HTMLInputElement) {
             if (this.checked == false) {
                 // Make the checkboxes mutually exclusive
                 speedControlCheckboxes.forEach((checkbox) => {
@@ -159,13 +162,15 @@ export const userInterface = () => {
 
     let svg = document.querySelector('svg'); // select the SVG element
     if (svg == null) throw new Error('svg element not found')
-    svg.addEventListener('click', function (event) {
+    svg.addEventListener('click', function(event) {
+        //@ts-ignore
         let point = svg.createSVGPoint();
         point.x = event.clientX;
         point.y = event.clientY;
 
+        //@ts-ignore
         const getScreenCTM = svg.getScreenCTM();
-        if(getScreenCTM === null) throw new Error('getScreenCTM returned null')
+        if (getScreenCTM === null) throw new Error('getScreenCTM returned null')
         let svgPoint = point.matrixTransform(getScreenCTM.inverse());
 
         console.log(`x: ${svgPoint.x}, y: ${svgPoint.y}`);

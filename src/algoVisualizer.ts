@@ -26,7 +26,7 @@ type OperationType = "insert" | "delete" | "insert-parent"
  * This class implements a B+tree algorithm (as described in the Database System
  * Concepts 7th edition) and generates animations for that algorithm.
  * By using this class a web UI can animate a B+tree. Each instance of
- * this class corresponds to a rendered B+tree algorithm.   
+ * this class corresponds to a rendered B+tree algorithm.
  * @dependency For this class to function correctly there must be a certain HTML and CSS
  * structure already rendered by the browser. This structure is defined in the index.html
  * and style.css files of this project.
