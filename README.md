@@ -19,4 +19,9 @@ share B+ tree examples as easily as you share text over the internet.
 1. An animated interactive B+ tree visualization with a smooth timeline control.
 2. The ability to use plain text coma delimited lists of numbers as an input value.
 
-<img alt="basic demo" height="280" src="/assets/basicDemo.gif" />
+## ⇁ The Demo
+This project is still WIP so all I can offer now is some videos of the current build.
+<div align="center">
+<img alt="basic demo" height="350" src="/assets/basicDemo.gif" />
+<img alt="second demo" height="350" src="/assets/secondDemo.gif" />
+</div>
