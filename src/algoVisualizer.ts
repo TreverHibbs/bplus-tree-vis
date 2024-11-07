@@ -293,6 +293,7 @@ export class AlgoVisualizer {
                 if (highestNumberIndex < 0) {
                     targetNode.keys.push(value)
 
+                    //TODO Debug the case where you add 14 after a sequence of 1 to 13 numbers.
                     //animate adding the new key value to the leaf node
                     const newSVGTextElement = this.createNewNodeText(value, targetNode.keys.length - 1)
                     targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
@@ -848,6 +849,20 @@ export class AlgoVisualizer {
                 )
 
                 //animate moving the correct temp node edges to the parent node
+                //TODO When the rootHierarchyNode is generated in order to bind the data to the svg elements
+                //in the case where another insert in parent call still needs to be made. And that next
+                //call will change which node is the root node we need to not make animations based on
+                //the rootHierarchNode that is generated with the wrong root node. Figure out a way to postpone
+                //the animation generation until the correct root node can be used.
+                //
+                //This situation happens when 13 is inserted in this input string 6,4,5,2,8,9,10,11,12,13.
+                //When 13 is inserted it creates the situation described above.
+                //
+                //This ultimately leads to a bad animation and certain nodes being added to the exit selection
+                //despite still being valid.
+                //
+                //This can probably be solved by checking if the leftNode argument that is about to passed
+                //into the recursive insertInParent call is the root node. And then doing something about it.
                 rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
                 edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
