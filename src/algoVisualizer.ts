@@ -848,11 +848,47 @@ export class AlgoVisualizer {
                     }
                 )
 
+                // get the D3 selection of the edge elements that correspond to
+                // the text elements that should be moved from the temp node to the parent node.
+                let edgeSelection = select(this.mainSvgId)
+                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
+                    .data(rootHierarchyNode.links(), function(d) {
+                        if (d) {
+                            // when this is true it must be a new link hence bind a new id to that link.
+                            if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                            return d.target.data.edgeId
+                        } else {
+                            return (this as SVGPathElement).id
+                        }
+                    })
+                const toParentEdgeSelection = edgeSelection.filter(data => {
+                    if (data.source.id == parentNode.id) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                });
+
+                //animate moving edges from the temp node to the parent node.
+                toParentEdgeSelection.each(function(edgeData, i) {
+                    let timelinePos = "<<"
+                    if (i == 0) {
+                        timelinePos = "<"
+                    }
+                    const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                    timeline.add(this,
+                        {
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
+                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
+                        }, timelinePos)
+                })
+
+
                 //animate moving the correct temp node edges to the parent node
                 //TODO When the rootHierarchyNode is generated in order to bind the data to the svg elements
                 //in the case where another insert in parent call still needs to be made. And that next
                 //call will change which node is the root node we need to not make animations based on
-                //the rootHierarchNode that is generated with the wrong root node. Figure out a way to postpone
+                //the rootHierarchyNode that is generated with the wrong root node. Figure out a way to postpone
                 //the animation generation until the correct root node can be used.
                 //
                 //This situation happens when 13 is inserted in this input string 6,4,5,2,8,9,10,11,12,13.
@@ -863,45 +899,6 @@ export class AlgoVisualizer {
                 //
                 //This can probably be solved by checking if the leftNode argument that is about to passed
                 //into the recursive insertInParent call is the root node. And then doing something about it.
-                rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
-                edgeSelectionEnterUpdate = select(this.mainSvgId)
-                    .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                    .data(rootHierarchyNode.links(), function(d) {
-                        if (d) {
-                            if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
-                            return d.target.data.edgeId
-                        } else {
-                            return (this as SVGPathElement).id
-                        }
-                    })
-                const toParentNodeEdges = edgeSelectionEnterUpdate.filter(function(edgeData) {
-                    return (edgeData.source.data.id == parentNode.id)
-                })
-                toParentNodeEdges.each(
-                    function(edgeData, i) {
-                        if (i > Math.ceil(self.n / 2)) return
-                        const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
-                        timeline.add(this,
-                            {
-                                d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
-                                    edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
-                            }, "<<"
-                        )
-                    }
-                )
-
-                // //animate moving pointer edges to the parent node
-                // parentNodePointerEdges.each(
-                //     function(edgeData) {
-                //         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
-                //         timeline.add(this,
-                //             {
-                //                 d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
-                //                     edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
-                //             }, "<<"
-                //         )
-                //     }
-                // )
 
                 //get the text elements from the temp node that should go to the new node
                 //and animate them going to the new node.
