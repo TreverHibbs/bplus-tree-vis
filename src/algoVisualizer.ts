@@ -861,8 +861,10 @@ export class AlgoVisualizer {
                             return (this as SVGPathElement).id
                         }
                     })
-                const toParentEdgeSelection = edgeSelection.filter(data => {
-                    if (data.source.id == parentNode.id) {
+                // TODO make sure this actually gets the right edge selection. Right now it appears to be
+                // wrong.
+                const toParentEdgeSelection = edgeSelection.filter(pointLink => {
+                    if (pointLink.source.data.id == parentNode.id) {
                         return true;
                     } else {
                         return false;
