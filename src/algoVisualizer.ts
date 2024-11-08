@@ -802,6 +802,10 @@ export class AlgoVisualizer {
                 tempNodeTextElements.push(newTempNodeTextElement)
                 // ** End Of Animation Section ** //
 
+                parentNode.pointers.forEach(node => {
+                    node.parent = null;
+                })
+
                 parentNode.keys = []
                 parentNode.pointers = []
 
@@ -864,7 +868,7 @@ export class AlgoVisualizer {
                 // TODO make sure this actually gets the right edge selection. Right now it appears to be
                 // wrong.
                 const toParentEdgeSelection = edgeSelection.filter(pointLink => {
-                    if (pointLink.source.data.id == parentNode.id) {
+                    if (pointLink.target.data.parent?.id == parentNode.id) {
                         return true;
                     } else {
                         return false;
