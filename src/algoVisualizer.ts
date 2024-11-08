@@ -852,8 +852,9 @@ export class AlgoVisualizer {
                     }
                 )
 
-                // get the D3 selection of the edge elements that correspond to
+                // get the D3 selections of the edge elements that correspond to
                 // the text elements that should be moved from the temp node to the parent node.
+                // Also get the selection of edges that should be moved to the new node.
                 let edgeSelection = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), function(d) {
@@ -865,8 +866,6 @@ export class AlgoVisualizer {
                             return (this as SVGPathElement).id
                         }
                     })
-                // TODO make sure this actually gets the right edge selection. Right now it appears to be
-                // wrong.
                 const toParentEdgeSelection = edgeSelection.filter(pointLink => {
                     if (pointLink.target.data.parent?.id == parentNode.id) {
                         return true;
@@ -874,20 +873,24 @@ export class AlgoVisualizer {
                         return false;
                     }
                 });
+                const toNewNodeEdgeSelection = edgeSelection.filter(pointLink => {
+                    if (pointLink.target.data.parent?.id == parentNode.id) {
+                        return false;
+                    } else {
+                        return true;
+                    }
+                });
 
                 //animate moving edges from the temp node to the parent node.
-                toParentEdgeSelection.each(function(edgeData, i) {
-                    let timelinePos = "<<"
-                    if (i == 0) {
-                        timelinePos = "<"
-                    }
+                toParentEdgeSelection.each(function(edgeData) {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
                             d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
                                 edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
-                        }, timelinePos)
+                        }, "<<")
                 })
+
 
 
                 //animate moving the correct temp node edges to the parent node
@@ -932,6 +935,17 @@ export class AlgoVisualizer {
                         translateY: { to: `+${this.nodeHeight * 1.5}` },
                     }
                 )
+
+                //animate moving edges from the temp node to the new node.
+                toNewNodeEdgeSelection.each(function(edgeData) {
+                    const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                    timeline.add(this,
+                        {
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x + self.nodeWidth + self.pointerRectWidth + self.keyRectWidth,
+                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
+                        }, "<<")
+                })
+
 
                 //replace the temp node text elements with their corresponding new node and
                 //parent node text elements. Also animate the removal of the temp node.
