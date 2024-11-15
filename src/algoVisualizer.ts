@@ -210,11 +210,21 @@ export class AlgoVisualizer {
                 ease: 'linear'
             }
         })
+        //TODO document this it is intended to be passed into he d3 hierarchy generator function
         const bPlusTreeChildrenDefinition = (node: bPlusTreeNode) => {
             if (node.isLeaf) {
                 return []
             } else {
-                return node.pointers
+                //Need to convert the pointers array to the type that will be excepted by the
+                //d3 hierarchy generator.
+                const pointerArrayNoNulls: bPlusTreeNode[] = []
+                let j: number = 0
+                node.pointers.forEach((node) => {
+                    if (node != null) {
+                        pointerArrayNoNulls[j++] = node
+                    }
+                })
+                return pointerArrayNoNulls
             }
         }
 
@@ -894,6 +904,7 @@ export class AlgoVisualizer {
 
 
                 //animate moving the correct temp node edges to the parent node
+                //TODO this problem is still a problem despite having moved the heiarchy creation somewhere else.
                 //TODO When the rootHierarchyNode is generated in order to bind the data to the svg elements
                 //in the case where another insert in parent call still needs to be made. And that next
                 //call will change which node is the root node we need to not make animations based on

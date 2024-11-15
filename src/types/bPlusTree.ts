@@ -6,7 +6,7 @@ let nodeId = 0
  */
 export class bPlusTreeNode {
     /** initialized to empty array */
-    public pointers: (bPlusTreeNode)[] = []
+    public readonly pointers: (bPlusTreeNode | null)[] = []
     /** initialized to empty array */
     public keys: (number)[] = []
     /** initialized by constructor parameter */
@@ -29,5 +29,38 @@ export class bPlusTreeNode {
      */
     constructor(initIsLeaf: boolean) {
         this.isLeaf = initIsLeaf
+    }
+
+    /**
+     * add a node to the array of nodes that this node points to
+     *
+     * @param node the node to add to the pointers array
+     * @param index the index at which to place the input node in the pointers array
+     * @dependency the pointers array
+     * @sideEffect the inserted nodes parent property is updated to point to this node
+     * @sideEffect set parent property of a node already stored at the specified index of the pointer array to null
+     */
+    public addNodeToPointers(node: bPlusTreeNode, index: number) {
+        if (this.pointers[index]) {
+            this.pointers[index].parent = null
+        }
+        this.pointers[index] = node
+        node.parent = this
+    }
+
+    /**
+     * remove a node from the array of nodes that this node points to. If the element at the provided index
+     * is null then this is a no op.
+     *
+     * @param index the index of the node to remove
+     * @dependency the pointers array
+     * @sideEffect updates the removed nodes parent property to null
+     * @sideEffect updates the pointers array
+     */
+    public removeNodeFromPointers(index: number) {
+        if (this.pointers[index]) {
+            this.pointers[index].parent = null
+            this.pointers[index] = null
+        }
     }
 }
