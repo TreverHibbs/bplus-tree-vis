@@ -35,12 +35,13 @@ export class bPlusTreeNode {
      * add a node to the array of nodes that this node points to
      *
      * @param node the node to add to the pointers array
-     * @param index the index at which to place the input node in the pointers array
+     * @param index the index at which to place the input node in the pointers array. If not
+     * specified adds node to end of pointers array.
      * @dependency the pointers array
      * @sideEffect the inserted nodes parent property is updated to point to this node
      * @sideEffect set parent property of a node already stored at the specified index of the pointer array to null
      */
-    public addNodeToPointers(node: bPlusTreeNode, index: number) {
+    public addNodeToPointers(node: bPlusTreeNode, index: number = this.pointers.length) {
         if (this.pointers[index]) {
             this.pointers[index].parent = null
         }

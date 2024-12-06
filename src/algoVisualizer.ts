@@ -382,9 +382,11 @@ export class AlgoVisualizer {
             if (leftNode.parent == null) { //case where left node is the root of the tree
                 const self = this
 
+                //TODO correct all usages of the pointers array to use new interface
                 this.bPlusTreeRoot = new bPlusTreeNode(false)
                 this.bPlusTreeRoot.isLeaf = false
-                this.bPlusTreeRoot.pointers = [leftNode, rightNode]
+                this.bPlusTreeRoot.addNodeToPointers(leftNode)
+                this.bPlusTreeRoot.addNodeToPointers(rightNode)
                 this.bPlusTreeRoot.keys = [value]
 
                 leftNode.parent = this.bPlusTreeRoot
