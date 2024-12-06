@@ -214,23 +214,6 @@ export class AlgoVisualizer {
                 ease: 'linear'
             }
         })
-        //TODO document this it is intended to be passed into he d3 hierarchy generator function
-        const bPlusTreeChildrenDefinition = (node: bPlusTreeNode) => {
-            if (node.isLeaf) {
-                return []
-            } else {
-                //Need to convert the pointers array to the type that will be excepted by the
-                //d3 hierarchy generator.
-                const pointerArrayNoNulls: bPlusTreeNode[] = []
-                let j: number = 0
-                node.pointers.forEach((node) => {
-                    if (node != null) {
-                        pointerArrayNoNulls[j++] = node
-                    }
-                })
-                return pointerArrayNoNulls
-            }
-        }
 
         /**
          *
@@ -246,7 +229,7 @@ export class AlgoVisualizer {
             //must generate the tree layout  and join the data with all the nodes.
             //This must be done because the data is not bound to the svg element when
             //it is created.
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, bPlusTreeChildrenDefinition))
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, this.bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                 .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -398,7 +381,7 @@ export class AlgoVisualizer {
 
                 //get the positions of the left and right node so that they can
                 //be moved to their new correct positions.
-                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
                 const nodeSelection = select(this.mainSvgId)
                     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                     .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -537,7 +520,7 @@ export class AlgoVisualizer {
                 // ** Animate Insert Parent No Split Section ** //
                 //get the positions of the left and right node so that they can
                 //be moved to their new correct positions.
-                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
                 const nodeSelection = select(this.mainSvgId)
                     .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                     .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -641,7 +624,7 @@ export class AlgoVisualizer {
                 // ** animation section ** //
 
                 //get the necessary data and elements for the following animation
-                let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+                let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
                 let edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), function(d) {
@@ -1054,7 +1037,7 @@ export class AlgoVisualizer {
 
             //First create the new node for the root and then animate the new root node
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot,
-                bPlusTreeChildrenDefinition))
+                this.bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                 .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -1111,7 +1094,7 @@ export class AlgoVisualizer {
             insertInLeaf(targetNode, value)
         } else { //leaf node targetNode has n - 1 key values already, split it
             moveSudoCodeRectangle(7)
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, bPlusTreeChildrenDefinition))
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
                 .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
@@ -1130,8 +1113,9 @@ export class AlgoVisualizer {
 
             const newNode = new bPlusTreeNode(true)
             const tempNode = new bPlusTreeNode(true)
-            tempNode.pointers = targetNode.pointers.slice(0, this.n - 1)
-            const targetNodeKeysBeforeSplit = targetNode.keys.slice()
+            targetNode.pointers.slice(0, this.n - 1).forEach(node => {
+                tempNode.addNodeToPointers(node)
+            })
             tempNode.keys = targetNode.keys.slice(0, this.n - 1)
 
             //animate adding the temp node to the visualization
@@ -1252,11 +1236,15 @@ export class AlgoVisualizer {
 
             const targetNodeOriginalLastNode = targetNode.pointers[this.n - 1]
 
-            targetNode.pointers = tempNode.pointers.slice(0, Math.ceil(this.n / 2))
+            tempNode.pointers.slice(0, Math.ceil(this.n / 2)).forEach(node => {
+                targetNode.addNodeToPointers(node)
+            })
             targetNode.pointers[this.n - 1] = newNode
             targetNode.keys = tempNode.keys.slice(0, Math.ceil(this.n / 2))
 
-            newNode.pointers = tempNode.pointers.slice(Math.ceil(this.n / 2), this.n)
+            tempNode.pointers.slice(Math.ceil(this.n / 2), this.n).forEach(node => {
+                newNode.addNodeToPointers(node)
+            })
             if (targetNodeOriginalLastNode) {
                 newNode.pointers[this.n - 1] = targetNodeOriginalLastNode
             }
@@ -1616,13 +1604,7 @@ export class AlgoVisualizer {
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeBeforePreviousOperation, (node) => {
-                if (node.isLeaf) {
-                    return []
-                } else {
-                    return node.pointers
-                }
-            }))
+            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeBeforePreviousOperation, this.bPlusTreeChildrenDefinition))
             const edgeSelection = select(this.mainSvgId)
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                 .data(rootHierarchyNode.links())
@@ -1881,6 +1863,28 @@ export class AlgoVisualizer {
     }
 
     /**
+     * defines how D3 hierarchy should get the child nodes
+     * @param node The node that you want to know the children of.
+     * @return bPlusTreeNode[] an array to be treated as the children of the input node.
+     */
+    private bPlusTreeChildrenDefinition = (node: bPlusTreeNode) => {
+        if (node.isLeaf) {
+            return []
+        } else {
+            //Need to convert the pointers array to the type that will be excepted by the
+            //d3 hierarchy generator.
+            const pointerArrayNoNulls: bPlusTreeNode[] = []
+            let j: number = 0
+            node.pointers.forEach((node) => {
+                if (node != null) {
+                    pointerArrayNoNulls[j++] = node
+                }
+            })
+            return pointerArrayNoNulls
+        }
+    }
+
+    /**
      * 
      * Returns the string that represents the svg transform attribute for a
      * B+ Tree node. This function exists to keep the logic for calculating a
@@ -2100,234 +2104,6 @@ export class AlgoVisualizer {
         }
 
         return newGElementsSelection.nodes()[0]
-    }
-
-    //TODO this method may be adding complexity in the long run. Consider removing it
-    //especially if later more params are needed.
-    /**
-     *
-     * Create animation based on the current state of the B+ Tree.
-     * This method is meant to be called by the operation methods (ex. insert or delete).
-     * @returns The on completion promise of the generated animation
-     * @sideEffect any currently animating algorithm step will be interrupted
-     * and a new one corresponding to the latest operation will begin
-     * @sideEffect all exit selections stored in this.exitSelection will
-     * be removed from the DOM
-     * @sideEffects Manipulates the DOM by adding svg elements for animation
-     * @sideEffects adds d3 selections to the exitSelections array for removal
-     * @sideEffect sets this.currentAnimation to the newly created animation
-     */
-    private animateOperation() {
-        //This needs to be done so that the old elements that are no longer relevant
-        //do not interfere with the new animation. If this wasn't done then the new selections
-        //could potentially be erroneously selecting old irrelevant elements.
-        this.exitSelections.forEach(selection => {
-            selection.remove()
-        })
-
-        const timeline = createTimeline({
-            autoplay: false,
-            defaults: {
-                duration: this.animationDuration,
-                ease: 'linear'
-            }
-        })
-
-        const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, (node) => {
-            if (node.isLeaf) {
-                return []
-            } else {
-                return node.pointers
-            }
-        }))
-
-        const operationSudoCodeDivs = document.querySelectorAll(".operation-sudo-code");
-        if (operationSudoCodeDivs == null) {
-            throw new Error("sudo code div not found in the DOM")
-        }
-        // we do this so that the previous sudo code for the previous operation is
-        // hidden.
-        operationSudoCodeDivs.forEach((div) => {
-            div.classList.remove("active")
-        })
-        const insertSudoCodeDiv = document.querySelector("#insert-sudo-code")
-        if (insertSudoCodeDiv == null) {
-            throw new Error("insert sudo code div not found in the DOM")
-        }
-        insertSudoCodeDiv.classList.add("active")
-
-        //enter/new section
-        const nodeSelection = select(this.mainSvgId)
-            .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
-            .data(rootHierarchyNode, (d) => (d).data.id)
-        const newNodes = this.createNodeSvgElements(nodeSelection.enter())
-
-        //create svg elements for the new edges created by the split
-        const edgeSelection = select(this.mainSvgId)
-            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-            .data(rootHierarchyNode.links(), (d) => (d).source.data.id + "-" + (d).target.data.id)
-        const newEdges = this.createNewEdgeSvgElements(edgeSelection)
-
-        const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
-        const leafNodeEdgeSelection = select(this.mainSvgId)
-            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.leafNodeEdgeClassName)
-            .data(leafNodeLinks, (d) => (d).source.data.id + "-" + (d).target.data.id)
-        const newLeafEdges = this.createNewEdgeSvgElements(leafNodeEdgeSelection, true)
-
-        const oldNodeTextSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
-            .data((d) => d.data.keys)
-        const oldNodesNewTextSelection = this.createNewNodeText(oldNodeTextSelection.enter(), true)
-
-        const newNodesTextSelection = newNodes.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
-            .data((d) => d.data.keys)
-        const newNodesNewTextSelection = this.createNewNodeText(newNodesTextSelection.enter(), true)
-
-        //@ts-expect-error
-        timeline.add(
-            [...newEdges.nodes(), ...newLeafEdges.nodes(),],
-            { opacity: 1 }
-        )
-
-        const moveSudoCodeRectangle = this.createSudoCodeRectangleObj(timeline)
-        moveSudoCodeRectangle(1)
-        moveSudoCodeRectangle(2)
-        //@ts-expect-error
-        timeline.add(
-            [...newNodes],
-            {
-                opacity: { to: 1, ease: this.opacityEaseType },
-            }
-        )
-        const newSVGGElementsRectChildren = newNodes.nodes().map((element) => {
-            //check each child array for rect elements and only select those.
-            const rectChildNodes: ChildNode[] = []
-            element.childNodes.forEach((child) => {
-                if (child.nodeName == "rect") {
-                    rectChildNodes.push(child)
-                }
-            })
-            return rectChildNodes
-        })
-        if (newSVGGElementsRectChildren.length != 0) {
-            timeline.add(
-                newSVGGElementsRectChildren[0],
-                {
-                    translateY: { from: "-" + this.translateYDist }
-                },
-                '<<'
-            )
-        }
-        //@ts-expect-error
-        timeline.set(newSVGGElementsRectChildren[0],
-            {
-                fill: this.lightBlue
-            }
-        )
-        moveSudoCodeRectangle(4)
-        moveSudoCodeRectangle(5)
-        //@ts-expect-error
-        timeline.set([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
-            {
-                opacity: 1
-            }
-            //@ts-expect-error
-        ).add([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
-            {
-                translateY: { from: "-" + this.translateYDist },
-                duration: this.animationDuration * 2
-                //@ts-expect-error
-            }).set([...newNodesNewTextSelection.nodes(), ...oldNodesNewTextSelection.nodes()],
-                {
-                    fill: this.textColor
-                }
-            )
-        moveSudoCodeRectangle(9)
-        moveSudoCodeRectangle(9, true)
-
-        //update section
-        const updatedSVGGElements = nodeSelection.nodes()
-        const updatedNodesData = nodeSelection.data()
-        const updatedTextSelection = oldNodeTextSelection.nodes()
-        const updatedTextData = oldNodeTextSelection.data()
-        const updatedEdges = edgeSelection.nodes()
-        const updatedEdgesData = edgeSelection.data()
-        const updatedLeafNodeEdges = leafNodeEdgeSelection.nodes()
-        const updatedLeafNodeEdgesData = leafNodeEdgeSelection.data()
-
-        // @ts-expect-error
-        timeline.add(
-            updatedSVGGElements,
-            {
-                transform: (_: SVGGElement, i: number) => {
-                    return "translate(" + String(updatedNodesData[i].x - this.nodeWidth / 2) + "," + String(updatedNodesData[i].y) + ")"
-                }
-            }
-        )
-        updatedTextSelection.forEach((text, i) => {
-            const textData = updatedTextData[i].toString()
-            if (textData == text.textContent) {
-                return
-            }
-            timeline.add(
-                text,
-                {
-                    opacity: 0,
-                    onComplete: () => {
-                        text.textContent = textData // Update the text
-                    }
-                },
-                '<<'
-            )
-            timeline.add(
-                text,
-                {
-                    opacity: 1,
-                },
-                '>>'
-            );
-        });
-
-        updatedEdges.forEach((edge, i) => {
-            timeline.add(
-                edge,
-                {
-                    d: animeSvg.morphTo(this.generateMorphToPath(updatedEdgesData[i]))
-                },
-                "<<"
-            )
-        })
-
-        updatedLeafNodeEdges.forEach((edge, i) => {
-            timeline.add(
-                edge,
-                {
-                    d: animeSvg.morphTo(this.generateMorphToPath(updatedLeafNodeEdgesData[i], true))
-                },
-                "<<"
-            )
-        })
-
-
-        //exit section
-        const textExitSelection = oldNodeTextSelection.exit()
-        const edgeExitSelection = edgeSelection.exit()
-        const leafEdgeExitSelection = leafNodeEdgeSelection.exit()
-        const nodeExitSelection = nodeSelection.exit()
-
-        this.exitSelections.push(textExitSelection)
-        this.exitSelections.push(edgeExitSelection)
-        this.exitSelections.push(leafEdgeExitSelection)
-        this.exitSelections.push(nodeExitSelection)
-
-        //@ts-expect-error
-        timeline.add(
-            [...textExitSelection.nodes(), ...edgeExitSelection.nodes(), ...leafEdgeExitSelection.nodes(), ...nodeExitSelection.nodes()],
-            { opacity: 0 }
-        )
-
-        this.currentAnimation = timeline
-
-        return timeline.then(() => true)
     }
 
     /**
