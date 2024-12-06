@@ -167,10 +167,14 @@ export class AlgoVisualizer {
                 const lastNonNullPointer = currentNode.pointers[currentNode.pointers.length - 1]
                 if (lastNonNullPointer) currentNode = lastNonNullPointer
             } else if (keyToFind == smallestValidNum) {
-                currentNode = currentNode.pointers[smallestValidNumIndex + 1]
+                const node = currentNode.pointers[smallestValidNumIndex + 1]
+                if (node == null) throw new Error("bad dom state, child node is null")
+                currentNode = node
             } else {
                 // keyToFind < smallestValidNum
-                currentNode = currentNode.pointers[smallestValidNumIndex]
+                const node = currentNode.pointers[smallestValidNumIndex]
+                if (node == null) throw new Error("bad dom state, child node is null")
+                currentNode = node
             }
         }
         if (currentNode.keys && currentNode.keys.includes(keyToFind)) {
@@ -627,7 +631,10 @@ export class AlgoVisualizer {
 
                 const tempNode = new bPlusTreeNode(true)
                 tempNode.keys = parentNode.keys.slice()
-                tempNode.pointers = parentNode.pointers.slice()
+                const parentNodePointersToMove = parentNode.pointers.slice()
+                parentNodePointersToMove.forEach((node) => {
+                    tempNode.addNodeToPointers(node)
+                })
 
                 const newNode = new bPlusTreeNode(false)
 
@@ -815,21 +822,29 @@ export class AlgoVisualizer {
                 // ** End Of Animation Section ** //
 
                 parentNode.pointers.forEach(node => {
-                    node.parent = null;
+                    if (node != null) {
+                        node.parent = null;
+                    }
                 })
 
                 parentNode.keys = []
-                parentNode.pointers = []
+                parentNode.pointers.forEach((_, i) => {
+                    parentNode.removeNodeFromPointers(i)
+                })
 
                 tempNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
                 tempNode.keys.splice(leftNodeIndex, 0, value)
 
-                parentNode.pointers = tempNode.pointers.slice(0, Math.ceil((this.n + 1) / 2))
+                tempNode.pointers.slice(0, Math.ceil((this.n + 1) / 2)).forEach(node => {
+                    parentNode.addNodeToPointers(node)
+                })
                 parentNode.keys = tempNode.keys.slice(0, Math.ceil((this.n + 1) / 2) - 1)
 
                 const middleKey = tempNode.keys[Math.ceil(((this.n + 1) / 2) - 1)]
 
-                newNode.pointers = tempNode.pointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1)
+                tempNode.pointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1).forEach(node => {
+                    parentNode.addNodeToPointers(node)
+                })
                 newNode.keys = tempNode.keys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
 
                 newNode.parent = parentNode.parent
