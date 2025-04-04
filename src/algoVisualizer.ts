@@ -264,17 +264,14 @@ export class AlgoVisualizer {
 
                 const newSVGTextElement = this.createNewNodeText(value, 0)
                 targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
-                //@ts-expect-error
                 timeline.set(newSVGTextElement,
                     {
                         opacity: 1
                     }
-                    //@ts-expect-error
                 ).add(newSVGTextElement,
                     {
                         translateY: { from: "-" + this.translateYDist },
                         duration: this.animationDuration * 2
-                        //@ts-expect-error
                     }).set(newSVGTextElement,
                         {
                             fill: this.textColor
@@ -294,17 +291,14 @@ export class AlgoVisualizer {
                     //fix the infinite loop
                     const newSVGTextElement = this.createNewNodeText(value, targetNode.keys.length - 1)
                     targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
-                    //@ts-expect-error
                     timeline.set(newSVGTextElement,
                         {
                             opacity: 1
                         }
-                        //@ts-expect-error
                     ).add(newSVGTextElement,
                         {
                             translateY: { from: "-" + this.translateYDist },
                             duration: this.animationDuration * 2
-                            //@ts-expect-error
                         }).set(newSVGTextElement,
                             {
                                 fill: this.textColor
@@ -330,17 +324,14 @@ export class AlgoVisualizer {
                     //animate adding the new key value to the leaf node
                     const newSVGTextElement = this.createNewNodeText(value, highestNumberIndex)
                     targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
-                    //@ts-expect-error
                     timeline.set(newSVGTextElement,
                         {
                             opacity: 1
                         }
-                        //@ts-expect-error
                     ).add(newSVGTextElement,
                         {
                             translateY: { from: "-" + this.translateYDist },
                             duration: this.animationDuration * 2
-                            //@ts-expect-error
                         }).set(newSVGTextElement,
                             {
                                 fill: this.textColor
@@ -694,7 +685,6 @@ export class AlgoVisualizer {
                 })
                 const tempNodeElementX = parentNodeData.x
                 const tempNodeElementY = parentNodeData.y
-                //@ts-expect-error
                 timeline.add("addTempNode")
                 timeline.set(tempNodeElement,
                     {
@@ -708,7 +698,6 @@ export class AlgoVisualizer {
                         transform: `translate(${tempNodeElementX},${tempNodeElementY})`
                     }, "<"
                 )
-                //@ts-expect-error
                 timeline.set(
                     tempNodeRectChildNodes,
                     {
@@ -740,7 +729,6 @@ export class AlgoVisualizer {
                         },
                         "<<"
                     )
-                    //@ts-expect-error
                     timeline.set(rectChildNodes,
                         {
                             fill: this.lightBlue
@@ -765,18 +753,15 @@ export class AlgoVisualizer {
 
                 //place the text elements of the temp node on their corresponding
                 //test elements in the parent node element.
-                //@ts-expect-error
                 timeline.set(tempNodeTextElements, {
                     opacity: 1,
                     fill: this.textColor,
                     translateX: { to: "-" + this.nodeWidth },
                     translateY: { to: "+" + this.nodeHeight * 1.5 },
                 })
-                //@ts-expect-error
                 timeline.set(parentNodeTextSelection.nodes(), { opacity: 0 })
 
                 // animate moving the text elements from parent node to temp node
-                //@ts-expect-error
                 timeline.add(
                     tempNodeTextElements,
                     {
@@ -854,7 +839,6 @@ export class AlgoVisualizer {
                 })
 
                 //animate moving the correct temp node text elements to parent node
-                //@ts-expect-error
                 timeline.add(toParentNodeText,
                     {
                         translateY: { to: "+" + this.nodeHeight * 1.5 },
@@ -928,19 +912,16 @@ export class AlgoVisualizer {
                     if (textElement == null) throw new Error("Bad dom state")
                     toNewNodeText.push(textElement)
                 })
-                //@ts-expect-error
                 timeline.add(toNewNodeText,
                     {
                         translateY: { to: "-" + this.nodeHeight * 1.5 },
                     }
                 )
-                //@ts-expect-error
                 timeline.add(toNewNodeText,
                     {
                         translateX: { to: "+" + this.pointerRectWidth },
                     }
                 )
-                //@ts-expect-error
                 timeline.add(toNewNodeText,
                     {
                         translateY: { to: `+${this.nodeHeight * 1.5}` },
@@ -979,7 +960,6 @@ export class AlgoVisualizer {
                             return keyElement == Number((nodeElement as Element).textContent)
                         }
                     )
-                    //@ts-expect-error
                     timeline.set(nodeElement, {
                         x: String(this.pointerRectWidth +
                             (this.keyRectWidth / 2) +
@@ -996,15 +976,12 @@ export class AlgoVisualizer {
                     parentNodeElement.appendChild(newTextElement)
                     parentNodeNewTextElements.push(newTextElement)
                 })
-                //@ts-expect-error
                 timeline.set([...parentNodeTextSelection.nodes(),
                 ...newNodeTextElements, ...parentNodeNewTextElements],
                     { opacity: 1, fill: this.textColor })
-                //@ts-expect-error
                 timeline.set(tempNodeTextElements, { opacity: 0 })
 
                 //animate the removal of the temp node
-                //@ts-expect-error
                 timeline.set(Array.from(tempNodeElement.childNodes).filter((child) => { return child.nodeName == "rect" }), {
                     fill: "#F97287"
                 })
@@ -1044,7 +1021,6 @@ export class AlgoVisualizer {
             const newNodes = nodeSelection.enter().data().map((node) => {
                 return this.createNodeElement(node.data)
             })
-            //@ts-expect-error
             timeline.add(
                 [...newNodes],
                 {
@@ -1070,7 +1046,6 @@ export class AlgoVisualizer {
                     '<<'
                 )
             }
-            //@ts-expect-error
             timeline.set(newSVGGElementsRectChildren[0],
                 {
                     fill: this.lightBlue
@@ -1101,7 +1076,6 @@ export class AlgoVisualizer {
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
 
             //animate target node moving to the left and down to make room for tmp and new node
-            //@ts-expect-error
             timeline.add(
                 targetNodeSelection.nodes(),
                 {
@@ -1131,7 +1105,6 @@ export class AlgoVisualizer {
             })
             const tempNodeElementX = targetNodeSelection.data()[0].x
             const tempNodeElementY = targetNodeSelection.data()[0].y
-            //@ts-expect-error
             timeline.add("addTempNode")
             timeline.set(tempNodeElement,
                 {
@@ -1145,7 +1118,6 @@ export class AlgoVisualizer {
                     transform: `translate(${tempNodeElementX},${tempNodeElementY})`
                 }, "<"
             )
-            //@ts-expect-error
             timeline.set(
                 tempNodeRectChildNodes,
                 {
@@ -1177,7 +1149,6 @@ export class AlgoVisualizer {
                     },
                     "<<"
                 )
-                //@ts-expect-error
                 timeline.set(rectChildNodes,
                     {
                         fill: this.lightBlue
@@ -1197,31 +1168,26 @@ export class AlgoVisualizer {
             })
             //place the tempNodeTextElements on top of the target node text elements
             //so that the animation can move them to the temp node.
-            //@ts-expect-error
             timeline.set(tempNodeTextElements, {
                 opacity: 1,
                 fill: this.textColor,
                 translateX: { to: "-" + this.nodeWidth },
                 translateY: { to: "+" + this.nodeHeight * 1.5 },
             })
-            //@ts-expect-error
             timeline.set(targetNodeTextSelection.nodes(), { opacity: 0 })
             //animate moving the text elements form target node to temp node
-            //@ts-expect-error
             timeline.add(
                 tempNodeTextElements,
                 {
                     translateY: { to: "-" + this.nodeHeight }
                 }
             )
-            //@ts-expect-error
             timeline.add(
                 tempNodeTextElements,
                 {
                     translateX: { to: 0 }
                 }
             )
-            //@ts-expect-error
             timeline.add(
                 tempNodeTextElements,
                 {
@@ -1260,19 +1226,16 @@ export class AlgoVisualizer {
                 toTargetNodeText.push(textElement)
             })
             //animate moving the correct temp node text elements to target node
-            //@ts-expect-error
             timeline.add(toTargetNodeText,
                 {
                     translateY: { to: "-" + this.nodeHeight * 1.5 },
                 }
             )
-            //@ts-expect-error
             timeline.add(toTargetNodeText,
                 {
                     translateX: { to: "-" + this.nodeWidth },
                 }
             )
-            //@ts-expect-error
             timeline.add(toTargetNodeText,
                 {
                     translateY: { to: "+" + this.nodeHeight * 1.5 },
@@ -1293,19 +1256,16 @@ export class AlgoVisualizer {
                 if (textElement == null) throw new Error("Bad dom state")
                 toNewNodeText.push(textElement)
             })
-            //@ts-expect-error
             timeline.add(toNewNodeText,
                 {
                     translateY: { to: "-" + this.nodeHeight * 1.5 },
                 }
             )
-            //@ts-expect-error
             timeline.add(toNewNodeText,
                 {
                     translateX: { to: "+" + (this.keyRectWidth + this.pointerRectWidth * 2) },
                 }
             )
-            //@ts-expect-error
             timeline.add(toNewNodeText,
                 {
                     translateY: { to: `+${this.nodeHeight * 1.5}` },
@@ -1332,7 +1292,6 @@ export class AlgoVisualizer {
                         return keyElement == Number((nodeElement as Element).textContent)
                     }
                 )
-                //@ts-expect-error
                 timeline.set(nodeElement, {
                     x: String(this.pointerRectWidth +
                         (this.keyRectWidth / 2) +
@@ -1350,15 +1309,12 @@ export class AlgoVisualizer {
                 targetNodeElement.appendChild(newTextElement)
                 targetNodeNewTextElements.push(newTextElement)
             })
-            //@ts-expect-error
             timeline.set([...targetNodeTextSelection.nodes(),
             ...newNodeTextElements, ...targetNodeNewTextElements],
                 { opacity: 1, fill: this.textColor })
-            //@ts-expect-error
             timeline.set(tempNodeTextElements, { opacity: 0 })
 
             //animate the removal of the temp node
-            //@ts-expect-error
             timeline.set(Array.from(tempNodeElement.childNodes).filter((child) => { return child.nodeName == "rect" }), {
                 fill: "#F97287"
             })
@@ -2152,7 +2108,6 @@ export class AlgoVisualizer {
         // this will be used to convert em units to pixels
         const fontSize = parseFloat(window.getComputedStyle(divToReveal).fontSize)
 
-        //@ts-expect-error
         timeline.add(divToReveal, {
             opacity: 1,
         })
@@ -2185,26 +2140,20 @@ export class AlgoVisualizer {
             // Since the rectangle starts at the first line we don't need to move it there first.
             // This is defined in the index.html file
             if (end) {
-                //@ts-expect-error
                 timeline.add(sudoCodeRectangle, {
                     width: sudoCodeRectWidth,
-                    //@ts-expect-error
                 }).add(sudoCodeRectangle, {
                     top: ((sudoCodeLineHeightFloat * 1) - 1) + "lh",
                 })
             } else if (sudoCodeLineGoal == 1) {
-                //@ts-expect-error
                 timeline.add(sudoCodeRectangle, {
                     width: widthToAnimate + "px",
                 })
             } else {
-                //@ts-expect-error
                 timeline.add(sudoCodeRectangle, {
                     width: sudoCodeRectWidth,
-                    //@ts-expect-error
                 }).add(sudoCodeRectangle, {
                     top: ((sudoCodeLineHeightFloat * sudoCodeLineGoal) - 1) + "lh",
-                    //@ts-expect-error
                 }).add(sudoCodeRectangle, {
                     width: widthToAnimate + "px",
                 })
