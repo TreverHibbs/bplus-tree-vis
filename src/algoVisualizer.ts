@@ -1,3 +1,4 @@
+//TODO debug non working code after big animejs update
 //test strings
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
 // 1,2,3,4,5,6,7,8,9,10,11,12
@@ -92,7 +93,7 @@ export class AlgoVisualizer {
     private readonly mainSvgId = "#main-svg"
     private readonly mainSvg: SVGSVGElement
     // end of class and id names constants
-    /** used to get the x y coords of the trees nodes on the canvas */
+    /** used to get the x y coordinates of the trees nodes on the canvas */
     private readonly d3TreeLayout = tree<bPlusTreeNode>()
     // ** DESIGN NOTE ** //
     // A d3 link is associated with and id stored in its target node.
