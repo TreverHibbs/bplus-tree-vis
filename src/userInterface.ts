@@ -1,5 +1,5 @@
 import { AlgoVisualizer } from './algoVisualizer'
-import { Timeline } from "./lib/anime.esm"
+import { Timeline } from "animejs"
 
 //TODO disable input when animation is playing
 /**
@@ -34,7 +34,6 @@ export const userInterface = () => {
                 // call will be wrong. I don't know why TODO
                 currentAnimation = algoVisualizer.undoableInsert(num);
                 if (currentAnimation === null) return
-                //@ts-expect-error
                 currentAnimationOriginalDuration = currentAnimation.duration
                 currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier).play()
                 await currentAnimation.then(() => true)

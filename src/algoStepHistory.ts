@@ -1,4 +1,4 @@
-import { Timeline } from "./lib/anime.esm"
+import { Timeline } from "animejs"
 
 /**
  * This interface defines a object that is used to store one atomic step of a algorithm

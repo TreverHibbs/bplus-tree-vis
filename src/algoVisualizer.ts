@@ -10,9 +10,9 @@ import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 //anime.esm file must have the .ts extension in order for the ts
 //compiler to find its declaration file.
-import { createTimeline, svg as animeSvg, Timeline } from "./lib/anime.esm"
+import { createTimeline, svg as animeSvg, Timeline } from "animejs"
 import { tree, hierarchy } from "d3-hierarchy"
-import { select, selectAll } from "d3-selection"
+import { select } from "d3-selection"
 import { path as d3Path } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -291,7 +291,7 @@ export class AlgoVisualizer {
                     targetNode.keys.push(value)
 
                     //TODO Debug the case where you add 14 after a sequence of 1 to 13 numbers.
-                    //animate adding the new key value to the leaf node
+                    //fix the infinite loop
                     const newSVGTextElement = this.createNewNodeText(value, targetNode.keys.length - 1)
                     targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
                     //@ts-expect-error

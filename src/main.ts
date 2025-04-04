@@ -1,6 +1,5 @@
 import "./style.css"
 import { userInterface } from "./userInterface"
-//import { createTimeline, Timeline, svg as animeSvg, utils, animate } from "./lib/anime.esm"
 
 
 window.onload = () => {
