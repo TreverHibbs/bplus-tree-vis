@@ -23,8 +23,7 @@ share B+ tree examples as easily as you share text over the internet.
 This project is still WIP so all I can offer now is some videos of the current build.
 <div align="center">
 <img alt="basic demo" height="350" src="/assets/basicDemo.gif" /><br>
-    inserting numbers one at a time and timeline control<br>
-<div style="height:20px;"></div>
+    inserting numbers one at a time and timeline control<br><br><br> 
 <img alt="second demo" height="350" src="/assets/secondDemo.gif" /><br>
     using comma delimited list as input<br>
 </div>
