@@ -1,5 +1,5 @@
 import { AlgoVisualizer } from './algoVisualizer'
-import { Timeline } from "animejs"
+import { Timeline, utils } from "animejs"
 
 //TODO disable input when animation is playing
 /**
@@ -35,9 +35,9 @@ export const userInterface = () => {
                 currentAnimation = algoVisualizer.undoableInsert(num);
                 if (currentAnimation === null) return
                 currentAnimationOriginalDuration = currentAnimation.duration
-                currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier).play()
+                currentAnimation.speed = speedModifier
+                currentAnimation.play()
                 await currentAnimation.then(() => true)
-                await new Promise(resolve => setTimeout(resolve, 10)); // Wait for 10 milliseconds
             }, Promise.resolve());
         }
         updateTimelineInput()
@@ -97,9 +97,6 @@ export const userInterface = () => {
         }
     })
 
-    // TODO refine this behavior. ex. make is so deselecting a checkbox doesn't start animation
-    // again for example when the animation already finished.
-    // Speed checkboxes listener
     speedControlCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener('mousedown', function(this: HTMLInputElement) {
             if (this.checked == false) {
@@ -108,40 +105,15 @@ export const userInterface = () => {
                     checkbox.checked = false;
                 })
                 speedModifier = Number(this.value)
-                if (currentAnimation === null) return
-                const currentAnimeProgress = currentAnimation.progress
-                // Make it so that when a new speed modifier is selected and an animation is
-                // currently playing the animation speeds up at the current location in the animation.
-                // So that it looks seamless to the user.
-                currentAnimation.stretch(currentAnimationOriginalDuration / speedModifier)
-                // if we don't restart here there is one frame where the animation appears to be at a
-                // different location than it should be. I don't know why this is.
-                currentAnimation.restart()
-                if (currentAnimeProgress == 1) {
-                    // for some reason setting progress to 1 doesn't seem to 
-                    // do anything. Therefore in order for the animation to
-                    // appear as though it is at the end we set the progress
-                    // to 0.99999. A number very close to 1
-                    currentAnimation.progress = 0.99999
-                } else {
-                    currentAnimation.progress = currentAnimeProgress
-                }
             } else {
                 speedModifier = 1
-                if (currentAnimation === null) return
-                const currentAnimeProgress = currentAnimation.progress
-                currentAnimation.stretch(currentAnimationOriginalDuration)
-                // see comments above for clarification on this line
-                currentAnimation.restart()
-                if (currentAnimeProgress == 1) {
-                    // see comments above for clarification on this line
-                    currentAnimation.progress = 0.99999
-                } else {
-                    currentAnimation.progress = currentAnimeProgress
-                }
             }
-        });
-    });
+            utils.sync(() => {
+                if (currentAnimation === null) return
+                currentAnimation.speed = speedModifier
+            })
+        })
+    })
 
     /**
      *
