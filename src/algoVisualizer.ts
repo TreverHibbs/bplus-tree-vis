@@ -84,10 +84,6 @@ export class AlgoVisualizer {
     // All nodes are g elements so you can use this along with the d3 selection
     // function to select nodes.
     private readonly nodeSelector = "g.node"
-    //used to prefix the id of the node because a valid DOM selector string
-    //cannot start with a number.
-    private readonly nodeIdPrefix = "n"
-    private readonly nodeRectClassName = this.nodeClassName + "-rect"
     private readonly keyTextClassName = "node-key-text"
     private readonly nodeTextSelector = "text." + this.keyTextClassName
     private readonly mainSvgId = "#main-svg"
@@ -341,7 +337,6 @@ export class AlgoVisualizer {
                     return newSVGTextElement
                 }
             }
-            return null
         }
 
         //TODO figure out why when animating a split some of the numbers disabear after first
@@ -686,7 +681,7 @@ export class AlgoVisualizer {
                 })
                 const tempNodeElementX = parentNodeData.x
                 const tempNodeElementY = parentNodeData.y
-                timeline.add("addTempNode")
+                timeline.label('addTempNode')
                 timeline.set(tempNodeElement,
                     {
                         transform: `translate(${tempNodeElementX} ,${tempNodeElementY - this.translateYDist})`
@@ -961,7 +956,7 @@ export class AlgoVisualizer {
                             return keyElement == Number((nodeElement as Element).textContent)
                         }
                     )
-                    timeline.set(nodeElement, {
+                    timeline.set(nodeElement as HTMLElement, {
                         x: String(this.pointerRectWidth +
                             (this.keyRectWidth / 2) +
                             indexInKeyArray * (this.keyRectWidth + this.pointerRectWidth))
@@ -1106,7 +1101,7 @@ export class AlgoVisualizer {
             })
             const tempNodeElementX = targetNodeSelection.data()[0].x
             const tempNodeElementY = targetNodeSelection.data()[0].y
-            timeline.add("addTempNode")
+            timeline.label('addTempNode')
             timeline.set(tempNodeElement,
                 {
                     transform: `translate(${tempNodeElementX} ,${tempNodeElementY - this.translateYDist})`
@@ -1293,7 +1288,7 @@ export class AlgoVisualizer {
                         return keyElement == Number((nodeElement as Element).textContent)
                     }
                 )
-                timeline.set(nodeElement, {
+                timeline.set(nodeElement as HTMLElement, {
                     x: String(this.pointerRectWidth +
                         (this.keyRectWidth / 2) +
                         indexInKeyArray * (this.keyRectWidth + this.pointerRectWidth))
@@ -1360,6 +1355,7 @@ export class AlgoVisualizer {
      * @sideEffect manipulates the children of the DOM element corresponding to this.mainSvgId.
      * */
     private delete(value: number): Timeline | null {
+        // @ts-ignore
         let targetNode: bPlusTreeNode
         if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
             return null // nothing to delete
@@ -1375,7 +1371,7 @@ export class AlgoVisualizer {
         }
 
         //TODO add animation to this method
-        return this.deleteEntry(targetNode, value)
+        return null
     }
 
     /**
@@ -1386,131 +1382,131 @@ export class AlgoVisualizer {
      * @param node A node to be deleted from target node pointers array
      * @sideEffects Edits the b+tree structure(this.bPlusTreeRoot) to remove the value from the tree
      */
-    private deleteEntry(targetNode: bPlusTreeNode, value: number, node: bPlusTreeNode | null = null) {
-        //Attempt to delete the value from the targetNode
-        //Algorithm found in Database System Concepts 7th edition ch.14 p.648
-        //TODO decide if in the case of the last value in the tree being
-        //deleted if the tree should be set to empty.
-        targetNode.keys = targetNode.keys.filter(element => element != value)
-        if (node != null) {
-            targetNode.pointers = targetNode.pointers.filter(element => element !== node)
-        }
-
-        let siblingNode: bPlusTreeNode | null = null;
-        let betweenValue = null
-        let isPreviousSibling = false
-
-        if (targetNode === this.bPlusTreeRoot && targetNode.pointers.length === 1) {
-            // targetNode is the root and has only one child
-            this.bPlusTreeRoot = targetNode.pointers.filter(element => element != null)[0];
-            this.bPlusTreeRoot.parent = null
-        } else if (!(targetNode === this.bPlusTreeRoot && targetNode.isLeaf) &&
-            (targetNode.isLeaf && targetNode.keys.length < Math.ceil((this.n - 1) / 2) ||
-                !targetNode.isLeaf && targetNode.pointers.length < Math.ceil(this.n / 2))) {
-            // Find a sibling node to borrow from
-            if (targetNode.parent) {
-                const index = targetNode.parent.pointers.indexOf(targetNode);
-
-                if (index > 0) { // There is a previous sibling
-                    siblingNode = targetNode.parent.pointers[index - 1];
-                    betweenValue = targetNode.parent.keys[index - 1];
-                    isPreviousSibling = true
-                } else {
-                    siblingNode = targetNode.parent.pointers[index + 1];
-                    betweenValue = targetNode.parent.keys[index];
-                    isPreviousSibling = false
-                }
-            }
-
-            if (siblingNode == null || betweenValue == null) {
-                throw new Error("valid sibling node or between value not found")
-            }
-
-            const totalKeys = siblingNode.keys.length + targetNode.keys.length;
-
-            if (targetNode.isLeaf && totalKeys <= this.n - 1 || !targetNode.isLeaf && totalKeys <= this.n - 2) {
-                // The keys of siblingNode and targetNode can fit in a single node. Coalesce them.
-                if (!isPreviousSibling) { // targetNode should always be the right sibling
-                    const temp = siblingNode;
-                    siblingNode = targetNode;
-                    targetNode = temp;
-                }
-                if (!targetNode.isLeaf) {
-                    siblingNode.keys.push(betweenValue)
-                    siblingNode.keys.push(...targetNode.keys)
-                    siblingNode.pointers.push(...targetNode.pointers)
-                    targetNode.pointers.forEach(node => {
-                        node.parent = siblingNode
-                    })
-                } else {
-                    siblingNode.keys.push(...targetNode.keys)
-                    const targetNodeLastPointer = targetNode.pointers[targetNode.pointers.length - 1]
-                    if (targetNodeLastPointer) {
-                        siblingNode.pointers[siblingNode.pointers.length - 1] = targetNodeLastPointer
-                    } else {
-                        siblingNode.pointers = []
-                    }
-                }
-                if (targetNode.parent == null) {
-                    throw new Error("target node parent is null")
-                }
-                this.deleteEntry(targetNode.parent, betweenValue, targetNode)
-            } else {
-                // Redistribution: borrow an entry from a sibling
-                if (isPreviousSibling) {
-                    if (!targetNode.isLeaf) {
-                        const lastPointer = siblingNode.pointers.pop()
-                        const lastKey = siblingNode.keys.pop()
-                        if (lastPointer == undefined || lastKey == undefined) {
-                            throw new Error("malformed data structure")
-                        }
-                        targetNode.pointers.unshift(lastPointer)
-                        lastPointer.parent = targetNode
-                        targetNode.keys.unshift(betweenValue)
-                        if (targetNode.parent == null) {
-                            throw new Error("target node parent is null")
-                        }
-                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = lastKey
-                    } else {
-                        const lastKey = siblingNode.keys.pop()
-                        if (lastKey == undefined) {
-                            throw new Error("malformed data structure")
-                        }
-                        targetNode.keys.unshift(lastKey)
-                        if (targetNode.parent == null) {
-                            throw new Error("target node parent is null")
-                        }
-                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = lastKey
-                    }
-                } else {
-                    if (!targetNode.isLeaf) {
-                        const firstPointer = siblingNode.pointers.shift()
-                        const firstKey = siblingNode.keys.shift()
-                        if (firstPointer == undefined || firstKey == undefined) {
-                            throw new Error("malformed data structure")
-                        }
-                        targetNode.pointers.push(firstPointer)
-                        firstPointer.parent = targetNode
-                        targetNode.keys.push(betweenValue)
-                        if (targetNode.parent == null) {
-                            throw new Error("target node parent is null")
-                        }
-                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = firstKey
-                    } else {
-                        const firstKey = siblingNode.keys.shift()
-                        if (firstKey == undefined) {
-                            throw new Error("malformed data structure")
-                        }
-                        targetNode.keys.push(firstKey)
-                        if (targetNode.parent == null) {
-                            throw new Error("target node parent is null")
-                        }
-                        targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = firstKey
-                    }
-                }
-            }
-        }
-    }
+    // private deleteEntry(targetNode: bPlusTreeNode, value: number, node: bPlusTreeNode | null = null) {
+    //     //Attempt to delete the value from the targetNode
+    //     //Algorithm found in Database System Concepts 7th edition ch.14 p.648
+    //     //TODO decide if in the case of the last value in the tree being
+    //     //deleted if the tree should be set to empty.
+    //     targetNode.keys = targetNode.keys.filter(element => element != value)
+    //     if (node != null) {
+    //         targetNode.pointers = targetNode.pointers.filter(element => element !== node)
+    //     }
+    //
+    //     let siblingNode: bPlusTreeNode | null = null;
+    //     let betweenValue = null
+    //     let isPreviousSibling = false
+    //
+    //     if (targetNode === this.bPlusTreeRoot && targetNode.pointers.length === 1) {
+    //         // targetNode is the root and has only one child
+    //         this.bPlusTreeRoot = targetNode.pointers.filter(element => element != null)[0];
+    //         this.bPlusTreeRoot.parent = null
+    //     } else if (!(targetNode === this.bPlusTreeRoot && targetNode.isLeaf) &&
+    //         (targetNode.isLeaf && targetNode.keys.length < Math.ceil((this.n - 1) / 2) ||
+    //             !targetNode.isLeaf && targetNode.pointers.length < Math.ceil(this.n / 2))) {
+    //         // Find a sibling node to borrow from
+    //         if (targetNode.parent) {
+    //             const index = targetNode.parent.pointers.indexOf(targetNode);
+    //
+    //             if (index > 0) { // There is a previous sibling
+    //                 siblingNode = targetNode.parent.pointers[index - 1];
+    //                 betweenValue = targetNode.parent.keys[index - 1];
+    //                 isPreviousSibling = true
+    //             } else {
+    //                 siblingNode = targetNode.parent.pointers[index + 1];
+    //                 betweenValue = targetNode.parent.keys[index];
+    //                 isPreviousSibling = false
+    //             }
+    //         }
+    //
+    //         if (siblingNode == null || betweenValue == null) {
+    //             throw new Error("valid sibling node or between value not found")
+    //         }
+    //
+    //         const totalKeys = siblingNode.keys.length + targetNode.keys.length;
+    //
+    //         if (targetNode.isLeaf && totalKeys <= this.n - 1 || !targetNode.isLeaf && totalKeys <= this.n - 2) {
+    //             // The keys of siblingNode and targetNode can fit in a single node. Coalesce them.
+    //             if (!isPreviousSibling) { // targetNode should always be the right sibling
+    //                 const temp = siblingNode;
+    //                 siblingNode = targetNode;
+    //                 targetNode = temp;
+    //             }
+    //             if (!targetNode.isLeaf) {
+    //                 siblingNode.keys.push(betweenValue)
+    //                 siblingNode.keys.push(...targetNode.keys)
+    //                 siblingNode.pointers.push(...targetNode.pointers)
+    //                 targetNode.pointers.forEach(node => {
+    //                     node.parent = siblingNode
+    //                 })
+    //             } else {
+    //                 siblingNode.keys.push(...targetNode.keys)
+    //                 const targetNodeLastPointer = targetNode.pointers[targetNode.pointers.length - 1]
+    //                 if (targetNodeLastPointer) {
+    //                     siblingNode.pointers[siblingNode.pointers.length - 1] = targetNodeLastPointer
+    //                 } else {
+    //                     siblingNode.pointers = []
+    //                 }
+    //             }
+    //             if (targetNode.parent == null) {
+    //                 throw new Error("target node parent is null")
+    //             }
+    //             this.deleteEntry(targetNode.parent, betweenValue, targetNode)
+    //         } else {
+    //             // Redistribution: borrow an entry from a sibling
+    //             if (isPreviousSibling) {
+    //                 if (!targetNode.isLeaf) {
+    //                     const lastPointer = siblingNode.pointers.pop()
+    //                     const lastKey = siblingNode.keys.pop()
+    //                     if (lastPointer == undefined || lastKey == undefined) {
+    //                         throw new Error("malformed data structure")
+    //                     }
+    //                     targetNode.pointers.unshift(lastPointer)
+    //                     lastPointer.parent = targetNode
+    //                     targetNode.keys.unshift(betweenValue)
+    //                     if (targetNode.parent == null) {
+    //                         throw new Error("target node parent is null")
+    //                     }
+    //                     targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = lastKey
+    //                 } else {
+    //                     const lastKey = siblingNode.keys.pop()
+    //                     if (lastKey == undefined) {
+    //                         throw new Error("malformed data structure")
+    //                     }
+    //                     targetNode.keys.unshift(lastKey)
+    //                     if (targetNode.parent == null) {
+    //                         throw new Error("target node parent is null")
+    //                     }
+    //                     targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = lastKey
+    //                 }
+    //             } else {
+    //                 if (!targetNode.isLeaf) {
+    //                     const firstPointer = siblingNode.pointers.shift()
+    //                     const firstKey = siblingNode.keys.shift()
+    //                     if (firstPointer == undefined || firstKey == undefined) {
+    //                         throw new Error("malformed data structure")
+    //                     }
+    //                     targetNode.pointers.push(firstPointer)
+    //                     firstPointer.parent = targetNode
+    //                     targetNode.keys.push(betweenValue)
+    //                     if (targetNode.parent == null) {
+    //                         throw new Error("target node parent is null")
+    //                     }
+    //                     targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = firstKey
+    //                 } else {
+    //                     const firstKey = siblingNode.keys.shift()
+    //                     if (firstKey == undefined) {
+    //                         throw new Error("malformed data structure")
+    //                     }
+    //                     targetNode.keys.push(firstKey)
+    //                     if (targetNode.parent == null) {
+    //                         throw new Error("target node parent is null")
+    //                     }
+    //                     targetNode.parent.keys[targetNode.parent.keys.indexOf(betweenValue)] = firstKey
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
 
     //TODO debug the 7 4 6 test case. figure out why when 5 is added 7 skips around at start of animation.
@@ -1584,7 +1580,8 @@ export class AlgoVisualizer {
             const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
-            this.createNewNodeText(textSelection.enter(), false)
+            //TODO get this working
+            //this.createNewNodeText(textSelection.enter(), false)
             // return the global state to its state before the previous insert.
             this.bPlusTreeRoot = structuredClone(BPlusTreeBeforePreviousOperation)
             this.previousValue = previousOperationValue
@@ -1671,13 +1668,12 @@ export class AlgoVisualizer {
          * @sideEffect Restore the state of this.bPlusTreeRoot to what it was before
          * the corresponding DeleteDo function was called.
          */
+        //@ts-ignore
         const deleteUndo = () => {
             // return the global state to its state before the previous delete.
             this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousOperation)
             this.previousValue = valueBeforePreviousOperation
             this.previousOperationType = operationTypeBeforePreviousOperation
-
-            this.animateOperation()
 
             if (valueBeforePreviousOperation == null) {
                 return
@@ -1713,7 +1709,7 @@ export class AlgoVisualizer {
         if (generatedTimeline != null) {
             const deleteAlgoStep: AlgoStep = {
                 do: deleteDo,
-                undo: deleteUndo
+                undo: () => null
             }
             this.algoStepHistory.addAlgoStep(deleteAlgoStep)
         }
@@ -1735,6 +1731,7 @@ export class AlgoVisualizer {
      * @sideEffect May increment the edgeIdCount global variable.
      * @returns The id of a yet to be created or existing SVGPathElement
      */
+    //@ts-ignore
     private linkDataFunc(svgPathEl: SVGPathElement, d: d3.HierarchyPointLink<bPlusTreeNode>) {
         if (d) {
             if (d.target.data.edgeId == null) d.target.data.edgeId = `${this.edgeIdCount++}`
@@ -1814,7 +1811,7 @@ export class AlgoVisualizer {
         newSVGTextElement.textContent = String(value)
 
         if (isTransparent) {
-            newSVGTextElement.setAttribute("opacity", 0)
+            newSVGTextElement.setAttribute("opacity", "0")
         }
 
         return newSVGTextElement
@@ -1852,9 +1849,9 @@ export class AlgoVisualizer {
      * @dependency this.nodeWidth The width of a bplus tree node
      * @return String The string meant to be used as the transform attribute
      */
-    // private getNodeTransformString = (x: number, y: number) => {
-    //     return "translate(" + String(x - this.nodeWidth / 2) + "," + String(y) + ")"
-    // }
+    private getNodeTransformString = (x: number, y: number) => {
+        return "translate(" + String(x - this.nodeWidth / 2) + "," + String(y) + ")"
+    }
 
 
     /**
@@ -1928,6 +1925,7 @@ export class AlgoVisualizer {
      * @param d A d3 datum that contains the source and target data for a B+ Tree leaf edge.
      * @return The string meant to be used as the d attribute of an svg path element.
      */
+    // @ts-ignore
     private generateLeafEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
         const path = d3Path()
 
@@ -2026,14 +2024,14 @@ export class AlgoVisualizer {
         for (let i = 0; i < (this.n - 1); i++) {
             const currentXCordOrigin = i * (this.pointerRectWidth + this.keyRectWidth)
             newGElementsSelection.append('rect')
-                .attr("class", this.nodeRectClassName)
+                .attr("class", this.nodeClassName)
                 .attr("width", this.pointerRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin)
                 .attr("y", 0)
                 .attr("fill", this.lightGreen)
             newGElementsSelection.append('rect')
-                .attr("class", this.nodeRectClassName)
+                .attr("class", this.nodeClassName)
                 .attr("width", this.keyRectWidth)
                 .attr("height", this.nodeHeight)
                 .attr("x", currentXCordOrigin + this.pointerRectWidth)
@@ -2041,7 +2039,7 @@ export class AlgoVisualizer {
                 .attr("fill", this.lightGreen)
         }
         newGElementsSelection.append('rect')
-            .attr("class", this.nodeRectClassName)
+            .attr("class", this.nodeClassName)
             .attr("width", this.pointerRectWidth)
             .attr("height", this.nodeHeight)
             .attr("x", (this.n - 1) * (this.pointerRectWidth + this.keyRectWidth))
@@ -2051,7 +2049,7 @@ export class AlgoVisualizer {
         if (isTempNode) {
             //add an extra key rectangle to the node
             newGElementsSelection.append('rect')
-                .attr("class", this.nodeRectClassName)
+                .attr("class", this.nodeClassName)
                 .attr("width", this.keyRectWidth)
                 .attr("height", this.nodeHeight)
                 //place the extra key rectangle at the end of the node
@@ -2115,9 +2113,11 @@ export class AlgoVisualizer {
         })
         // hide all the other sudo code that isn't being used
         divArray.forEach((div) => {
-            timeline.set(div, {
-                opacity: 0
-            }, "<<")
+            if (div !== null) {
+                timeline.set(div, {
+                    opacity: 0
+                }, "<<")
+            }
         })
 
         /**
