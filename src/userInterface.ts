@@ -28,11 +28,16 @@ export const userInterface = () => {
             const numbers = numberInput.value.split(',').map(Number);
             await numbers.reduce(async (previousPromise, num) => {
                 await previousPromise;
+                //TODO we need a delay between the completion of the last animation
+                //ad the initialization and playing of the next animation, in order to
+                //avoid the next animation beginning in it's completed state. I don't 
+                //know why this is. Figure it out in the future.
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 currentAnimation = algoVisualizer.undoableInsert(num);
                 if (currentAnimation === null) return
                 currentAnimation.speed = speedModifier
                 currentAnimation.play()
-                await currentAnimation.then(() => true)
+                return currentAnimation.then()
             }, Promise.resolve());
         }
         updateTimelineInput()

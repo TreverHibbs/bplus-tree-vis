@@ -1509,7 +1509,6 @@ export class AlgoVisualizer {
     // }
 
 
-    //TODO debug the 7 4 6 test case. figure out why when 5 is added 7 skips around at start of animation.
     // Undoable Methods Section //
     /**
      * Inserts a value into the BPlus Tree and animates it. Also allows for the
