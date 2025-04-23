@@ -876,8 +876,8 @@ export class AlgoVisualizer {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
-                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
+                                edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, "<<")
                 })
 

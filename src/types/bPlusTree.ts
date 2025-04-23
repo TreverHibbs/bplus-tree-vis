@@ -41,13 +41,22 @@ export class bPlusTreeNode {
      * @sideEffect the inserted nodes parent property is updated to point to this node
      * @sideEffect set parent property of a node already stored at the specified index of the pointer array to null
      */
-    public addNodeToPointers(node: bPlusTreeNode | null, index: number = this.pointers.length) {
+    public addNodeToPointers(node: bPlusTreeNode | null, index: number = -1) {
         if (this.pointers === null) {
             throw new Error("pointers was null, this should not happen, bad state")
         }
-        this.pointers[index] = node
-        if (node != null) {
-            node.parent = this
+        if (index === -1) {
+            for (let i = 0; i <= this.pointers.length; i++) {
+                if (this.pointers[i] === null || this.pointers.length === i) {
+                    this.pointers[i] = node
+                    return
+                }
+            }
+        } else {
+            this.pointers[index] = node
+            if (node != null) {
+                node.parent = this
+            }
         }
     }
 
@@ -63,7 +72,7 @@ export class bPlusTreeNode {
     public removeNodeFromPointers(index: number) {
         const targetNode = this.pointers[index]
         if (targetNode === null) {
-            throw new Error("pointer index was null, this should not happen, bad state")
+            return
         } else {
             targetNode.parent = null
             this.pointers[index] = null
