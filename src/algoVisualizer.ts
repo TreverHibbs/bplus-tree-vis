@@ -356,7 +356,6 @@ export class AlgoVisualizer {
             if (leftNode.parent == null) { //case where left node is the root of the tree
                 const self = this
 
-                //TODO correct all usages of the pointers array to use new interface
                 this.bPlusTreeRoot = new bPlusTreeNode(false)
                 this.bPlusTreeRoot.isLeaf = false
                 this.bPlusTreeRoot.addNodeToPointers(leftNode)
@@ -783,21 +782,14 @@ export class AlgoVisualizer {
                 const newTempNodeTextElement = insertInLeaf(tempNode, value)
                 if (newTempNodeTextElement == null) throw new Error("bad state")
                 tempNodeTextElements.push(newTempNodeTextElement)
+
                 // ** End Of Animation Section ** //
-
-                parentNode.pointers.forEach(node => {
-                    if (node != null) {
-                        node.parent = null;
-                    }
-                })
-
                 parentNode.keys = []
                 parentNode.pointers.forEach((_, i) => {
                     parentNode.removeNodeFromPointers(i)
                 })
 
                 tempNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
-                tempNode.keys.splice(leftNodeIndex, 0, value)
 
                 tempNode.pointers.slice(0, Math.ceil((this.n + 1) / 2)).forEach(node => {
                     parentNode.addNodeToPointers(node)
@@ -807,7 +799,7 @@ export class AlgoVisualizer {
                 const middleKey = tempNode.keys[Math.ceil(((this.n + 1) / 2) - 1)]
 
                 tempNode.pointers.slice(Math.ceil(((this.n + 1) / 2)), this.n + 1).forEach(node => {
-                    parentNode.addNodeToPointers(node)
+                    newNode.addNodeToPointers(node)
                 })
                 newNode.keys = tempNode.keys.slice(Math.ceil(((this.n + 1) / 2)), this.n)
 
@@ -856,18 +848,24 @@ export class AlgoVisualizer {
                             return (this as SVGPathElement).id
                         }
                     })
+                const toParentNodes = tempNode.pointers.slice(0, Math.ceil((this.n + 1) / 2))
                 const toParentEdgeSelection = edgeSelection.filter(pointLink => {
-                    if (pointLink.target.data.parent?.id == parentNode.id) {
+                    if (toParentNodes.find((node) => {
+                        return (node != null && node.id === pointLink.target.data.id)
+                    })) {
                         return true;
                     } else {
                         return false;
                     }
                 });
+                const toNewNodeNodes = tempNode.pointers.slice(Math.ceil((this.n + 1) / 2))
                 const toNewNodeEdgeSelection = edgeSelection.filter(pointLink => {
-                    if (pointLink.target.data.parent?.id == parentNode.id) {
-                        return false;
-                    } else {
+                    if (toNewNodeNodes.find((node) => {
+                        return (node != null && node.id === pointLink.target.data.id)
+                    })) {
                         return true;
+                    } else {
+                        return false;
                     }
                 });
 
@@ -876,12 +874,10 @@ export class AlgoVisualizer {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
-                                edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
+                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, "<<")
                 })
-
-
 
                 //animate moving the correct temp node edges to the parent node
                 //TODO this problem is still a problem despite having moved the heiarchy creation somewhere else.
@@ -926,14 +922,13 @@ export class AlgoVisualizer {
 
                 //animate moving edges from the temp node to the new node.
                 toNewNodeEdgeSelection.each(function(edgeData) {
-                    const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                    const targetIndex = newNode.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x + self.nodeWidth + self.pointerRectWidth + self.keyRectWidth,
+                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x + self.nodeWidth,
                                 edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, "<<")
                 })
-
 
                 //replace the temp node text elements with their corresponding new node and
                 //parent node text elements. Also animate the removal of the temp node.

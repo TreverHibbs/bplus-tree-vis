@@ -60,6 +60,7 @@ export class bPlusTreeNode {
         }
     }
 
+    //TODO make this get rid of nulls at end of array if they are there on insert
     /**
      * remove a node from the array of nodes that this node points to. If the element at the provided index
      * is null then this is a no op.
@@ -76,6 +77,13 @@ export class bPlusTreeNode {
         } else {
             targetNode.parent = null
             this.pointers[index] = null
+            for (let j = this.pointers.length; j >= 0; j--) {
+                if (this.pointers[j] === null) {
+                    this.pointers.length = j - 1
+                } else {
+                    return
+                }
+            }
         }
     }
 }
