@@ -77,11 +77,14 @@ export class bPlusTreeNode {
         } else {
             targetNode.parent = null
             this.pointers[index] = null
-            for (let j = this.pointers.length; j >= 0; j--) {
-                if (this.pointers[j] === null) {
-                    this.pointers.length = j - 1
-                } else {
-                    return
+            //don't have nulls at end of an array of pointers
+            if (index == this.pointers.length - 1) {
+                for (let j = index; j >= 0; j--) {
+                    if (this.pointers[j] === null) {
+                        this.pointers.length = j
+                    } else {
+                        return
+                    }
                 }
             }
         }
