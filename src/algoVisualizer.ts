@@ -84,6 +84,7 @@ export class AlgoVisualizer {
     // All nodes are g elements so you can use this along with the d3 selection
     // function to select nodes.
     private readonly nodeSelector = "g.node"
+    private readonly edgeSelector = "path." + this.edgeClassName
     private readonly keyTextClassName = "node-key-text"
     private readonly nodeTextSelector = "text." + this.keyTextClassName
     private readonly mainSvgId = "#main-svg"
@@ -619,11 +620,6 @@ export class AlgoVisualizer {
                             return (this as SVGPathElement).id
                         }
                     })
-                const nodeSelection = select(this.mainSvgId)
-                    .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                    .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
-                this.exitSelections.push(edgeSelectionEnterUpdate.exit())
-                this.exitSelections.push(nodeSelection.exit())
                 const parentNodeSelection = select(`#${parentNode.id}`)
                 const parentNodeElement = (parentNodeSelection.node() as SVGGElement | null)
                 if (parentNodeElement == null) throw new Error("bad state")
@@ -1296,11 +1292,32 @@ export class AlgoVisualizer {
                 }, "<"
             )
 
-            //TODO animate insert in parent
             insertInParent(targetNode, newNode.keys[0], newNode)
         }
         moveSudoCodeRectangle(10)
         moveSudoCodeRectangle(10, true)
+
+        //bind the data to the DOM at the end just to get the proper exit selections for cleanup of temp nodes
+        //old edges and text.
+        const self = this
+        const treeLayoutRootNode = this.d3TreeLayout(hierarchy(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
+        const mainSvgSelection = select(this.mainSvg)
+        const nodeSelection = mainSvgSelection
+            .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
+            .data(treeLayoutRootNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
+        const edgeSelection = mainSvgSelection
+            .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>(this.edgeSelector)
+            .data(treeLayoutRootNode.links(), function(d) {
+                if (d) {
+                    // when this is true it must be a new link hence bind a new id to that link.
+                    if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                    return d.target.data.edgeId
+                } else {
+                    return (this as SVGPathElement).id
+                }
+            })
+        this.exitSelections.push(nodeSelection.exit())
+        this.exitSelections.push(edgeSelection.exit())
 
         // this is required because morphTo is used to animate edges.
         // it has the side effect of setting a starting position for
