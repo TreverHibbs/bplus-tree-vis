@@ -32,7 +32,9 @@ export const userInterface = () => {
                 //ad the initialization and playing of the next animation, in order to
                 //avoid the next animation beginning in it's completed state. I don't 
                 //know why this is. Figure it out in the future.
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                //temporarily make this 10ms for testing. 1000ms seems to be what is needed to avoid
+                //artifacts
+                await new Promise(resolve => setTimeout(resolve, 10));
                 currentAnimation = algoVisualizer.undoableInsert(num);
                 if (currentAnimation === null) return
                 currentAnimation.speed = speedModifier

@@ -12,8 +12,8 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 //anime.esm file must have the .ts extension in order for the ts
 //compiler to find its declaration file.
 import { createTimeline, svg as animeSvg, Timeline } from "animejs"
-import { tree, hierarchy } from "d3-hierarchy"
-import { select } from "d3-selection"
+import { tree, hierarchy, HierarchyPointLink, HierarchyPointNode } from "d3-hierarchy"
+import { select, selectAll } from "d3-selection"
 import { path as d3Path } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -215,26 +215,26 @@ export class AlgoVisualizer {
         /**
          *
          * A sub procedure for the insert method
-         * @param targetNode The node to insert they key value into
+         * @param targetNode The node to insert the key value into
          * @param value The key value to insert
+         * @param targetNodeElement The SVG element that corresponds to the targetNode
          * @sideEffect Adds the value to the keys array of the targetNode
          * @sideEffect adds animation to the timeline
+         * @sideEffect Manipulates the DOM
          * @return SVGTextElement | null The text element created for
          * the inserted value or null if the value was not inserted
          */
-        const insertInLeaf = (targetNode: bPlusTreeNode, value: number): SVGTextElement | null => {
-            //must generate the tree layout  and join the data with all the nodes.
-            //This must be done because the data is not bound to the svg element when
-            //it is created.
-            const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(targetNode, this.bPlusTreeChildrenDefinition))
-            const nodeSelection = select(this.mainSvgId)
-                .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
-                .data(rootHierarchyNode, function(d) { return d ? d.data.id : (this as SVGGElement).id })
-            const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
+        const insertInLeaf = (targetNode: bPlusTreeNode, value: number, targetNodeElement: SVGGElement): SVGTextElement | null => {
+            //TODO found out that I am using this method to insert into a temp node. Therefore make it so that
+            //this method can operate without having to worry about the bigger picture. No rebinding data
+            //to the entire tree. define what should happen if the target node doesn't have a corresponding
+            //DOM element yet.
+            const targetNodeSelection = select<SVGGElement, HierarchyPointNode<bPlusTreeNode>>(targetNodeElement)
             const targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
                 //see the createNewNodeText method for an explanation of why t is appended to get the id of the
-                //text element
-                .data((d) => d.data.keys, function(d) { return d ? "t" + d : (this as SVGTextElement).id })
+                //text element. Using the text elements value as id because we are not allowing duplicates.
+                .data(targetNode.keys, function(d) { return d ? "t" + d : (this as SVGTextElement).id })
+            //generate animations for adding new text to the leaf node
             if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
                 //animate shifting keys to the right
                 let animePos = "<<"
@@ -284,8 +284,6 @@ export class AlgoVisualizer {
                 if (highestNumberIndex < 0) {
                     targetNode.keys.push(value)
 
-                    //TODO Debug the case where you add 14 after a sequence of 1 to 13 numbers.
-                    //fix the infinite loop
                     const newSVGTextElement = this.createNewNodeText(value, targetNode.keys.length - 1)
                     targetNodeSelection.nodes()[0].appendChild(newSVGTextElement)
                     timeline.set(newSVGTextElement,
@@ -339,8 +337,8 @@ export class AlgoVisualizer {
             }
         }
 
-        //TODO figure out why when animating a split some of the numbers disabear after first
-        //time animating. So that on rewind and play numbers are missing.
+        //TODO when splitting make sure all edges are accounted for. Even edges pointing twards
+        //new nodes.
         /**
          * A subsidiary procedure for the insert method
          * @param leftNode A bPlusTreeNode to be placed to the left of the key value
@@ -779,7 +777,7 @@ export class AlgoVisualizer {
                 )
 
                 //animate adding new value to temp node
-                const newTempNodeTextElement = insertInLeaf(tempNode, value)
+                const newTempNodeTextElement = insertInLeaf(tempNode, value, tempNodeElement)
                 if (newTempNodeTextElement == null) throw new Error("bad state")
                 tempNodeTextElements.push(newTempNodeTextElement)
 
@@ -879,23 +877,6 @@ export class AlgoVisualizer {
                         }, "<<")
                 })
 
-                //animate moving the correct temp node edges to the parent node
-                //TODO this problem is still a problem despite having moved the heiarchy creation somewhere else.
-                //TODO When the rootHierarchyNode is generated in order to bind the data to the svg elements
-                //in the case where another insert in parent call still needs to be made. And that next
-                //call will change which node is the root node we need to not make animations based on
-                //the rootHierarchyNode that is generated with the wrong root node. Figure out a way to postpone
-                //the animation generation until the correct root node can be used.
-                //
-                //This situation happens when 13 is inserted in this input string 6,4,5,2,8,9,10,11,12,13.
-                //When 13 is inserted it creates the situation described above.
-                //
-                //This ultimately leads to a bad animation and certain nodes being added to the exit selection
-                //despite still being valid.
-                //
-                //This can probably be solved by checking if the leftNode argument that is about to passed
-                //into the recursive insertInParent call is the root node. And then doing something about it.
-
                 //get the text elements from the temp node that should go to the new node
                 //and animate them going to the new node.
                 const toNewNodeText: SVGTextElement[] = []
@@ -985,11 +966,6 @@ export class AlgoVisualizer {
                 )
                 // ** End of animation section ** //
 
-
-                //TODO I found out that the edges move to their correct spots early
-                //because of the creation of new animations for the same edges after
-                //the first animation is created for them. Investigate this and look
-                //for solutions
                 insertInParent(parentNode, middleKey, newNode)
             }
             return
@@ -1057,7 +1033,10 @@ export class AlgoVisualizer {
         // targetNode is ready to have the value inserted into it.
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
             moveSudoCodeRectangle(6)
-            insertInLeaf(targetNode, value)
+            //get the HTML element that corresponds to the targetNode
+            const targetNodeElement = select<SVGGElement, HierarchyPointNode<bPlusTreeNode>>("#" + targetNode.id).node()
+            if (targetNodeElement === null) throw new Error("target node element was null, bad state")
+            insertInLeaf(targetNode, value, targetNodeElement)
         } else { //leaf node targetNode has n - 1 key values already, split it
             moveSudoCodeRectangle(7)
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
@@ -1187,7 +1166,7 @@ export class AlgoVisualizer {
             )
 
             //animate adding new value to temp node
-            const newTempNodeTextElement = insertInLeaf(tempNode, value)
+            const newTempNodeTextElement = insertInLeaf(tempNode, value, tempNodeElement)
             if (newTempNodeTextElement == null) throw new Error("bad state")
             tempNodeTextElements.push(newTempNodeTextElement)
 
