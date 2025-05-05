@@ -1,4 +1,4 @@
-//TODO debug non working code after big animejs update
+//TODO find an insert test string that breaks the app
 //test strings
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
 // 1,2,3,4,5,6,7,8,9,10,11,12
@@ -12,8 +12,8 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 //anime.esm file must have the .ts extension in order for the ts
 //compiler to find its declaration file.
 import { createTimeline, svg as animeSvg, Timeline } from "animejs"
-import { tree, hierarchy, HierarchyPointLink, HierarchyPointNode } from "d3-hierarchy"
-import { select, selectAll } from "d3-selection"
+import { tree, hierarchy, HierarchyPointNode } from "d3-hierarchy"
+import { select } from "d3-selection"
 import { path as d3Path } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -226,10 +226,6 @@ export class AlgoVisualizer {
          * the inserted value or null if the value was not inserted
          */
         const insertInLeaf = (targetNode: bPlusTreeNode, value: number, targetNodeElement: SVGGElement): SVGTextElement | null => {
-            //TODO found out that I am using this method to insert into a temp node. Therefore make it so that
-            //this method can operate without having to worry about the bigger picture. No rebinding data
-            //to the entire tree. define what should happen if the target node doesn't have a corresponding
-            //DOM element yet.
             const targetNodeSelection = select<SVGGElement, HierarchyPointNode<bPlusTreeNode>>(targetNodeElement)
             const targetNodeTextSelection = targetNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
                 //see the createNewNodeText method for an explanation of why t is appended to get the id of the
@@ -338,8 +334,6 @@ export class AlgoVisualizer {
             }
         }
 
-        //TODO when splitting make sure all edges are accounted for. Even edges pointing twards
-        //new nodes.
         /**
          * A subsidiary procedure for the insert method
          * @param leftNode A bPlusTreeNode to be placed to the left of the key value
@@ -545,11 +539,29 @@ export class AlgoVisualizer {
                         }, animationPos)
                 })
 
+                //TODO add animation for moving existing key text to make room for new text
                 //animate adding key value to parent node
-                const parentNodeElement = document.querySelector(`#${parentNode.id}`)
+                const parentNodeElement: SVGGElement | null = document.querySelector(`#${parentNode.id}`)
                 if (parentNodeElement == null) throw new Error("parent node SVG element not found bad DOM state")
                 const newTextElement = this.createNewNodeText(value, leftNodeIndex)
                 parentNodeElement.appendChild(newTextElement)
+                const parentNodeSelection = select<SVGGElement, HierarchyPointNode<bPlusTreeNode>>(parentNodeElement)
+                const parentNodeTextSelection = parentNodeSelection.selectAll<SVGTextElement, number>("text." + this.keyTextClassName)
+                    //see the createNewNodeText method for an explanation of why t is appended to get the id of the
+                    //text element. Using the text elements value as id because we are not allowing duplicates.
+                    .data(parentNode.keys, function(d) { return d ? "t" + d : (this as SVGTextElement).id })
+                //generate animations for adding new text to the parent node
+                parentNodeTextSelection.nodes().slice(parentNode.keys.indexOf(value) + 1).forEach((element, i) => {
+                    let position = "<<"
+                    if (i == 0) {
+                        position = "<"
+                    }
+                    timeline.add(element,
+                        {
+                            x: String(Number(element.getAttribute("x")) + this.keyRectWidth + this.pointerRectWidth)
+                        }, position
+                    )
+                })
                 timeline.add(newTextElement,
                     {
                         opacity: { to: 1, ease: this.opacityEaseType },
@@ -588,7 +600,6 @@ export class AlgoVisualizer {
                         "marker-start": "url(#circle)",
                     }, "<")
 
-                //TODO animate the edges moving around between temp nodes and regular nodes
             } else { // split
                 // when splitting make every DOM element of the B+ tree
                 // transparent so that all that the user sees are the nodes being split
