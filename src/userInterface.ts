@@ -21,6 +21,8 @@ export const userInterface = () => {
     let speedModifier = 1
     // ** end global variables section ** //
 
+    //TODO dis allow decimal numbers because it causes bad stuff to happen when using
+    //user input in css selectors for animation.
     const insertButton = document.querySelector('#insert-button');
     insertButton?.addEventListener('click', async () => {
         const numberInput = <HTMLInputElement>document.querySelector('#number-input')

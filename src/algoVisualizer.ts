@@ -1,3 +1,5 @@
+//TODO I think I found a problem with insert in parent animation but cant tell because can't zoom out and pan
+//R and D that feature. Enough research has been done implement this next time
 //TODO find an insert test string that breaks the app
 //test strings
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
@@ -128,6 +130,56 @@ export class AlgoVisualizer {
         this.mainSvg.viewBox
         this.mainSvg.setAttribute('viewBox',
             `${this.mainSvg.viewBox.baseVal.x + (this.nodeWidth / 2)} ${this.mainSvg.viewBox.baseVal.y} ${this.mainSvg.viewBox.baseVal.width} ${this.mainSvg.viewBox.baseVal.height}`);
+        //SVG pan feature section
+        //TODO add cursor visually changing to reflect this feature
+        let isPointerDown = false
+        let initialPanPoint = new DOMPoint(0, 0)
+
+        /**
+         * A sub procedure for the svg pan feature. This function translates the
+         * given xy coordinates to the SVG's coordinates for panning.
+         * @param x The x coordinate of the pointer
+         * @param y The y coordinate of the pointer
+         * @dependency depends of access to the main SVG's data
+         * @return DOMPoint the pointer coordinates translated into the SVG's coordinates
+         * */
+        const getPanningPointerPoint = (x: number, y: number): DOMPoint => {
+            const svgScreenCTM = this.mainSvg.getScreenCTM()
+            if (svgScreenCTM == null) throw new Error("svg had null screen ctm, bad state")
+            var invertedSVGMatrix = svgScreenCTM.inverse();
+
+            let point = new DOMPoint(x, y)
+            //need to invert because we are moving the viewbox in the opposite direction from
+            //the pointer.
+            return point.matrixTransform(invertedSVGMatrix);
+        }
+        this.mainSvg.onpointerdown = (event) => {
+            isPointerDown = true
+            const point = getPanningPointerPoint(event.x, event.y)
+            initialPanPoint.x = point.x
+            initialPanPoint.y = point.y
+        }
+        this.mainSvg.onpointerup = (event) => {
+            isPointerDown = false
+            const point = getPanningPointerPoint(event.x, event.y)
+            this.mainSvg.viewBox.baseVal.x -= (point.x - initialPanPoint.x);
+            this.mainSvg.viewBox.baseVal.y -= (point.y - initialPanPoint.y);
+        }
+        this.mainSvg.onpointermove = (event) => {
+            // Only run this function if the pointer is down
+            if (!isPointerDown) {
+                return;
+            }
+            // This prevent user to do a selection on the page
+            event.preventDefault();
+
+            const point = getPanningPointerPoint(event.x, event.y)
+
+            // Update the viewBox variable with the distance from origin and current position
+            this.mainSvg.viewBox.baseVal.x -= (point.x - initialPanPoint.x);
+            this.mainSvg.viewBox.baseVal.y -= (point.y - initialPanPoint.y);
+        }
+        //end of SVG pan feature section
         const style = getComputedStyle(document.body)
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
@@ -334,6 +386,8 @@ export class AlgoVisualizer {
             }
         }
 
+        //TODO there is a broken animation somewhere in here. Edges won't align with nodes mid animation
+        //sometimes.
         /**
          * A subsidiary procedure for the insert method
          * @param leftNode A bPlusTreeNode to be placed to the left of the key value
