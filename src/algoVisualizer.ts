@@ -16,7 +16,7 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import { createTimeline, svg as animeSvg, Timeline } from "animejs"
 import { tree, hierarchy, HierarchyPointNode } from "d3-hierarchy"
 import { select } from "d3-selection"
-import { path as d3Path } from "d3"
+import { path as d3Path, zoom } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 // This type is used to communicate what algorithm operation is being animated or
@@ -131,54 +131,34 @@ export class AlgoVisualizer {
         this.mainSvg.setAttribute('viewBox',
             `${this.mainSvg.viewBox.baseVal.x + (this.nodeWidth / 2)} ${this.mainSvg.viewBox.baseVal.y} ${this.mainSvg.viewBox.baseVal.width} ${this.mainSvg.viewBox.baseVal.height}`);
         //SVG pan feature section
-        //TODO add cursor visually changing to reflect this feature
-        let isPointerDown = false
-        let initialPanPoint = new DOMPoint(0, 0)
-
-        /**
-         * A sub procedure for the svg pan feature. This function translates the
-         * given xy coordinates to the SVG's coordinates for panning.
-         * @param x The x coordinate of the pointer
-         * @param y The y coordinate of the pointer
-         * @dependency depends of access to the main SVG's data
-         * @return DOMPoint the pointer coordinates translated into the SVG's coordinates
-         * */
-        const getPanningPointerPoint = (x: number, y: number): DOMPoint => {
-            const svgScreenCTM = this.mainSvg.getScreenCTM()
-            if (svgScreenCTM == null) throw new Error("svg had null screen ctm, bad state")
-            var invertedSVGMatrix = svgScreenCTM.inverse();
-
-            let point = new DOMPoint(x, y)
-            //need to invert because we are moving the viewbox in the opposite direction from
-            //the pointer.
-            return point.matrixTransform(invertedSVGMatrix);
-        }
-        this.mainSvg.onpointerdown = (event) => {
-            isPointerDown = true
-            const point = getPanningPointerPoint(event.x, event.y)
-            initialPanPoint.x = point.x
-            initialPanPoint.y = point.y
-        }
-        this.mainSvg.onpointerup = (event) => {
-            isPointerDown = false
-            const point = getPanningPointerPoint(event.x, event.y)
-            this.mainSvg.viewBox.baseVal.x -= (point.x - initialPanPoint.x);
-            this.mainSvg.viewBox.baseVal.y -= (point.y - initialPanPoint.y);
-        }
-        this.mainSvg.onpointermove = (event) => {
-            // Only run this function if the pointer is down
-            if (!isPointerDown) {
-                return;
-            }
-            // This prevent user to do a selection on the page
-            event.preventDefault();
-
-            const point = getPanningPointerPoint(event.x, event.y)
-
-            // Update the viewBox variable with the distance from origin and current position
-            this.mainSvg.viewBox.baseVal.x -= (point.x - initialPanPoint.x);
-            this.mainSvg.viewBox.baseVal.y -= (point.y - initialPanPoint.y);
-        }
+        //TODO continue implementing this. Need to deep dive into how it works exactly
+        //figure out how the scroll zoom feature works. How can I translate the change in x and y
+        //properly
+        const svgSelection = select(this.mainSvg)
+        const zoomInstance = zoom<SVGSVGElement, unknown>()
+        let zoomStartPoint = new DOMPoint(0, 0)
+        let zoomScaleStartValue = 0
+        const viewBoxVal = this.mainSvg.viewBox.baseVal
+        const originalWidth = viewBoxVal.width
+        const originalHeight = viewBoxVal.height
+        const screenCTM = this.mainSvg.getScreenCTM()
+        if (screenCTM === null) throw new Error("bad state, couldn't get svg coordinates translation matrix")
+        const invertedSVGMatrix = screenCTM.inverse();
+        svgSelection.call(zoomInstance.on("zoom", (event: d3.D3ZoomEvent<typeof this.mainSvg, null>) => {
+            const { k, x, y } = event.transform
+            let zoomTransformPoint = new DOMPoint(x, y)
+            zoomTransformPoint = zoomTransformPoint.matrixTransform(invertedSVGMatrix);
+            viewBoxVal.x -= (zoomTransformPoint.x - zoomStartPoint.x)
+            viewBoxVal.y -= (zoomTransformPoint.y - zoomStartPoint.y)
+            viewBoxVal.width = originalWidth * k
+            viewBoxVal.height = originalHeight * k
+        }).on("start", (event: d3.D3ZoomEvent<typeof this.mainSvg, null>) => {
+            const { k, x, y } = event.transform
+            zoomStartPoint.x = x
+            zoomStartPoint.y = y
+            zoomStartPoint = zoomStartPoint.matrixTransform(invertedSVGMatrix)
+            zoomScaleStartValue = k
+        }))
         //end of SVG pan feature section
         const style = getComputedStyle(document.body)
         this.lightBlue = style.getPropertyValue("--light-blue")
