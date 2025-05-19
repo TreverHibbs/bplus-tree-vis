@@ -16,7 +16,7 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import { createTimeline, svg as animeSvg, Timeline } from "animejs"
 import { tree, hierarchy, HierarchyPointNode } from "d3-hierarchy"
 import { select } from "d3-selection"
-import { path as d3Path } from "d3"
+import { path as d3Path, zoom } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 // This type is used to communicate what algorithm operation is being animated or
@@ -130,11 +130,39 @@ export class AlgoVisualizer {
         this.mainSvg.viewBox
         this.mainSvg.setAttribute('viewBox',
             `${this.mainSvg.viewBox.baseVal.x + (this.nodeWidth / 2)} ${this.mainSvg.viewBox.baseVal.y} ${this.mainSvg.viewBox.baseVal.width} ${this.mainSvg.viewBox.baseVal.height}`);
-        //SVG pan feature section
+        //SVG pan and zoom feature section
         //TODO add cursor visually changing to reflect this feature
+        const viewBoxVal = this.mainSvg.viewBox.baseVal
+        let viewBoxOriginPoint = new DOMPoint(viewBoxVal.x, viewBoxVal.y, 1)
+        let viewBoxBottomRightPoint = new DOMPoint(viewBoxVal.width + viewBoxVal.x,
+            viewBoxVal.height + viewBoxVal.y, 1)
+        const mainSvgSelection = select(this.mainSvg)
+        const zoomInstance = zoom<SVGSVGElement, unknown>().filter(function filter(event) {
+            return (event.type === 'wheel');
+        })
+        mainSvgSelection.call(zoomInstance.on("start", () => {
+            viewBoxOriginPoint = new DOMPoint(viewBoxVal.x, viewBoxVal.y, 1)
+            viewBoxBottomRightPoint = new DOMPoint(viewBoxVal.width + viewBoxVal.x,
+                viewBoxVal.height + viewBoxVal.y, 1)
+        }).on("zoom", (event: d3.D3ZoomEvent<typeof this.mainSvg, null>) => {
+            const [transformedViewBoxOriginX, transformedViewBoxOriginY] = event.transform.apply([viewBoxOriginPoint.x, viewBoxOriginPoint.y])
+            const [transformedViewBoxBottomRightPointX, transformedViewBoxBottomRightPointY] =
+                event.transform.apply([viewBoxBottomRightPoint.x, viewBoxBottomRightPoint.y])
+            viewBoxVal.x = transformedViewBoxOriginX
+            viewBoxVal.y = transformedViewBoxOriginY
+            viewBoxVal.width = transformedViewBoxBottomRightPointX - transformedViewBoxOriginX
+            viewBoxVal.height = transformedViewBoxBottomRightPointY - transformedViewBoxOriginY
+            console.log(`viewboxVal.x${viewBoxVal.x}`)
+            console.log(`viewboxVal.y${viewBoxVal.y}`)
+            console.log(`viewboxVal.width${viewBoxVal.width}`)
+            console.log(`viewboxVal.height${viewBoxVal.height}`)
+        }))
+        // need this so that the delta can be found between the point where the drag
+        // was initiated and where the drag is currently. This delta is used
+        // to determine how far the viewbox should move
         let isPointerDown = false
+        // this will record that point mentioned above
         let initialPanPoint = new DOMPoint(0, 0)
-
         /**
          * A sub procedure for the svg pan feature. This function translates the
          * given xy coordinates to the SVG's coordinates for panning.
@@ -147,7 +175,6 @@ export class AlgoVisualizer {
             const svgScreenCTM = this.mainSvg.getScreenCTM()
             if (svgScreenCTM == null) throw new Error("svg had null screen ctm, bad state")
             var invertedSVGMatrix = svgScreenCTM.inverse();
-
             let point = new DOMPoint(x, y)
             //need to invert because we are moving the viewbox in the opposite direction from
             //the pointer.
@@ -179,7 +206,7 @@ export class AlgoVisualizer {
             this.mainSvg.viewBox.baseVal.x -= (point.x - initialPanPoint.x);
             this.mainSvg.viewBox.baseVal.y -= (point.y - initialPanPoint.y);
         }
-        //end of SVG pan feature section
+        //end of SVG pan and zoom feature section
         const style = getComputedStyle(document.body)
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
