@@ -7,6 +7,8 @@
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100
 // 12, 7, 29, 45, 2, 33, 18, 51, 9, 37, 24, 6, 42, 15, 30
 // 57, 91, 26, 73, 17, 45, 67, 89, 34, 12, 78, 23, 56, 38, 81, 29, 64, 92, 15, 48, 71, 33, 86, 20, 52, 75, 28, 61, 94, 7, 40, 83, 16, 49, 72, 35, 58, 11, 44, 77, 30, 53, 76, 19, 42, 65, 88, 21, 54, 87, 10, 43, 66, 39, 62, 95, 18, 51, 74, 37, 60, 93, 6, 79, 22, 55, 88, 31, 64, 97, 8, 41, 74, 27, 50, 73, 36, 59, 82, 5, 78, 21, 44, 67, 90, 13, 46, 69, 32, 55, 78, 1, 24, 47, 70, 93, 16, 39, 62, 85, 8, 31, 54, 77, 100
+//TODO I think inserting 51 at the end of this string has a broken animation
+// 57, 91, 26, 73, 17, 45, 67, 89, 34, 12, 78, 23, 56, 38, 81, 29, 64, 92, 15, 48, 71, 33, 86, 20, 52, 75, 28, 61, 94, 7, 40, 83, 16, 49, 72, 35, 58, 11, 44, 77, 30, 53, 76, 19, 42, 65, 88, 21, 54, 87, 10, 43, 66, 39, 62, 95, 18, 51
 // 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
 
 import { bPlusTreeNode } from "./types/bPlusTree"
@@ -16,7 +18,7 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import { createTimeline, svg as animeSvg, Timeline } from "animejs"
 import { tree, hierarchy, HierarchyPointNode } from "d3-hierarchy"
 import { select } from "d3-selection"
-import { path as d3Path, zoom } from "d3"
+import { path as d3Path, zoom, ZoomTransform, zoomTransform } from "d3"
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 // This type is used to communicate what algorithm operation is being animated or
@@ -140,11 +142,7 @@ export class AlgoVisualizer {
         const zoomInstance = zoom<SVGSVGElement, unknown>().filter(function filter(event) {
             return (event.type === 'wheel');
         })
-        mainSvgSelection.call(zoomInstance.on("start", () => {
-            viewBoxOriginPoint = new DOMPoint(viewBoxVal.x, viewBoxVal.y, 1)
-            viewBoxBottomRightPoint = new DOMPoint(viewBoxVal.width + viewBoxVal.x,
-                viewBoxVal.height + viewBoxVal.y, 1)
-        }).on("zoom", (event: d3.D3ZoomEvent<typeof this.mainSvg, null>) => {
+        mainSvgSelection.call(zoomInstance.on("zoom", (event: d3.D3ZoomEvent<typeof this.mainSvg, null>) => {
             const [transformedViewBoxOriginX, transformedViewBoxOriginY] = event.transform.apply([viewBoxOriginPoint.x, viewBoxOriginPoint.y])
             const [transformedViewBoxBottomRightPointX, transformedViewBoxBottomRightPointY] =
                 event.transform.apply([viewBoxBottomRightPoint.x, viewBoxBottomRightPoint.y])
@@ -189,8 +187,14 @@ export class AlgoVisualizer {
         this.mainSvg.onpointerup = (event) => {
             isPointerDown = false
             const point = getPanningPointerPoint(event.x, event.y)
-            this.mainSvg.viewBox.baseVal.x -= (point.x - initialPanPoint.x);
-            this.mainSvg.viewBox.baseVal.y -= (point.y - initialPanPoint.y);
+            viewBoxVal.x -= (point.x - initialPanPoint.x)
+            viewBoxVal.y -= (point.y - initialPanPoint.y)
+            //TODO document this math
+            const currentTransform = zoomTransform(this.mainSvg)
+            zoomInstance.transform(mainSvgSelection, new ZoomTransform(
+                currentTransform.k, viewBoxVal.x - currentTransform.k * viewBoxOriginPoint.x,
+                viewBoxVal.y - currentTransform.k * viewBoxOriginPoint.y
+            ))
         }
         this.mainSvg.onpointermove = (event) => {
             // Only run this function if the pointer is down
@@ -199,12 +203,10 @@ export class AlgoVisualizer {
             }
             // This prevent user to do a selection on the page
             event.preventDefault();
-
             const point = getPanningPointerPoint(event.x, event.y)
-
             // Update the viewBox variable with the distance from origin and current position
-            this.mainSvg.viewBox.baseVal.x -= (point.x - initialPanPoint.x);
-            this.mainSvg.viewBox.baseVal.y -= (point.y - initialPanPoint.y);
+            viewBoxVal.x -= (point.x - initialPanPoint.x)
+            viewBoxVal.y -= (point.y - initialPanPoint.y)
         }
         //end of SVG pan and zoom feature section
         const style = getComputedStyle(document.body)
