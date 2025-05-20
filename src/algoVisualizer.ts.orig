@@ -18,7 +18,11 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 import { createTimeline, svg as animeSvg, Timeline } from "animejs"
 import { tree, hierarchy, HierarchyPointNode } from "d3-hierarchy"
 import { select } from "d3-selection"
+<<<<<<< HEAD
 import { path as d3Path, zoom, ZoomTransform, zoomTransform } from "d3"
+=======
+import { path as d3Path, zoom } from "d3"
+>>>>>>> e0ebdfdd752fd08de8550a97bae4ca64c3417a9b
 export const SVG_NS = "http://www.w3.org/2000/svg"
 
 // This type is used to communicate what algorithm operation is being animated or
@@ -132,17 +136,10 @@ export class AlgoVisualizer {
         this.mainSvg.viewBox
         this.mainSvg.setAttribute('viewBox',
             `${this.mainSvg.viewBox.baseVal.x + (this.nodeWidth / 2)} ${this.mainSvg.viewBox.baseVal.y} ${this.mainSvg.viewBox.baseVal.width} ${this.mainSvg.viewBox.baseVal.height}`);
+<<<<<<< HEAD
         //SVG pan and zoom feature section
         //TODO add cursor visually changing to reflect this feature
         const viewBoxVal = this.mainSvg.viewBox.baseVal
-        // these points are important. They represent the location of the view box that is considered
-        // to be it's standard default position. This standard position then has a matrix transformation
-        // applied to it to get its zoomed position. The pan feature ignores these points and
-        // simply moves the view box origin. However after a pan stops the previously mentions matrix transform
-        // should be set to reflect the view boxes new position. This means that you need to get the transform
-        // that when applied to these points will give you the resulting view box position after a pan. This is done
-        // so that the zoom feature and the pan feature can stay in sink even thought the pan feature does not use the
-        // transform matrix to transform these points.
         let viewBoxOriginPoint = new DOMPoint(viewBoxVal.x, viewBoxVal.y, 1)
         let viewBoxBottomRightPoint = new DOMPoint(viewBoxVal.width + viewBoxVal.x,
             viewBoxVal.height + viewBoxVal.y, 1)
@@ -158,6 +155,10 @@ export class AlgoVisualizer {
             viewBoxVal.y = transformedViewBoxOriginY
             viewBoxVal.width = transformedViewBoxBottomRightPointX - transformedViewBoxOriginX
             viewBoxVal.height = transformedViewBoxBottomRightPointY - transformedViewBoxOriginY
+            console.log(`viewboxVal.x${viewBoxVal.x}`)
+            console.log(`viewboxVal.y${viewBoxVal.y}`)
+            console.log(`viewboxVal.width${viewBoxVal.width}`)
+            console.log(`viewboxVal.height${viewBoxVal.height}`)
         }))
         // need this so that the delta can be found between the point where the drag
         // was initiated and where the drag is currently. This delta is used
@@ -193,11 +194,7 @@ export class AlgoVisualizer {
             const point = getPanningPointerPoint(event.x, event.y)
             viewBoxVal.x -= (point.x - initialPanPoint.x)
             viewBoxVal.y -= (point.y - initialPanPoint.y)
-            //derive the transform matrix that when applied to the view box origin points
-            //will give you the resulting viewbox position after the pan that corresponds to
-            //the current instance of this event.
-            //Also set the zoomInstance transform to the obtained transform
-            //this is done so that the pan and zoom feature stay in sync
+            //TODO document this math
             const currentTransform = zoomTransform(this.mainSvg)
             zoomInstance.transform(mainSvgSelection, new ZoomTransform(
                 currentTransform.k, viewBoxVal.x - currentTransform.k * viewBoxOriginPoint.x,
@@ -217,6 +214,38 @@ export class AlgoVisualizer {
             viewBoxVal.y -= (point.y - initialPanPoint.y)
         }
         //end of SVG pan and zoom feature section
+=======
+        //SVG pan feature section
+        //TODO continue implementing this. Need to deep dive into how it works exactly
+        //figure out how the scroll zoom feature works. How can I translate the change in x and y
+        //properly
+        const svgSelection = select(this.mainSvg)
+        const zoomInstance = zoom<SVGSVGElement, unknown>()
+        let zoomStartPoint = new DOMPoint(0, 0)
+        let zoomScaleStartValue = 0
+        const viewBoxVal = this.mainSvg.viewBox.baseVal
+        const originalWidth = viewBoxVal.width
+        const originalHeight = viewBoxVal.height
+        const screenCTM = this.mainSvg.getScreenCTM()
+        if (screenCTM === null) throw new Error("bad state, couldn't get svg coordinates translation matrix")
+        const invertedSVGMatrix = screenCTM.inverse();
+        svgSelection.call(zoomInstance.on("zoom", (event: d3.D3ZoomEvent<typeof this.mainSvg, null>) => {
+            const { k, x, y } = event.transform
+            let zoomTransformPoint = new DOMPoint(x, y)
+            zoomTransformPoint = zoomTransformPoint.matrixTransform(invertedSVGMatrix);
+            viewBoxVal.x -= (zoomTransformPoint.x - zoomStartPoint.x)
+            viewBoxVal.y -= (zoomTransformPoint.y - zoomStartPoint.y)
+            viewBoxVal.width = originalWidth * k
+            viewBoxVal.height = originalHeight * k
+        }).on("start", (event: d3.D3ZoomEvent<typeof this.mainSvg, null>) => {
+            const { k, x, y } = event.transform
+            zoomStartPoint.x = x
+            zoomStartPoint.y = y
+            zoomStartPoint = zoomStartPoint.matrixTransform(invertedSVGMatrix)
+            zoomScaleStartValue = k
+        }))
+        //end of SVG pan feature section
+>>>>>>> e0ebdfdd752fd08de8550a97bae4ca64c3417a9b
         const style = getComputedStyle(document.body)
         this.lightBlue = style.getPropertyValue("--light-blue")
         this.lightGreen = style.getPropertyValue("--light-green")
