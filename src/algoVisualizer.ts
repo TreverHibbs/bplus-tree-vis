@@ -1,6 +1,6 @@
-//TODO I think I found a problem with insert in parent animation but cant tell because can't zoom out and pan
-//R and D that feature. Enough research has been done implement this next time
-//TODO find an insert test string that breaks the app
+//TODO add edges pointing between leaf nodes
+//TODO make sure that the back and forward feature works completely. right now it breaks for at least one test case that
+//I tried. start with simplest breaking test case and go from there.
 //test strings
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
 // 1,2,3,4,5,6,7,8,9,10,11,12
@@ -1647,6 +1647,8 @@ export class AlgoVisualizer {
          * Therefore all side effects of that method are relevant here.
          */
         const insertUndo = () => {
+            //TODO debug this. it seems like what I need to do is reset the dom to what it was before the
+            //current insert was completed. Right now this does not seem to be happening right
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
@@ -1663,7 +1665,6 @@ export class AlgoVisualizer {
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
                 .data(rootHierarchyNode, (d) => d.data.id)
-
             nodeSelection.exit().remove()
             nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
             nodeSelection.attr("transform", (d) => {

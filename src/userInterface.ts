@@ -77,8 +77,7 @@ export const userInterface = () => {
         const stepBackReturn = algoVisualizer.algoStepHistory.stepBackwards()
         if (stepBackReturn === null) return
         currentAnimation = stepBackReturn
-        //@ts-ignore
-        currentAnimation.stretch(currentAnimation.duration / speedModifier)
+        currentAnimation.speed = speedModifier
         currentAnimation.progress = 1
     })
 
@@ -87,8 +86,7 @@ export const userInterface = () => {
         const stepForwardReturn = algoVisualizer.algoStepHistory.stepForwards()
         if (stepForwardReturn === null) return
         currentAnimation = stepForwardReturn
-        //@ts-ignore
-        currentAnimation.stretch(currentAnimation.duration / speedModifier)
+        currentAnimation.speed = speedModifier
         currentAnimation.play()
     })
 
@@ -96,7 +94,6 @@ export const userInterface = () => {
     timelineInput?.addEventListener('input', () => {
         // console.debug('input event fired')
         if (currentAnimation) {
-            //@ts-ignore
             currentAnimation.seek(timelineInput.valueAsNumber * currentAnimation.duration)
         }
     })
