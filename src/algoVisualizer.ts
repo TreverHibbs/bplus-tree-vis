@@ -551,7 +551,7 @@ export class AlgoVisualizer {
                 const newLinks = edgeSelection.enter().data()
                 const newPathElements: SVGPathElement[] = []
                 newLinks.forEach((link) => {
-                    newPathElements.push(this.createNewEdgeSvgElement(link, false, false))
+                    newPathElements.push(this.createNewEdgeSvgElement(link, false))
                 })
                 newPathElements.forEach((pathElement) => {
                     this.mainSvg.appendChild(pathElement)
@@ -666,7 +666,7 @@ export class AlgoVisualizer {
                 const newLinks = edgeSelection.enter().data()
                 const newPathElements: SVGPathElement[] = []
                 newLinks.forEach((link) => {
-                    newPathElements.push(this.createNewEdgeSvgElement(link, false, false))
+                    newPathElements.push(this.createNewEdgeSvgElement(link, false))
                 })
                 newPathElements.forEach((pathElement) => {
                     this.mainSvg.appendChild(pathElement)
@@ -692,10 +692,6 @@ export class AlgoVisualizer {
                     }, "<")
 
             } else { // split
-                // when splitting make every DOM element of the B+ tree
-                // transparent so that all that the user sees are the nodes being split
-                // this way hopefully things don't get so confusing.
-
                 // set this for d3 callback functions
                 const self = this
 
@@ -709,7 +705,6 @@ export class AlgoVisualizer {
                 const newNode = new bPlusTreeNode(false)
 
                 // ** animation section ** //
-
                 //get the necessary data and elements for the following animation
                 let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
                 let edgeSelectionEnterUpdate = select(this.mainSvgId)
@@ -732,18 +727,9 @@ export class AlgoVisualizer {
                     return (edgeData.source.data.id == parentNode.id)
                 })
 
-                //first make all other B+ Tree DOM elements transparent
-                // const otherNodeSelection = nodeSelection.filter(function() {
-                //     return (this !== parentNodeElement)
-                // })
-                // timeline.add(otherNodeSelection.nodes(),
-                //     { opacity: 0.25 }, "<")
-                // timeline.add([...edgeSelection.nodes(), ...edgeSelection.enter().nodes(), ...edgeSelection.exit().nodes()],
-                //     { opacity: 0.25 }, "<")
-
                 // generate animations for adding the temp node and new node
                 // and moving the parent nodes text into the temp node
-                //first animate moving the parent node down and to the left inorder
+                //first animate moving the parent node down and to the left in order
                 //to make room for the temp node coming in.
                 timeline.add(
                     parentNodeElement,
@@ -913,6 +899,9 @@ export class AlgoVisualizer {
                 });
 
                 // ** Animation Section ** //
+                //animate adding a leaf edge that points from the parent node
+                //to the new node
+
                 // get the text elements from the temp node element that
                 //should be moved to the parent node
                 const toParentNodeText: SVGTextElement[] = []
@@ -2051,15 +2040,9 @@ export class AlgoVisualizer {
      * @dependency this.keyRectWidth The width of a bplus tree key rectangle
      */
     private createNewEdgeSvgElement(link: d3.HierarchyPointLink<bPlusTreeNode>,
-        areLeafNodeEdges = false, isTransparent = true): SVGPathElement {
+        isTransparent = true): SVGPathElement {
         let className = this.edgeClassName
         let edgePathFnGenerator = this.generateEdgePathFN
-
-        if (areLeafNodeEdges) {
-            // TODO refactor generate Leaf edge pathFN
-            // edgePathFnGenerator = this.generateLeafEdgePathFN
-            className = this.leafNodeEdgeClassName
-        }
 
         const newSVGPathElement = document.createElementNS(SVG_NS, "path")
         newSVGPathElement.setAttribute("class", className)
@@ -2070,8 +2053,6 @@ export class AlgoVisualizer {
         newSVGPathElement.setAttribute("id", `${link.target.data.edgeId}`)
         newSVGPathElement.setAttribute("stroke", "black")
         newSVGPathElement.setAttribute("stroke-width", "2px")
-        // newSVGPathElement.setAttribute("marker-end", "url(#arrow)")
-        // newSVGPathElement.setAttribute("marker-start", "url(#circle)")
         newSVGPathElement.setAttribute("opacity", isTransparent ? "0" : "1")
 
         return newSVGPathElement
