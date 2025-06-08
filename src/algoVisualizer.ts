@@ -1274,6 +1274,9 @@ export class AlgoVisualizer {
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
             newNode.parent = targetNode.parent
 
+            //animate adding an edge between the target node and the new node.
+            this.createNewLeafEdgeSvgElement(targetNode, newNode)
+
             // get the text elements from the temp node element that
             //should be move to the target node
             const toTargetNodeText: SVGTextElement[] = []
@@ -2020,24 +2023,12 @@ export class AlgoVisualizer {
     }
 
     /**
-     * Creates a new svg element for B+ Tree edge. Gives every new path element
-     * an ID of the form "1-2" where 1 and 2 are the ids of the source and
-     * target b plus tree nodes respectively.
+     * Creates a new svg element for B+ Tree edge.
      * @param link a d3 hierarchy node link
-     * @param areLeafNodeEdges toggles wether or not the edge is to be
-     * generated for a link between leaf node siblings or not. defaults
-     * to false
-     * @param isTransparent toggles wether or not the edge is transparent
+     * @param isTransparent toggles whether or not the edge is transparent
      * initially. This exists so that edge reveal can be animated. defaults
      * to true
      * @return the created svg path element
-     * @dependency this.edgePathId an incrementing id counter for edge path
-     * elements
-     * @dependency this.nodeWidth The width of a bplus tree node
-     * @dependency this.nodeHeight The height of a bplus tree node
-     * @dependency this.pointerRectWidth The width of a bplus tree pointer
-     * rectangle
-     * @dependency this.keyRectWidth The width of a bplus tree key rectangle
      */
     private createNewEdgeSvgElement(link: d3.HierarchyPointLink<bPlusTreeNode>,
         isTransparent = true): SVGPathElement {
@@ -2055,6 +2046,40 @@ export class AlgoVisualizer {
         newSVGPathElement.setAttribute("stroke-width", "2px")
         newSVGPathElement.setAttribute("opacity", isTransparent ? "0" : "1")
 
+        return newSVGPathElement
+    }
+
+    /**
+     * Creates a new svg element for a B+ Tree leaf edge.
+     * @param sourceNode the node that the edge should point from.
+     * @param targetNode the node that the edge should point to.
+     * @dependency if one or more of the inputed B+ tree nodes doesn't have a corresponding
+     * DOM element with hierarchy node data attached to it by D3. Then this method will throw an
+     * error
+     * @return the created svg path element. The ID of this element is in
+     * the format s-t. Where s is the id of the source node and t is the
+     * id of the target node.
+     */
+    private createNewLeafEdgeSvgElement(sourceNode: bPlusTreeNode,
+        targetNode: bPlusTreeNode): SVGPathElement {
+        let className = this.leafNodeEdgeClassName
+        const sourceNodeSelection = select<HTMLElement, HierarchyPointNode<bPlusTreeNode> | undefined>(sourceNode.id)
+        const targetNodeSelection = select<HTMLElement, HierarchyPointNode<bPlusTreeNode> | undefined>(targetNode.id)
+        const sourceHierarchyNode = sourceNodeSelection.data()[0]
+        const targetHierarchyNode = targetNodeSelection.data()[0]
+        if (!sourceHierarchyNode || !targetHierarchyNode) {
+            throw new
+                Error("bad state, expected input B+ tree nodes to have corresponding DOM elements but they do not.")
+        }
+        const newSVGPathElement = document.createElementNS(SVG_NS, "path")
+        newSVGPathElement.setAttribute("class", className)
+        newSVGPathElement.setAttribute("d", this.generateEdgePathFN(sourceHierarchyNode.x, sourceHierarchyNode.y,
+            targetHierarchyNode.x, targetHierarchyNode.y, this.n - 1))
+        newSVGPathElement.setAttribute("fill", "none")
+        newSVGPathElement.setAttribute("id", `${sourceNode.id}-${targetNode.id}`)
+        newSVGPathElement.setAttribute("stroke", "black")
+        newSVGPathElement.setAttribute("stroke-width", "2px")
+        newSVGPathElement.setAttribute("opacity", "1")
         return newSVGPathElement
     }
 
