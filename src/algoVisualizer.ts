@@ -576,6 +576,9 @@ export class AlgoVisualizer {
                         "marker-start": "url(#circle)",
                     }, "<")
 
+                //animate adding 
+                this.createNewLeafEdgeSvgElement(leftNode, rightNode)
+
                 return
             }
 
@@ -1133,11 +1136,18 @@ export class AlgoVisualizer {
             const targetNodeSelection = nodeSelection.filter((d) => d.data === targetNode)
 
             //animate target node moving to the left and down to make room for tmp and new node
+            /**
+             * Used to store the coordinates of the target node while the split animation is ongoing
+             */
+            const targetNodeTmpCoordinates = {
+                x: targetNodeSelection.data()[0].x - this.nodeWidth,
+                y: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5
+            }
             timeline.add(
                 targetNodeSelection.nodes(),
                 {
                     transform: () => {
-                        return `translate( ${targetNodeSelection.data()[0].x - this.nodeWidth} , ${targetNodeSelection.data()[0].y + this.nodeHeight * 1.5} )`
+                        return `translate( ${targetNodeTmpCoordinates.x} , ${targetNodeTmpCoordinates.y} )`
                     }
                 }
             )
@@ -1183,9 +1193,16 @@ export class AlgoVisualizer {
             )
 
             // animate adding the new node to the tree
+            /**
+             * Used to store the coordinates of the new node while the split animation is ongoing
+             */
+            const newNodeTmpCoordinates = {
+                x: targetNodeSelection.data()[0].x + this.nodeWidth,
+                y: targetNodeSelection.data()[0].y + this.nodeHeight * 1.5
+            }
             const newNodeElement = this.createNodeElement(newNode,
-                targetNodeSelection.data()[0].x + this.nodeWidth,
-                targetNodeSelection.data()[0].y + this.nodeHeight * 1.5)
+                newNodeTmpCoordinates.x,
+                newNodeTmpCoordinates.y)
             timeline.add(
                 newNodeElement,
                 {
@@ -1274,8 +1291,14 @@ export class AlgoVisualizer {
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
             newNode.parent = targetNode.parent
 
-            //animate adding an edge between the target node and the new node.
-            this.createNewLeafEdgeSvgElement(targetNode, newNode)
+            //TODO add code here that inserts a edge between the target and new node
+            //these nodes are now leaf nodes. This needs to be done before the hierarchy
+            //nodes are generated. therefore just do it.
+            const leafEdgePath = d3Path()
+            leafEdgePath.moveTo(targetNodeSelection.data()[0].x - this.nodeWidth
+            targetNodeSelection.data()[0].x + this.nodeWidth
+            targetNodeSelection.data()[0].y + this.nodeWidth
+
 
             // get the text elements from the temp node element that
             //should be move to the target node
