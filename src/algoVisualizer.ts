@@ -482,6 +482,31 @@ export class AlgoVisualizer {
                     }, "<"
                 )
 
+                if (leftNode.isLeaf) {
+                    const leafEdge = document.querySelector(`#${leftNode.id}-${rightNode.id}`)
+                    if (!leafEdge) {
+                        throw new Error("Could not get leaf edge element for leaf node siblings, bad DOM state")
+                    }
+                    //animate moving the leaf edge to it's new correct place
+                    const leafEdgePath = d3Path()
+                    const leftHeirarchyNode = nodeSelection.filter(`#${leftNode.id}`).data()[0]
+                    const rightHeirarchyNode = nodeSelection.filter(`#${rightNode.id}`).data()[0]
+                    leafEdgePath.moveTo(leftHeirarchyNode.x + this.nodeWidth - this.pointerRectWidth / 2,
+                        leftHeirarchyNode.y + this.nodeHeight / 2)
+                    leafEdgePath.lineTo(rightHeirarchyNode.x, rightHeirarchyNode.y + this.nodeHeight / 2)
+                    const newLeafEdgePathPosition = document.createElementNS(SVG_NS, "path")
+                    newLeafEdgePathPosition.setAttribute("d", leafEdgePath.toString())
+                    const defsElement: SVGElement | null = document.querySelector(this.mainSvgId + " defs")
+                    if (!defsElement) {
+                        throw new Error("defs element not found")
+                    }
+                    defsElement.appendChild(newLeafEdgePathPosition);
+                    timeline.add(leafEdge,
+                        {
+                            d: animeSvg.morphTo(newLeafEdgePathPosition)
+                        }, "<")
+                }
+
                 //animate moving every node to its right spot.
                 nodeSelection.each(function(nodeData, i) {
                     let timelinePos = "<<"
@@ -575,9 +600,6 @@ export class AlgoVisualizer {
                         "marker-end": "url(#arrow)",
                         "marker-start": "url(#circle)",
                     }, "<")
-
-                //animate adding 
-                this.createNewLeafEdgeSvgElement(leftNode, rightNode)
 
                 return
             }
@@ -1291,14 +1313,39 @@ export class AlgoVisualizer {
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
             newNode.parent = targetNode.parent
 
-            //TODO add code here that inserts a edge between the target and new node
-            //these nodes are now leaf nodes. This needs to be done before the hierarchy
-            //nodes are generated. therefore just do it.
+            //animate inserting an edge between the target and new node
             const leafEdgePath = d3Path()
-            leafEdgePath.moveTo(targetNodeSelection.data()[0].x - this.nodeWidth
-            targetNodeSelection.data()[0].x + this.nodeWidth
-            targetNodeSelection.data()[0].y + this.nodeWidth
-
+            leafEdgePath.moveTo(targetNodeTmpCoordinates.x + this.nodeWidth - this.pointerRectWidth / 2,
+                targetNodeTmpCoordinates.y + this.nodeHeight / 2)
+            leafEdgePath.lineTo(newNodeTmpCoordinates.x, newNodeTmpCoordinates.y + this.nodeHeight / 2)
+            const newSVGPathElement = document.createElementNS(SVG_NS, "path")
+            newSVGPathElement.setAttribute("class", this.leafNodeEdgeClassName)
+            newSVGPathElement.setAttribute("d", leafEdgePath.toString())
+            newSVGPathElement.setAttribute("fill", "none")
+            newSVGPathElement.setAttribute("id", `${targetNode.id}-${newNode.id}`)
+            newSVGPathElement.setAttribute("stroke", "black")
+            newSVGPathElement.setAttribute("stroke-width", "2px")
+            newSVGPathElement.setAttribute("opacity", "1")
+            this.mainSvg.appendChild(newSVGPathElement)
+            // this set statement needs to be here so that the timeline
+            // knows that I want mark-end and marker-start to be none
+            // before the end of the animation. Otherwise when rewinding
+            // their values will remain what they were set to at the end.
+            timeline.set(newSVGPathElement,
+                {
+                    "marker-end": "none",
+                    "marker-start": "none",
+                }, "<")
+            timeline.add(animeSvg.createDrawable(newSVGPathElement),
+                {
+                    draw: "0 1",
+                }
+                , "<")
+            timeline.set(newSVGPathElement,
+                {
+                    "marker-end": "url(#arrow)",
+                    "marker-start": "url(#circle)",
+                }, "<")
 
             // get the text elements from the temp node element that
             //should be move to the target node
