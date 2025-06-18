@@ -632,42 +632,59 @@ export class AlgoVisualizer {
                         }
                     })
 
+                //TODO debug this solution
                 //TODO also add moving all other leaf nodes when moving this stuff around
                 if (leftNode.isLeaf) {
-                    const leafEdge = document.querySelector(`#${leftNode.id}-${rightNode.id}`)
-                    if (!leafEdge) {
-                        throw new Error("Could not get leaf edge element for leaf node siblings, bad DOM state")
-                    }
-                    //animate moving the leaf edge to it's new correct place
-                    const leafEdgePath = d3Path()
-                    const leftHeirarchyNode = nodeSelection.filter(`#${leftNode.id}`).data()[0]
-                    const rightHeirarchyNode = nodeSelection.filter(`#${rightNode.id}`).data()[0]
-                    leafEdgePath.moveTo(leftHeirarchyNode.x + this.nodeWidth - this.pointerRectWidth / 2,
-                        leftHeirarchyNode.y + this.nodeHeight / 2)
-                    leafEdgePath.lineTo(rightHeirarchyNode.x, rightHeirarchyNode.y + this.nodeHeight / 2)
-                    const newLeafEdgePathPosition = document.createElementNS(SVG_NS, "path")
-                    newLeafEdgePathPosition.setAttribute("d", leafEdgePath.toString())
-                    const defsElement: SVGElement | null = document.querySelector(this.mainSvgId + " defs")
-                    if (!defsElement) {
-                        throw new Error("defs element not found")
-                    }
-                    defsElement.appendChild(newLeafEdgePathPosition);
-                    timeline.add(leafEdge,
-                        {
-                            d: animeSvg.morphTo(newLeafEdgePathPosition)
-                        }, "<")
+                    //get all the leaf nodes pairs that have an edge between them
+                    const leafNodeSelection = nodeSelection.filter((pointNode) => pointNode.data.isLeaf)
+                    const leafPointerNodePairs = leafNodeSelection.data().map((pointNode) => {
+                        if (pointNode.data.pointers[this.n - 1]) {
+                            return ([pointNode,
+                                leafNodeSelection.filter((pointNode2) => {
+                                    const lastPointer = pointNode.data.pointers[this.n - 1]
+                                    if (!lastPointer) return false
+                                    return pointNode2.data.id === lastPointer.id
+                                }).data()[0]])
+                        }
+                        return null
+                    }).filter(pointNode => pointNode !== null)
+                    leafPointerNodePairs.forEach((leafPointerNodePair, i) => {
+                        if (leafPointerNodePair === null) return
+                        const leafEdge = document.querySelector(`#${leafPointerNodePair[0].data.id}-${leafPointerNodePair[1].data.id}`)
+                        if (!leafEdge) {
+                            throw new Error("Could not get leaf edge element for leaf node siblings, bad DOM state")
+                        }
+                        //animate moving the leaf edge to it's new correct place
+                        const leafEdgePath = d3Path()
+                        const leftHeirarchyNode = leafPointerNodePair[0]
+                        const rightHeirarchyNode = leafPointerNodePair[1]
+                        leafEdgePath.moveTo(leftHeirarchyNode.x + this.nodeWidth - this.pointerRectWidth / 2,
+                            leftHeirarchyNode.y + this.nodeHeight / 2)
+                        leafEdgePath.lineTo(rightHeirarchyNode.x, rightHeirarchyNode.y + this.nodeHeight / 2)
+                        const newLeafEdgePathPosition = document.createElementNS(SVG_NS, "path")
+                        newLeafEdgePathPosition.setAttribute("d", leafEdgePath.toString())
+                        const defsElement: SVGElement | null = document.querySelector(this.mainSvgId + " defs")
+                        if (!defsElement) {
+                            throw new Error("defs element not found")
+                        }
+                        defsElement.appendChild(newLeafEdgePathPosition);
+                        let animationPos = "<"
+                        if (i > 0) {
+                            animationPos = "<<"
+                        }
+                        timeline.add(leafEdge,
+                            {
+                                d: animeSvg.morphTo(newLeafEdgePathPosition)
+                            }, animationPos)
+                    })
                 }
 
                 //animate moving every node and edge to its new correct place
-                nodeSelection.each(function(hierarchyNode, i) {
-                    let animationPos = "<"
-                    if (i > 0) {
-                        animationPos = "<<"
-                    }
+                nodeSelection.each(function(hierarchyNode) {
                     timeline.add(this,
                         {
                             transform: `translate(${hierarchyNode.x},${hierarchyNode.y})`
-                        }, animationPos)
+                        }, "<<")
                 })
 
                 edgeSelection.each(function(link) {
