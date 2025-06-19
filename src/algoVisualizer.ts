@@ -1369,6 +1369,13 @@ export class AlgoVisualizer {
             }
             newNode.keys = tempNode.keys.slice(Math.ceil(this.n / 2), this.n)
             newNode.parent = targetNode.parent
+            if (targetNodeOriginalLastNode) {
+                const TargetNodeOldRightNeighborEdge = document.querySelector(`#${targetNode.id}-${targetNodeOriginalLastNode.id}`)
+                if (TargetNodeOldRightNeighborEdge) {
+                    TargetNodeOldRightNeighborEdge.id = `${newNode.id}-${targetNodeOriginalLastNode.id}`
+                }
+            }
+
 
             //animate inserting an edge between the target and new node
             const leafEdgePath = d3Path()
