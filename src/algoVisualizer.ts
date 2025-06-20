@@ -1,6 +1,3 @@
-//TODO add edges pointing between leaf nodes
-//TODO make sure that the back and forward feature works completely. right now it breaks for at least one test case that
-//I tried. start with simplest breaking test case and go from there.
 //test strings
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
 // 1,2,3,4,5,6,7,8,9,10,11,12
@@ -712,8 +709,6 @@ export class AlgoVisualizer {
                         }, animationPos)
                 })
 
-                //TODO add animation for moving existing key text to make room for new text
-                //animate adding key value to parent node
                 const parentNodeElement: SVGGElement | null = document.querySelector(`#${parentNode.id}`)
                 if (parentNodeElement == null) throw new Error("parent node SVG element not found bad DOM state")
                 const newTextElement = this.createNewNodeText(value, leftNodeIndex)
@@ -1766,15 +1761,13 @@ export class AlgoVisualizer {
          * @return A Timeline of the generated animation for the previous operation. Or
          * null if there is no previous operation in history.
          * @dependencies uses the previousOperationValue, previousOperationType, and
-         * PreviousBPlusTree to recreate the previous operations execution.
+         * BPlusTreeBeforePreviousOperation to recreate the previous operations execution.
          * @sideEffect sets the global variables this.bPlusTreeRoot and this.previousValue
          * to the state they were in before the previous operation.
          * @sideEffect calls the operation method corresponding to the previousOperationType.
          * Therefore all side effects of that method are relevant here.
          */
         const insertUndo = () => {
-            //TODO debug this. it seems like what I need to do is reset the dom to what it was before the
-            //current insert was completed. Right now this does not seem to be happening right
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
@@ -1796,6 +1789,8 @@ export class AlgoVisualizer {
             nodeSelection.attr("transform", (d) => {
                 return this.getNodeTransformString(d.x, d.y)
             })
+            //TODO it appears as though the problem is that we move the nodes to their correct locations
+            //but we do not move any of the edges. I think the next step should be to move the edges.
             const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
