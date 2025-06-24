@@ -121,7 +121,7 @@ export class AlgoVisualizer {
         this.splitXDist = this.nodeWidth
         //move the origin of the SVG canvas to the left by half the node width
         //so that the tree is centered on the canvas. It must be done like this because the
-        //nodes must keep there origin in the top left corner. Otherwise animejs will not work correctly
+        //nodes must keep their origin in the top left corner. Otherwise animejs will not work correctly
         //because it overrides transforms in order to animate svg movement.
         const mainSvgTmp: SVGSVGElement | null = document.querySelector(this.mainSvgId)
         if (mainSvgTmp == null) throw new Error("main-svg element not found invalid html structure")
@@ -499,14 +499,10 @@ export class AlgoVisualizer {
                         throw new Error("Could not get leaf edge element for leaf node siblings, bad DOM state")
                     }
                     //animate moving the leaf edge to it's new correct place
-                    const leafEdgePath = d3Path()
-                    const leftHeirarchyNode = leafPointerNodePair[0]
-                    const rightHeirarchyNode = leafPointerNodePair[1]
-                    leafEdgePath.moveTo(leftHeirarchyNode.x + this.nodeWidth - this.pointerRectWidth / 2,
-                        leftHeirarchyNode.y + this.nodeHeight / 2)
-                    leafEdgePath.lineTo(rightHeirarchyNode.x, rightHeirarchyNode.y + this.nodeHeight / 2)
                     const newLeafEdgePathPosition = document.createElementNS(SVG_NS, "path")
-                    newLeafEdgePathPosition.setAttribute("d", leafEdgePath.toString())
+                    newLeafEdgePathPosition.setAttribute("d",
+                        this.generateLeafEdgePathFN(leafPointerNodePair[0].x,
+                            leafPointerNodePair[0].y, leafPointerNodePair[1].x, leafPointerNodePair[1].y))
                     const defsElement: SVGElement | null = document.querySelector(this.mainSvgId + " defs")
                     if (!defsElement) {
                         throw new Error("defs element not found")
@@ -1787,7 +1783,14 @@ export class AlgoVisualizer {
             nodeSelection.exit().remove()
             nodeSelection.filter((d) => d.data.keys.length === 0).remove() //remove the root node if it is empty.
             nodeSelection.attr("transform", (d) => {
-                return this.getNodeTransformString(d.x, d.y)
+                return `translate(${d.x},${d.y})`
+            })
+            edgeSelection.attr("d", (d) => {
+                const indexOfTargetNode = d.source.data.pointers.indexOf(d.target.data)
+                return this.generateEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y, indexOfTargetNode)
+            })
+            leafNodeEdgeSelection.attr("d", (d) => {
+                return this.generateLeafEdgePathFN(d)
             })
             //TODO it appears as though the problem is that we move the nodes to their correct locations
             //but we do not move any of the edges. I think the next step should be to move the edges.
@@ -2136,19 +2139,18 @@ export class AlgoVisualizer {
 
     /**
      * Creates a string that represents the svg path for a B+ Tree leaf edge.
-     * @param d A d3 datum that contains the source and target data for a B+ Tree leaf edge.
-     * @return The string meant to be used as the d attribute of an svg path element.
+     * @param sourceX the x coordinate of the source B+ Tree node SVG element.
+     * @param sourceY the y coordinate of the source B+ Tree node SVG element.
+     * @param targetX the x coordinate of the target B+ Tree node SVG element.
+     * @param targetY the y coordinate of the target B+ Tree node SVG element.
+     * @return the string meant to be used as the d attribute of an svg path element
      */
-    // @ts-ignore
-    private generateLeafEdgePathFN = (d: d3.HierarchyPointLink<bPlusTreeNode>) => {
-        const path = d3Path()
-
-        const x1 = (this.nodeWidth / 2) - (this.pointerRectWidth / 2)
-        const x2 = (this.nodeWidth / 2)
-
-        path.moveTo(d.source.x + x1, d.source.y + this.nodeHeight / 2)
-        path.lineTo(d.target.x - x2, d.target.y + this.nodeHeight / 2)
-        return path.toString()
+    private generateLeafEdgePathFN = (sourceX: number, sourceY: number, targetX: number, targetY: number) => {
+        const leafEdgePath = d3Path()
+        leafEdgePath.moveTo(sourceX + this.nodeWidth - this.pointerRectWidth / 2,
+            sourceY + this.nodeHeight / 2)
+        leafEdgePath.lineTo(targetX, targetY + this.nodeHeight / 2)
+        return leafEdgePath.toString()
     }
 
     /**
