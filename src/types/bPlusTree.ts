@@ -70,7 +70,7 @@ export class bPlusTreeNode {
      * @sideEffect updates the removed nodes parent property to null
      * @sideEffect updates the pointers array
      */
-    public removeNodeFromPointers(index: number) {
+    public removeNodeFromPointer(index: number) {
         const targetNode = this.pointers[index]
         if (targetNode === null) {
             return
@@ -88,5 +88,18 @@ export class bPlusTreeNode {
                 }
             }
         }
+    }
+
+    /**
+     * Deep clone a bPlusTreeNode, preserving methods in the process.
+     *
+     * @param node the node to be cloned
+     * @return the clone of the original node
+     */
+    public static structuredClone(node: bPlusTreeNode) {
+        const nodeClone = structuredClone(node)
+        nodeClone.removeNodeFromPointer = bPlusTreeNode.prototype.removeNodeFromPointer
+        nodeClone.addNodeToPointers = bPlusTreeNode.prototype.addNodeToPointers
+        return nodeClone
     }
 }

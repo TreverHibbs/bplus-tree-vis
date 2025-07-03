@@ -937,7 +937,7 @@ export class AlgoVisualizer {
                 // ** End Of Animation Section ** //
                 parentNode.keys = []
                 parentNode.pointers.forEach((_, i) => {
-                    parentNode.removeNodeFromPointers(i)
+                    parentNode.removeNodeFromPointer(i)
                 })
 
                 tempNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)
