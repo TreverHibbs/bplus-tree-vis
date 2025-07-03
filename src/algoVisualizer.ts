@@ -663,14 +663,10 @@ export class AlgoVisualizer {
                         throw new Error("Could not get leaf edge element for leaf node siblings, bad DOM state")
                     }
                     //animate moving the leaf edge to it's new correct place
-                    const leafEdgePath = d3Path()
-                    const leftHeirarchyNode = leafPointerNodePair[0]
-                    const rightHeirarchyNode = leafPointerNodePair[1]
-                    leafEdgePath.moveTo(leftHeirarchyNode.x + this.nodeWidth - this.pointerRectWidth / 2,
-                        leftHeirarchyNode.y + this.nodeHeight / 2)
-                    leafEdgePath.lineTo(rightHeirarchyNode.x, rightHeirarchyNode.y + this.nodeHeight / 2)
                     const newLeafEdgePathPosition = document.createElementNS(SVG_NS, "path")
-                    newLeafEdgePathPosition.setAttribute("d", leafEdgePath.toString())
+                    newLeafEdgePathPosition.setAttribute("d",
+                        this.generateLeafEdgePathFN(leafPointerNodePair[0].x,
+                            leafPointerNodePair[0].y, leafPointerNodePair[1].x, leafPointerNodePair[1].y))
                     const defsElement: SVGElement | null = document.querySelector(this.mainSvgId + " defs")
                     if (!defsElement) {
                         throw new Error("defs element not found")
@@ -1369,13 +1365,13 @@ export class AlgoVisualizer {
 
 
             //animate inserting an edge between the target and new node
-            const leafEdgePath = d3Path()
-            leafEdgePath.moveTo(targetNodeTmpCoordinates.x + this.nodeWidth - this.pointerRectWidth / 2,
-                targetNodeTmpCoordinates.y + this.nodeHeight / 2)
-            leafEdgePath.lineTo(newNodeTmpCoordinates.x, newNodeTmpCoordinates.y + this.nodeHeight / 2)
             const newSVGPathElement = document.createElementNS(SVG_NS, "path")
             newSVGPathElement.setAttribute("class", this.leafNodeEdgeClassName)
-            newSVGPathElement.setAttribute("d", leafEdgePath.toString())
+            newSVGPathElement.setAttribute("d",
+                this.generateLeafEdgePathFN(targetNodeTmpCoordinates.x,
+                    targetNodeTmpCoordinates.y,
+                    newNodeTmpCoordinates.x,
+                    newNodeTmpCoordinates.y))
             newSVGPathElement.setAttribute("fill", "none")
             newSVGPathElement.setAttribute("id", `${targetNode.id}-${newNode.id}`)
             newSVGPathElement.setAttribute("stroke", "black")
@@ -1746,9 +1742,7 @@ export class AlgoVisualizer {
         let previousOperationValue: number | null = null
         let previousOperationType: OperationType | null = null
         //set the closure variables for the algo step object.
-        const BPlusTreeBeforePreviousOperation = structuredClone(this.previousBPlusTreeRoot)
-        previousOperationValue = this.previousValue
-        previousOperationType = this.previousOperationType
+        let BPlusTreeBeforePreviousOperation: bPlusTreeNode | null = null
 
         /**
          * Undoes the operations of the corresponding insert method call, which
@@ -1767,6 +1761,7 @@ export class AlgoVisualizer {
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
+            if (BPlusTreeBeforePreviousOperation === null) throw new Error("bad state, bplus tree state history not preserved")
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeBeforePreviousOperation, this.bPlusTreeChildrenDefinition))
             const edgeSelection = select(this.mainSvgId)
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
@@ -1790,17 +1785,14 @@ export class AlgoVisualizer {
                 return this.generateEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y, indexOfTargetNode)
             })
             leafNodeEdgeSelection.attr("d", (d) => {
-                return this.generateLeafEdgePathFN(d)
+                return this.generateLeafEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y)
             })
-            //TODO it appears as though the problem is that we move the nodes to their correct locations
-            //but we do not move any of the edges. I think the next step should be to move the edges.
             const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
-            //TODO get this working
-            //this.createNewNodeText(textSelection.enter(), false)
             // return the global state to its state before the previous insert.
             this.bPlusTreeRoot = structuredClone(BPlusTreeBeforePreviousOperation)
+            this.previousBPlusTreeRoot = structuredClone(BPlusTreeBeforePreviousOperation)
             this.previousValue = previousOperationValue
             if (previousOperationValue == null) {
                 return null
@@ -1825,12 +1817,15 @@ export class AlgoVisualizer {
         const insertDo = () => {
             // set the global state so that future undoable inserts can create
             // correct closures for undoing.
+            previousOperationValue = this.previousValue
+            previousOperationType = this.previousOperationType
+            BPlusTreeBeforePreviousOperation = structuredClone(this.previousBPlusTreeRoot)
             this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
             this.previousValue = value
             this.previousOperationType = "insert"
-            return this.insert(value)
+            const generatedTimeline = this.insert(value)
+            return generatedTimeline
         }
-
         const generatedTimeline = insertDo()
         // we don't want to save the algo step if the value to be inserted is already in the tree.
         // Since nothing would happen and the undo and redo would be a noop.
