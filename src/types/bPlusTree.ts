@@ -91,15 +91,38 @@ export class bPlusTreeNode {
     }
 
     /**
-     * Deep clone a bPlusTreeNode, preserving methods in the process.
+     * clone a bPlusTreeNode
      *
-     * @param node the node to be cloned
+     * @param original the node to be cloned
+     * @param seen for avoiding infinite loops internally
      * @return the clone of the original node
      */
-    public static structuredClone(node: bPlusTreeNode) {
-        const nodeClone = structuredClone(node)
-        nodeClone.removeNodeFromPointer = bPlusTreeNode.prototype.removeNodeFromPointer
-        nodeClone.addNodeToPointers = bPlusTreeNode.prototype.addNodeToPointers
-        return nodeClone
+    public static structuredClone(original: bPlusTreeNode, seen = new Map<bPlusTreeNode, bPlusTreeNode>()): bPlusTreeNode {
+        if (seen.has(original)) {
+            console.error("infinite loop cycle while cloning b-plus tree node. bad data structure state.")
+            return seen.get(original)!; // Prevent infinite loop for cycles
+        }
+
+        const clone = new bPlusTreeNode(original.isLeaf);
+        clone.id = original.id;
+        clone.keys = [...original.keys];
+        clone.edgeId = original.edgeId;
+
+        seen.set(original, clone);
+
+        // Recursively clone pointers
+        clone.pointers.length = original.pointers.length;
+        for (let i = 0; i < original.pointers.length; i++) {
+            const child = original.pointers[i];
+            if (child instanceof bPlusTreeNode) {
+                const clonedChild = bPlusTreeNode.structuredClone(child, seen);
+                clone.pointers[i] = clonedChild;
+                clonedChild.parent = clone;
+            } else {
+                clone.pointers[i] = null;
+            }
+        }
+
+        return clone;
     }
 }

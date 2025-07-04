@@ -1791,8 +1791,8 @@ export class AlgoVisualizer {
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
             // return the global state to its state before the previous insert.
-            this.bPlusTreeRoot = structuredClone(BPlusTreeBeforePreviousOperation)
-            this.previousBPlusTreeRoot = structuredClone(BPlusTreeBeforePreviousOperation)
+            this.bPlusTreeRoot = bPlusTreeNode.structuredClone(BPlusTreeBeforePreviousOperation)
+            this.previousBPlusTreeRoot = bPlusTreeNode.structuredClone(BPlusTreeBeforePreviousOperation)
             this.previousValue = previousOperationValue
             if (previousOperationValue == null) {
                 return null
@@ -1819,8 +1819,8 @@ export class AlgoVisualizer {
             // correct closures for undoing.
             previousOperationValue = this.previousValue
             previousOperationType = this.previousOperationType
-            BPlusTreeBeforePreviousOperation = structuredClone(this.previousBPlusTreeRoot)
-            this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
+            BPlusTreeBeforePreviousOperation = bPlusTreeNode.structuredClone(this.previousBPlusTreeRoot)
+            this.previousBPlusTreeRoot = bPlusTreeNode.structuredClone(this.bPlusTreeRoot)
             this.previousValue = value
             this.previousOperationType = "insert"
             const generatedTimeline = this.insert(value)
@@ -1868,7 +1868,7 @@ export class AlgoVisualizer {
         let operationTypeBeforePreviousOperation: OperationType | null = null
 
         //set the closure variables for the algo step object.
-        const BPlusTreeRootStateBeforePreviousOperation = structuredClone(this.previousBPlusTreeRoot)
+        const BPlusTreeRootStateBeforePreviousOperation = bPlusTreeNode.structuredClone(this.previousBPlusTreeRoot)
         valueBeforePreviousOperation = this.previousValue
         operationTypeBeforePreviousOperation = this.previousOperationType
 
@@ -1883,7 +1883,7 @@ export class AlgoVisualizer {
         //@ts-ignore
         const deleteUndo = () => {
             // return the global state to its state before the previous delete.
-            this.bPlusTreeRoot = structuredClone(BPlusTreeRootStateBeforePreviousOperation)
+            this.bPlusTreeRoot = bPlusTreeNode.structuredClone(BPlusTreeRootStateBeforePreviousOperation)
             this.previousValue = valueBeforePreviousOperation
             this.previousOperationType = operationTypeBeforePreviousOperation
 
@@ -1909,7 +1909,7 @@ export class AlgoVisualizer {
         const deleteDo = () => {
             // set the global state so that future undoable operations can create
             // correct closures for undoing.
-            this.previousBPlusTreeRoot = structuredClone(this.bPlusTreeRoot)
+            this.previousBPlusTreeRoot = bPlusTreeNode.structuredClone(this.bPlusTreeRoot)
             this.previousValue = value
             this.previousOperationType = "delete"
             return this.delete(value)
