@@ -1790,6 +1790,35 @@ export class AlgoVisualizer {
             const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
                 .data((d) => d.data.keys)
             textSelection.exit().remove()
+            textSelection.enter().each((d) => {
+                this.createNewNodeText(d, 0)
+            })
+            const self = this
+            //TODO finish getting the number text to appear in the right place
+            // I think exit values aren't exiting right
+            //move text elements to where they should be
+            nodeSelection.each(function(parentDatum) {
+                const textSelection = select(this)
+                    .selectAll<SVGTextElement, number>("text." + self.keyTextClassName)
+                    .data(parentDatum.data.keys, function(d) { return d ? "t" + d : (this as SVGTextElement).id })
+                textSelection.exit().remove()
+                textSelection.attr("x", (d) => {
+                    const indexInKeyArray = parentDatum.data.keys.findIndex((key) => d === key)
+                    if (indexInKeyArray !== -1) {
+                        return String(self.pointerRectWidth +
+                            (self.keyRectWidth / 2) +
+                            indexInKeyArray * (self.keyRectWidth + self.pointerRectWidth))
+                    }
+                    return this.getAttribute("x")
+                })
+                textSelection.enter()
+                    .each(function(d) {
+                        const indexInKeyArray = parentDatum.data.keys.findIndex((key) => { d == key })
+                        if (indexInKeyArray !== -1) {
+                            self.createNewNodeText(d, indexInKeyArray)
+                        }
+                    })
+            })
             // return the global state to its state before the previous insert.
             this.bPlusTreeRoot = bPlusTreeNode.structuredClone(BPlusTreeBeforePreviousOperation)
             this.previousBPlusTreeRoot = bPlusTreeNode.structuredClone(BPlusTreeBeforePreviousOperation)

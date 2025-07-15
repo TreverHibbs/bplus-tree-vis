@@ -99,17 +99,12 @@ export class bPlusTreeNode {
      */
     public static structuredClone(original: bPlusTreeNode, seen = new Map<bPlusTreeNode, bPlusTreeNode>()): bPlusTreeNode {
         if (seen.has(original)) {
-            console.error("infinite loop cycle while cloning b-plus tree node. bad data structure state.")
             return seen.get(original)!; // Prevent infinite loop for cycles
         }
-
         const clone = new bPlusTreeNode(original.isLeaf);
         clone.id = original.id;
         clone.keys = [...original.keys];
-        clone.edgeId = original.edgeId;
-
         seen.set(original, clone);
-
         // Recursively clone pointers
         clone.pointers.length = original.pointers.length;
         for (let i = 0; i < original.pointers.length; i++) {
@@ -122,7 +117,6 @@ export class bPlusTreeNode {
                 clone.pointers[i] = null;
             }
         }
-
         return clone;
     }
 }
