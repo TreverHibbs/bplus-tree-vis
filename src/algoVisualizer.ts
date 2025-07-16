@@ -1787,20 +1787,14 @@ export class AlgoVisualizer {
             leafNodeEdgeSelection.attr("d", (d) => {
                 return this.generateLeafEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y)
             })
-            const textSelection = nodeSelection.selectAll("text." + this.keyTextClassName)
-                .data((d) => d.data.keys)
-            textSelection.exit().remove()
-            textSelection.enter().each((d) => {
-                this.createNewNodeText(d, 0)
-            })
-            const self = this
-            //TODO finish getting the number text to appear in the right place
-            // I think exit values aren't exiting right
+            //TODO get the 2 in the, 6,4,5,2 test case to undo correctly. Right now
+            //when 2 is undone the resulting displayed text is wrong. :(
             //move text elements to where they should be
+            const self = this
             nodeSelection.each(function(parentDatum) {
                 const textSelection = select(this)
                     .selectAll<SVGTextElement, number>("text." + self.keyTextClassName)
-                    .data(parentDatum.data.keys, function(d) { return d ? "t" + d : (this as SVGTextElement).id })
+                    .data(parentDatum.data.keys, (d) => d ? "t" + d : (this as SVGTextElement).id)
                 textSelection.exit().remove()
                 textSelection.attr("x", (d) => {
                     const indexInKeyArray = parentDatum.data.keys.findIndex((key) => d === key)
@@ -1813,9 +1807,10 @@ export class AlgoVisualizer {
                 })
                 textSelection.enter()
                     .each(function(d) {
-                        const indexInKeyArray = parentDatum.data.keys.findIndex((key) => { d == key })
+                        const indexInKeyArray = parentDatum.data.keys.findIndex((key) => d == key)
                         if (indexInKeyArray !== -1) {
-                            self.createNewNodeText(d, indexInKeyArray)
+                            const newSVGTextElement = self.createNewNodeText(d, indexInKeyArray, false)
+                            this.appendChild(newSVGTextElement)
                         }
                     })
             })
