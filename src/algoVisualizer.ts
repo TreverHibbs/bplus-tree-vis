@@ -1758,20 +1758,53 @@ export class AlgoVisualizer {
          * Therefore all side effects of that method are relevant here.
          */
         const insertUndo = () => {
+            const self = this
             this.exitSelections.forEach(selection => {
                 selection.remove()
             })
             if (BPlusTreeBeforePreviousOperation === null) throw new Error("bad state, bplus tree state history not preserved")
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(BPlusTreeBeforePreviousOperation, this.bPlusTreeChildrenDefinition))
+            //update the edge elements
             const edgeSelection = select(this.mainSvgId)
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
-                .data(rootHierarchyNode.links())
+                .data(rootHierarchyNode.links(), function(d) {
+                    if (d) {
+                        // when this is true it must be a new link hence bind a new id to that link.
+                        if (d.target.data.edgeId == null) d.target.data.edgeId = `${self.edgeIdCount++}`
+                        return d.target.data.edgeId
+                    } else {
+                        return (this as SVGPathElement).id
+                    }
+                })
             edgeSelection.exit().remove()
+            edgeSelection.attr("d", (d) => {
+                const indexOfTargetNode = d.source.data.pointers.indexOf(d.target.data)
+                return this.generateEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y, indexOfTargetNode)
+            })
+            edgeSelection.enter().each(function(d) {
+                const newSVGPath = self.createNewEdgeSvgElement(d, false)
+                newSVGPath.setAttribute("marker-end", "url(#arrow)")
+                newSVGPath.setAttribute("marker-start", "url(#circle)")
+                self.mainSvg.appendChild(newSVGPath)
+            })
+            //update the leaf edge elements
             const leafNodeLinks = this.getLeafNodeLinks(rootHierarchyNode)
             const leafNodeEdgeSelection = select(this.mainSvgId)
                 .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.leafNodeEdgeClassName)
-                .data(leafNodeLinks)
+                .data(leafNodeLinks, function(d) {
+                    if (d) {
+                        return `${d.source.data.id}-${d.target.data.id}`
+                    } else if (this) {
+                        return (this as SVGPathElement).id
+                    } else {
+                        throw new Error("bad state, datum and DOMElement of element were falsey")
+                    }
+                })
             leafNodeEdgeSelection.exit().remove()
+            leafNodeEdgeSelection.attr("d", (d) => {
+                return this.generateLeafEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y)
+            })
+            //update the node elements
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>("g." + this.nodeClassName)
                 .data(rootHierarchyNode, (d) => d.data.id)
@@ -1780,21 +1813,11 @@ export class AlgoVisualizer {
             nodeSelection.attr("transform", (d) => {
                 return `translate(${d.x},${d.y})`
             })
-            edgeSelection.attr("d", (d) => {
-                const indexOfTargetNode = d.source.data.pointers.indexOf(d.target.data)
-                return this.generateEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y, indexOfTargetNode)
-            })
-            leafNodeEdgeSelection.attr("d", (d) => {
-                return this.generateLeafEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y)
-            })
-            //TODO get the 2 in the, 6,4,5,2 test case to undo correctly. Right now
-            //when 2 is undone the resulting displayed text is wrong. :(
             //move text elements to where they should be
-            const self = this
             nodeSelection.each(function(parentDatum) {
                 const textSelection = select(this)
                     .selectAll<SVGTextElement, number>("text." + self.keyTextClassName)
-                    .data(parentDatum.data.keys, (d) => d ? "t" + d : (this as SVGTextElement).id)
+                    .data(parentDatum.data.keys, function(d) { return (d ? "t" + d : (this as SVGTextElement).id) })
                 textSelection.exit().remove()
                 textSelection.attr("x", (d) => {
                     const indexInKeyArray = parentDatum.data.keys.findIndex((key) => d === key)

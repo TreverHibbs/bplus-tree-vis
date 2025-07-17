@@ -53,6 +53,8 @@ export class AlgoStepHistory {
     /**
      * Executes the next algo step
      *
+     * @dependency the current algo step timeline must be in it's completed state. Otherwise
+     * undefined behavior will occur.
      * @returns Timeline of the generated animation for the executed algo step. Or
      * null if there is no next step.
      */
@@ -70,6 +72,8 @@ export class AlgoStepHistory {
      * Returns the application to its state from before the last algo step
      * execution.
      *
+     * @dependency the current algo step timeline must be in it's completed state. Otherwise
+     * undefined behavior will occur.
      * @returns Timeline of the generated animation for the executed algo step. Or
      * null if there is no next step or when doing the first operation step.
      */

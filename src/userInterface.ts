@@ -74,6 +74,7 @@ export const userInterface = () => {
 
     const backButton = document.querySelector('#back-button')
     backButton?.addEventListener('click', () => {
+        if (currentAnimation) currentAnimation.complete()
         const stepBackReturn = algoVisualizer.algoStepHistory.stepBackwards()
         if (stepBackReturn === null) return
         currentAnimation = stepBackReturn
@@ -83,6 +84,7 @@ export const userInterface = () => {
 
     const forwardButton = document.querySelector('#forward-button')
     forwardButton?.addEventListener('click', () => {
+        if (currentAnimation) currentAnimation.complete()
         const stepForwardReturn = algoVisualizer.algoStepHistory.stepForwards()
         if (stepForwardReturn === null) return
         currentAnimation = stepForwardReturn

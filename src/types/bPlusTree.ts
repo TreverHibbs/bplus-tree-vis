@@ -103,6 +103,7 @@ export class bPlusTreeNode {
         }
         const clone = new bPlusTreeNode(original.isLeaf);
         clone.id = original.id;
+        clone.edgeId = original.edgeId
         clone.keys = [...original.keys];
         seen.set(original, clone);
         // Recursively clone pointers
