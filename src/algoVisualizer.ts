@@ -2123,28 +2123,19 @@ export class AlgoVisualizer {
      * @param targetIndex the index of the target node in the source nodes
      * pointer array. This determines the right offset of the source position
      * of the generated path element.
-     * @param isLeaf Changes the path generator function to match the case of leaf edge vs node edge.
-     * defaults to false
      * @sideEffect Adds a path element as a child of the defs element of the main svg element.
      * @sideEffect Throws error on failure to select the defs element.
      * @return The created path element
      */
     private generateMorphToPath = (sourceX: number, sourceY: number,
-        targetX: number, targetY: number, targetIndex: number, isLeaf = false) => {
+        targetX: number, targetY: number, targetIndex: number) => {
         let pathString = this.generateEdgePathFN(sourceX, sourceY, targetX, targetY, targetIndex)
-        if (isLeaf) {
-            // TODO refactor this function to not include these helper functions.
-            // pathString = this.generateLeafEdgePathFN(d)
-        }
-
         let svgElement = document.createElementNS(SVG_NS, "path");
         svgElement.setAttribute("d", pathString);
-
         const defsElement: SVGElement | null = document.querySelector(this.mainSvgId + " defs")
         if (!defsElement) {
             throw new Error("defs element not found")
         }
-
         defsElement.appendChild(svgElement);
         return svgElement
     }
