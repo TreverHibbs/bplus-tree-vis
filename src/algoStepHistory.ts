@@ -1,5 +1,6 @@
 import { Timeline } from "animejs"
 
+
 /**
  * This interface defines a object that is used to store one atomic step of a algorithm
  * so that that step can be undone and redone.

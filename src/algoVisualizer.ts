@@ -12,6 +12,7 @@ import { bPlusTreeNode } from "./types/bPlusTree"
 import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 //anime.esm file must have the .ts extension in order for the ts
 //compiler to find its declaration file.
+//import { createTimeline, svg as animeSvg, Timeline } from "animejs"
 import { createTimeline, svg as animeSvg, Timeline } from "animejs"
 import { tree, hierarchy, HierarchyPointNode } from "d3-hierarchy"
 import { select } from "d3-selection"
@@ -676,6 +677,17 @@ export class AlgoVisualizer {
                     if (i > 0) {
                         animationPos = "<<"
                     }
+                    //animejs internally caches previous path points with a Symbol() key
+                    //on the path element object.
+                    //Animejs will use the previous points that it stored as
+                    //the starting position of the path in the animation. I want
+                    //my current points to be used as the starting position. Therefore,
+                    //clear all of the cached values. This will get animejs to use
+                    //the current d attribute value as the starting point of the resulting
+                    //animation
+                    for (const sym of Object.getOwnPropertySymbols(leafEdge)) {
+                        delete (leafEdge as any)[sym];
+                    }
                     timeline.add(leafEdge,
                         {
                             d: animeSvg.morphTo(newLeafEdgePathPosition)
@@ -694,6 +706,17 @@ export class AlgoVisualizer {
                     const animationPos = "<<"
                     //get targetIndex for link
                     const targetIndex = link.source.data.pointers.indexOf(link.target.data)
+                    //animejs internally caches previous path points with a Symbol() key
+                    //on the path element object.
+                    //Animejs will use the previous points that it stored as
+                    //the starting position of the path in the animation. I want
+                    //my current points to be used as the starting position. Therefore,
+                    //clear all of the cached values. This will get animejs to use
+                    //the current d attribute value as the starting point of the resulting
+                    //animation
+                    for (const sym of Object.getOwnPropertySymbols(this)) {
+                        delete (this as any)[sym];
+                    }
                     timeline.add(this,
                         {
                             d: animeSvg.morphTo(self.generateMorphToPath(link.source.x,
@@ -1801,6 +1824,29 @@ export class AlgoVisualizer {
                     }
                 })
             leafNodeEdgeSelection.exit().remove()
+            //TODO figure out why path morphing is skipping to end of morph animation when generating
+            //edge animations after undo.
+            //probably should debug animejs to figure this out.
+            //figured out how to debug dependency, it was just a setting in edge debugger.
+            //next step is figure out how animejs is using Symbol()
+            //I figured it out :)
+            //So when the call morphTo it returns a function that will give you to values
+            //one of witch is the new path for the morph to target
+            //for some reason, that I don't know yet, when that return function is then called,
+            //when you add the morph to animation to a timeline in my case, inside that return function
+            //the target path is set to cached points of its previouse position since it was last cached
+            //this cache only appears to be set inside the morphTo return function.
+            //Therefore when you use morphTo on a path the next time you use morphTo
+            //on a path it will always use the cached previouse path points as its starting location
+            //for the animation.
+            //
+            //I am having problems because inbetween calls to morphTo I am manually setting that path
+            //to a different path string. This is being ignored by animeJs.
+            //
+            //A possible solution would be manually updating the cache or chaning how animejs behaves in my case
+            //
+            //I think I'll try two solutions. I'll try a personally solution of erasing the cache from my object
+            //then I will try a solution within animejs
             leafNodeEdgeSelection.attr("d", (d) => {
                 return this.generateLeafEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y)
             })
