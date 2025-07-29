@@ -67,6 +67,13 @@ export class AlgoVisualizer {
     private readonly lightBlue
     private readonly lightGreen
     private readonly textColor = "#000000"
+    // The following constants define the style of the edges
+    private readonly edgeFill = "none"
+    private readonly edgeStroke = "black"
+    private readonly edgeStrokeWidth = "2px"
+    private readonly edgeOpacity = "1"
+    private readonly edgeMarkerEnd = "url(#arrow)"
+    private readonly edgeMarkerStart = "url(#circle)"
     // The following constants are used to control the style of the animations
     // in milliseconds
     private readonly animationDuration = 1000
@@ -1395,11 +1402,11 @@ export class AlgoVisualizer {
                     targetNodeTmpCoordinates.y,
                     newNodeTmpCoordinates.x,
                     newNodeTmpCoordinates.y))
-            newSVGPathElement.setAttribute("fill", "none")
-            newSVGPathElement.setAttribute("id", `${targetNode.id}-${newNode.id}`)
-            newSVGPathElement.setAttribute("stroke", "black")
-            newSVGPathElement.setAttribute("stroke-width", "2px")
-            newSVGPathElement.setAttribute("opacity", "1")
+            newSVGPathElement.setAttribute("fill", this.edgeFill)
+            newSVGPathElement.setAttribute("id", this.generateLeafEdgeId(targetNode.id, newNode.id))
+            newSVGPathElement.setAttribute("stroke", this.edgeStroke)
+            newSVGPathElement.setAttribute("stroke-width", this.edgeStrokeWidth)
+            newSVGPathElement.setAttribute("opacity", this.edgeOpacity)
             this.mainSvg.appendChild(newSVGPathElement)
             // this set statement needs to be here so that the timeline
             // knows that I want mark-end and marker-start to be none
@@ -1847,8 +1854,28 @@ export class AlgoVisualizer {
             //
             //I think I'll try two solutions. I'll try a personally solution of erasing the cache from my object
             //then I will try a solution within animejs
+            //
+            //Solution one worked
+            //TODO potentially add a deletion of this cache before all calls to morphTo
+            //investigate if this causes problems elsewhere
             leafNodeEdgeSelection.attr("d", (d) => {
                 return this.generateLeafEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y)
+            })
+            leafNodeEdgeSelection.enter().each(function(d) {
+                const newSVGPathElement = document.createElementNS(SVG_NS, "path")
+                newSVGPathElement.setAttribute("class", self.leafNodeEdgeClassName)
+                newSVGPathElement.setAttribute("d",
+                    self.generateLeafEdgePathFN(d.source.x,
+                        d.source.y,
+                        d.target.x,
+                        d.target.y))
+                newSVGPathElement.setAttribute("fill", self.edgeFill)
+                newSVGPathElement.setAttribute("id", self.generateLeafEdgeId(d.source.data.id, d.target.data.id))
+                newSVGPathElement.setAttribute("stroke", self.edgeStroke)
+                newSVGPathElement.setAttribute("stroke-width", self.edgeStrokeWidth)
+                newSVGPathElement.setAttribute("marker-end", self.edgeMarkerEnd)
+                newSVGPathElement.setAttribute("marker-start", self.edgeMarkerStart)
+                self.mainSvg.appendChild(newSVGPathElement)
             })
             //update the node elements
             const nodeSelection = select(this.mainSvgId)
@@ -2250,48 +2277,20 @@ export class AlgoVisualizer {
         const targetIndex = link.source.data.pointers.indexOf(link.target.data)
         newSVGPathElement.setAttribute("d", edgePathFnGenerator(link.source.x, link.source.y,
             link.target.x, link.target.y, targetIndex))
-        newSVGPathElement.setAttribute("fill", "none")
+        newSVGPathElement.setAttribute("fill", this.edgeFill)
         newSVGPathElement.setAttribute("id", `${link.target.data.edgeId}`)
-        newSVGPathElement.setAttribute("stroke", "black")
-        newSVGPathElement.setAttribute("stroke-width", "2px")
+        newSVGPathElement.setAttribute("stroke", this.edgeStroke)
+        newSVGPathElement.setAttribute("stroke-width", this.edgeStrokeWidth)
         newSVGPathElement.setAttribute("opacity", isTransparent ? "0" : "1")
 
         return newSVGPathElement
     }
 
     /**
-     * Creates a new svg element for a B+ Tree leaf edge.
-     * @param sourceNode the node that the edge should point from.
-     * @param targetNode the node that the edge should point to.
-     * @dependency if one or more of the inputed B+ tree nodes doesn't have a corresponding
-     * DOM element with hierarchy node data attached to it by D3. Then this method will throw an
-     * error
-     * @return the created svg path element. The ID of this element is in
-     * the format s-t. Where s is the id of the source node and t is the
-     * id of the target node.
+     * generates the correct format for a leaf edge Id. This exists to keep this inormation
+     * in one place.
      */
-    private createNewLeafEdgeSvgElement(sourceNode: bPlusTreeNode,
-        targetNode: bPlusTreeNode): SVGPathElement {
-        let className = this.leafNodeEdgeClassName
-        const sourceNodeSelection = select<HTMLElement, HierarchyPointNode<bPlusTreeNode> | undefined>(sourceNode.id)
-        const targetNodeSelection = select<HTMLElement, HierarchyPointNode<bPlusTreeNode> | undefined>(targetNode.id)
-        const sourceHierarchyNode = sourceNodeSelection.data()[0]
-        const targetHierarchyNode = targetNodeSelection.data()[0]
-        if (!sourceHierarchyNode || !targetHierarchyNode) {
-            throw new
-                Error("bad state, expected input B+ tree nodes to have corresponding DOM elements but they do not.")
-        }
-        const newSVGPathElement = document.createElementNS(SVG_NS, "path")
-        newSVGPathElement.setAttribute("class", className)
-        newSVGPathElement.setAttribute("d", this.generateEdgePathFN(sourceHierarchyNode.x, sourceHierarchyNode.y,
-            targetHierarchyNode.x, targetHierarchyNode.y, this.n - 1))
-        newSVGPathElement.setAttribute("fill", "none")
-        newSVGPathElement.setAttribute("id", `${sourceNode.id}-${targetNode.id}`)
-        newSVGPathElement.setAttribute("stroke", "black")
-        newSVGPathElement.setAttribute("stroke-width", "2px")
-        newSVGPathElement.setAttribute("opacity", "1")
-        return newSVGPathElement
-    }
+    private generateLeafEdgeId = (sourceId: string, targetId: string): string => `${sourceId}-${targetId}`
 
     /**
      * 
