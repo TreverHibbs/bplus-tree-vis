@@ -520,7 +520,7 @@ export class AlgoVisualizer {
                     }
                     timeline.add(leafEdge,
                         {
-                            d: animeSvg.morphTo(newLeafEdgePathPosition)
+                            d: self.morphToWorkAround(leafEdge, newLeafEdgePathPosition)
                         }, animationPos)
                 })
 
@@ -556,7 +556,7 @@ export class AlgoVisualizer {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x,
                                 edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, timelinePos)
                 })
@@ -695,7 +695,7 @@ export class AlgoVisualizer {
                     }
                     timeline.add(leafEdge,
                         {
-                            d: animeSvg.morphTo(newLeafEdgePathPosition)
+                            d: self.morphToWorkAround(leafEdge, newLeafEdgePathPosition)
                         }, animationPos)
                 })
 
@@ -721,12 +721,9 @@ export class AlgoVisualizer {
                     //clear all of the cached values. This will get animejs to use
                     //the current d attribute value as the starting point of the resulting
                     //animation
-                    for (const sym of Object.getOwnPropertySymbols(this)) {
-                        delete (this as any)[sym];
-                    }
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(link.source.x,
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(link.source.x,
                                 link.source.y, link.target.x, link.target.y, targetIndex))
                         }, animationPos)
                 })
@@ -844,7 +841,7 @@ export class AlgoVisualizer {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.splitXDist,
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x - self.splitXDist,
                                 edgeData.source.y + self.splitYDist, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, "<<")
                 })
@@ -952,7 +949,7 @@ export class AlgoVisualizer {
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                         timeline.add(this,
                             {
-                                d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x,
+                                d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x,
                                     edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
                             }, "<<"
                         )
@@ -1058,7 +1055,7 @@ export class AlgoVisualizer {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
                                 edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, "<<")
                 })
@@ -1092,7 +1089,7 @@ export class AlgoVisualizer {
                     const targetIndex = newNode.pointers.indexOf(edgeData.target.data)
                     timeline.add(this,
                         {
-                            d: animeSvg.morphTo(self.generateMorphToPath(edgeData.source.x + self.nodeWidth,
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x + self.nodeWidth,
                                 edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
                         }, "<<")
                 })
