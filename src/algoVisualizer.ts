@@ -13,7 +13,7 @@ import { AlgoStepHistory, AlgoStep } from "./algoStepHistory"
 //anime.esm file must have the .ts extension in order for the ts
 //compiler to find its declaration file.
 //import { createTimeline, svg as animeSvg, Timeline } from "animejs"
-import { createTimeline, svg as animeSvg, Timeline } from "animejs"
+import { createTimeline, svg as animeSvg, Timeline, FunctionValue, TargetsParam } from "animejs"
 import { tree, hierarchy, HierarchyPointNode } from "d3-hierarchy"
 import { select } from "d3-selection"
 import { path as d3Path, zoom, ZoomTransform, zoomTransform } from "d3"
@@ -428,8 +428,6 @@ export class AlgoVisualizer {
             }
         }
 
-        //TODO there is a broken animation somewhere in here. Edges won't align with nodes mid animation
-        //sometimes.
         /**
          * A subsidiary procedure for the insert method
          * @param leftNode A bPlusTreeNode to be placed to the left of the key value
@@ -713,6 +711,8 @@ export class AlgoVisualizer {
                     const animationPos = "<<"
                     //get targetIndex for link
                     const targetIndex = link.source.data.pointers.indexOf(link.target.data)
+                    //TODO create a work around for this morphTo quirk. Create a rapper function for
+                    //it that does this
                     //animejs internally caches previous path points with a Symbol() key
                     //on the path element object.
                     //Animejs will use the previous points that it stored as
@@ -2293,6 +2293,32 @@ export class AlgoVisualizer {
      * in one place.
      */
     private generateLeafEdgeId = (sourceId: string, targetId: string): string => `${sourceId}-${targetId}`
+
+    /**
+     * a wrapper for the animejs morphTo method. This is a work around for
+     * a quirk of morphTo described below.
+     *
+     * morphTo caches previous path points with a Symbol() key
+     * on the path element object.
+     * Animejs will use the previous points that it stored as
+     * the starting position of the path in the animation. I want
+     * my current points to be used as the starting position. Therefore,
+     * clear all of the cached values. This will get animejs to use
+     * the current d attribute value as the starting point of the resulting
+     * animation
+     *
+     * @param pathToAnimate The path that you want to animate
+     * @param path2 The path to animate to
+     * @param precision See morphTo docs
+     *
+     * @return FunctionValue See morphTo docs
+     */
+    private morphToWorkAround = (pathToAnimate: SVGPathElement, path2: TargetsParam, precision: number | undefined = 0.33): FunctionValue => {
+        for (const sym of Object.getOwnPropertySymbols(pathToAnimate)) {
+            delete (this as any)[sym];
+        }
+        return animeSvg.morphTo(path2, precision)
+    }
 
     /**
      * 
