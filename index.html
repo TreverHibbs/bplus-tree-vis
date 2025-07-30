@@ -28,9 +28,11 @@
         <button id="back-button" class="operation">back</button>
         <button id="forward-button" class="operation">forward</button>
         <!-- 
-        TODO this test string results in error when undoing and redoing last operation
+        TODO figure out what happens when you press back without instant animation
+        The below input string causes and error when you go back 2 forward 2 then finally back 2 again.
         -->
-        <input type="text" name="number-input" id="number-input" autocomplete="off" value="57, 91, 26, 73, 17, 45">
+        <input type="text" name="number-input" id="number-input" autocomplete="off"
+          value="57, 91, 26, 73, 17, 45, 67, 89, 34, 12, 78, 23, 56">
         <!-- test strings -->
         <!-- 6,4,5,2,8,9,10,11,12,13 -->
         <!-- 7,4,5 -->

@@ -1860,6 +1860,8 @@ export class AlgoVisualizer {
             //investigate if this causes problems elsewhere
             leafNodeEdgeSelection.attr("d", (d) => {
                 return this.generateLeafEdgePathFN(d.source.x, d.source.y, d.target.x, d.target.y)
+            }).attr("id", (d) => {
+                return this.generateLeafEdgeId(d.source.data.id, d.target.data.id)
             })
             leafNodeEdgeSelection.enter().each(function(d) {
                 const newSVGPathElement = document.createElementNS(SVG_NS, "path")
