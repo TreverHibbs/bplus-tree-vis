@@ -803,6 +803,11 @@ export class AlgoVisualizer {
                 // ** animation section ** //
                 //get the necessary data and elements for the following animation
                 let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
+                //TODO the bad data in the current test case seem to be coming from here
+                //figure out if it is a wrong tree that this data is being generated from
+                //I have determined that this is indeed where the bad data is coming from. Therefore,
+                //remove the bind of data here. Get the selection but don't bind new data. I just want the
+                //data that is already bound to the elements.
                 let edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), function(d) {
@@ -831,7 +836,7 @@ export class AlgoVisualizer {
                     parentNodeElement,
                     {
                         transform: () => {
-                            return `translate( ${parentNodeData.x - this.nodeWidth} , ${parentNodeData.y + this.nodeHeight * 1.5})`
+                            return `translate( ${parentNodeData.x - this.splitXDist} , ${parentNodeData.y + this.splitYDist})`
                         }
                     }, "<"
                 )
@@ -2312,7 +2317,7 @@ export class AlgoVisualizer {
      */
     private morphToWorkAround = (pathToAnimate: SVGPathElement, path2: TargetsParam, precision: number | undefined = 0.33): FunctionValue => {
         for (const sym of Object.getOwnPropertySymbols(pathToAnimate)) {
-            delete (this as any)[sym];
+            delete (pathToAnimate as any)[sym];
         }
         return animeSvg.morphTo(path2, precision)
     }
