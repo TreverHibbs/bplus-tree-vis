@@ -500,7 +500,7 @@ export class AlgoVisualizer {
                 }).filter(pointNode => pointNode !== null)
                 leafPointerNodePairs.forEach((leafPointerNodePair, i) => {
                     if (leafPointerNodePair === null) return
-                    const leafEdge = document.querySelector(`#${leafPointerNodePair[0].data.id}-${leafPointerNodePair[1].data.id}`)
+                    const leafEdge = document.querySelector<SVGPathElement>(`#${leafPointerNodePair[0].data.id}-${leafPointerNodePair[1].data.id}`)
                     if (!leafEdge) {
                         throw new Error("Could not get leaf edge element for leaf node siblings, bad DOM state")
                     }
@@ -664,7 +664,7 @@ export class AlgoVisualizer {
                 }).filter(pointNode => pointNode !== null)
                 leafPointerNodePairs.forEach((leafPointerNodePair, i) => {
                     if (leafPointerNodePair === null) return
-                    const leafEdge = document.querySelector(`#${leafPointerNodePair[0].data.id}-${leafPointerNodePair[1].data.id}`)
+                    const leafEdge = document.querySelector<SVGPathElement>(`#${leafPointerNodePair[0].data.id}-${leafPointerNodePair[1].data.id}`)
                     if (!leafEdge) {
                         throw new Error("Could not get leaf edge element for leaf node siblings, bad DOM state")
                     }
@@ -681,17 +681,6 @@ export class AlgoVisualizer {
                     let animationPos = "<"
                     if (i > 0) {
                         animationPos = "<<"
-                    }
-                    //animejs internally caches previous path points with a Symbol() key
-                    //on the path element object.
-                    //Animejs will use the previous points that it stored as
-                    //the starting position of the path in the animation. I want
-                    //my current points to be used as the starting position. Therefore,
-                    //clear all of the cached values. This will get animejs to use
-                    //the current d attribute value as the starting point of the resulting
-                    //animation
-                    for (const sym of Object.getOwnPropertySymbols(leafEdge)) {
-                        delete (leafEdge as any)[sym];
                     }
                     timeline.add(leafEdge,
                         {
@@ -711,16 +700,6 @@ export class AlgoVisualizer {
                     const animationPos = "<<"
                     //get targetIndex for link
                     const targetIndex = link.source.data.pointers.indexOf(link.target.data)
-                    //TODO create a work around for this morphTo quirk. Create a rapper function for
-                    //it that does this
-                    //animejs internally caches previous path points with a Symbol() key
-                    //on the path element object.
-                    //Animejs will use the previous points that it stored as
-                    //the starting position of the path in the animation. I want
-                    //my current points to be used as the starting position. Therefore,
-                    //clear all of the cached values. This will get animejs to use
-                    //the current d attribute value as the starting point of the resulting
-                    //animation
                     timeline.add(this,
                         {
                             d: self.morphToWorkAround(this, self.generateMorphToPath(link.source.x,
@@ -841,13 +820,38 @@ export class AlgoVisualizer {
                     }, "<"
                 )
 
+                //TODO: this is where the bad animations is happening. I think the solution is to not rely on
+                //the generate tree node and edge position data from d3. The b plus tree is in a weird in between
+                //operations state here so we can't trust it to be accurate. Therefore just do the thing by getting
+                //the position of the path from the actual path string of the element.
                 //also animate edges moving with parent node down and to the left
                 parentNodePointerEdges.each(function(edgeData) {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                    const sourceNodeElement = document.getElementById(edgeData.source.data.id) as SVGGElement | null
+                    if (sourceNodeElement === null) {
+                        throw new Error("could not get source node element, bad dom state")
+                    }
+                    const targetNodeElement = document.getElementById(edgeData.target.data.id) as SVGGElement | null
+                    if (targetNodeElement === null) {
+                        throw new Error("could not get target node element, bad dom state")
+                    }
+                    // user the transform api to get the x and y coords of the nodes
+                    const sourceNodeTransform = sourceNodeElement.transform.baseVal.consolidate()
+                    if (sourceNodeTransform == null) {
+                        throw new Error("transform was null, bad state")
+                    }
+                    const sourceNodeX = sourceNodeTransform.matrix.e
+                    const sourceNodeY = sourceNodeTransform.matrix.f
+                    const targetNodeTransform = targetNodeElement.transform.baseVal.consolidate()
+                    if (targetNodeTransform == null) {
+                        throw new Error("transform was null, bad state")
+                    }
+                    const targetNodeX = targetNodeTransform.matrix.e
+                    const targetNodeY = targetNodeTransform.matrix.f
                     timeline.add(this,
                         {
-                            d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x - self.splitXDist,
-                                edgeData.source.y + self.splitYDist, edgeData.target.x, edgeData.target.y, targetIndex))
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(sourceNodeX - self.splitXDist,
+                                sourceNodeY + self.splitYDist, targetNodeX, targetNodeY, targetIndex))
                         }, "<<")
                 })
 
