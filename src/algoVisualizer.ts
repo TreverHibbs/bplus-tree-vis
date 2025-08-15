@@ -820,11 +820,7 @@ export class AlgoVisualizer {
                     }, "<"
                 )
 
-                //TODO: this is where the bad animations is happening. I think the solution is to not rely on
-                //the generate tree node and edge position data from d3. The b plus tree is in a weird in between
-                //operations state here so we can't trust it to be accurate. Therefore just do the thing by getting
-                //the position of the path from the actual path string of the element.
-                //also animate edges moving with parent node down and to the left
+                //animating moving parent node edges with the parent node down and to the left.
                 parentNodePointerEdges.each(function(edgeData) {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
                     const sourceNodeElement = document.getElementById(edgeData.source.data.id) as SVGGElement | null
@@ -934,7 +930,7 @@ export class AlgoVisualizer {
                 newNodeElement.insertAdjacentElement("afterend", tempNodeElement)
 
                 //place the text elements of the temp node on their corresponding
-                //test elements in the parent node element.
+                //text elements in the parent node element.
                 timeline.set(tempNodeTextElements, {
                     opacity: 1,
                     fill: this.textColor,
@@ -952,15 +948,45 @@ export class AlgoVisualizer {
                     }
                 )
 
+                //TODO: this animation doesn't work because when we create the animation the target paths
+                //do not actually at the place where we want to animate them from. This is because we are
+                //animating paths from there starting point to another point then back to their starting point.
+                //We generate these animations at their starting points therefore they will appear to jump
+                //to the end point when animated because the animating that we are generating has the same
+                //start and end point. I do not know how we will solve this with this library. This library is
+                //simply not a good solution to the problem I am afraid. :(
+                //I think this also explains why the edges jump at the end of the animation.
                 //Animate moving the pointer edges from parent node to temp node
                 parentNodePointerEdges.each(
                     function(edgeData) {
                         const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                        const sourceNodeElement = document.getElementById(edgeData.source.data.id) as SVGGElement | null
+                        if (sourceNodeElement === null) {
+                            throw new Error("could not get source node element, bad dom state")
+                        }
+                        const targetNodeElement = document.getElementById(edgeData.target.data.id) as SVGGElement | null
+                        if (targetNodeElement === null) {
+                            throw new Error("could not get target node element, bad dom state")
+                        }
+                        // user the transform api to get the x and y coords of the nodes
+                        const sourceNodeTransform = sourceNodeElement.transform.baseVal.consolidate()
+                        if (sourceNodeTransform == null) {
+                            throw new Error("transform was null, bad state")
+                        }
+                        const sourceNodeX = sourceNodeTransform.matrix.e
+                        const sourceNodeY = sourceNodeTransform.matrix.f
+                        const targetNodeTransform = targetNodeElement.transform.baseVal.consolidate()
+                        if (targetNodeTransform == null) {
+                            throw new Error("transform was null, bad state")
+                        }
+                        const targetNodeX = targetNodeTransform.matrix.e
+                        const targetNodeY = targetNodeTransform.matrix.f
                         timeline.add(this,
                             {
-                                d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x,
-                                    edgeData.source.y, edgeData.target.x, edgeData.target.y, targetIndex))
-                            }, "<<"
+                                d: self.morphToWorkAround(this, self.generateMorphToPath(sourceNodeX,
+                                    sourceNodeY, targetNodeX, targetNodeY, targetIndex))
+                            },
+                            "<<"
                         )
                     }
                 )
@@ -1062,10 +1088,31 @@ export class AlgoVisualizer {
                 //animate moving edges from the temp node to the parent node.
                 toParentEdgeSelection.each(function(edgeData) {
                     const targetIndex = edgeData.source.data.pointers.indexOf(edgeData.target.data)
+                    const sourceNodeElement = document.getElementById(edgeData.source.data.id) as SVGGElement | null
+                    if (sourceNodeElement === null) {
+                        throw new Error("could not get source node element, bad dom state")
+                    }
+                    const targetNodeElement = document.getElementById(edgeData.target.data.id) as SVGGElement | null
+                    if (targetNodeElement === null) {
+                        throw new Error("could not get target node element, bad dom state")
+                    }
+                    // user the transform api to get the x and y coords of the nodes
+                    const sourceNodeTransform = sourceNodeElement.transform.baseVal.consolidate()
+                    if (sourceNodeTransform == null) {
+                        throw new Error("transform was null, bad state")
+                    }
+                    const sourceNodeX = sourceNodeTransform.matrix.e
+                    const sourceNodeY = sourceNodeTransform.matrix.f
+                    const targetNodeTransform = targetNodeElement.transform.baseVal.consolidate()
+                    if (targetNodeTransform == null) {
+                        throw new Error("transform was null, bad state")
+                    }
+                    const targetNodeX = targetNodeTransform.matrix.e
+                    const targetNodeY = targetNodeTransform.matrix.f
                     timeline.add(this,
                         {
-                            d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x - self.nodeWidth,
-                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(sourceNodeX - self.nodeWidth,
+                                sourceNodeY + self.nodeHeight * 1.5, targetNodeX, targetNodeY, targetIndex))
                         }, "<<")
                 })
 
@@ -1096,10 +1143,31 @@ export class AlgoVisualizer {
                 //animate moving edges from the temp node to the new node.
                 toNewNodeEdgeSelection.each(function(edgeData) {
                     const targetIndex = newNode.pointers.indexOf(edgeData.target.data)
+                    const sourceNodeElement = document.getElementById(edgeData.source.data.id) as SVGGElement | null
+                    if (sourceNodeElement === null) {
+                        throw new Error("could not get source node element, bad dom state")
+                    }
+                    const targetNodeElement = document.getElementById(edgeData.target.data.id) as SVGGElement | null
+                    if (targetNodeElement === null) {
+                        throw new Error("could not get target node element, bad dom state")
+                    }
+                    // user the transform api to get the x and y coords of the nodes
+                    const sourceNodeTransform = sourceNodeElement.transform.baseVal.consolidate()
+                    if (sourceNodeTransform == null) {
+                        throw new Error("transform was null, bad state")
+                    }
+                    const sourceNodeX = sourceNodeTransform.matrix.e
+                    const sourceNodeY = sourceNodeTransform.matrix.f
+                    const targetNodeTransform = targetNodeElement.transform.baseVal.consolidate()
+                    if (targetNodeTransform == null) {
+                        throw new Error("transform was null, bad state")
+                    }
+                    const targetNodeX = targetNodeTransform.matrix.e
+                    const targetNodeY = targetNodeTransform.matrix.f
                     timeline.add(this,
                         {
-                            d: self.morphToWorkAround(this, self.generateMorphToPath(edgeData.source.x + self.nodeWidth,
-                                edgeData.source.y + self.nodeHeight * 1.5, edgeData.target.x, edgeData.target.y, targetIndex))
+                            d: self.morphToWorkAround(this, self.generateMorphToPath(sourceNodeX + self.nodeWidth,
+                                sourceNodeY + self.nodeHeight * 1.5, targetNodeX, targetNodeY, targetIndex))
                         }, "<<")
                 })
 
