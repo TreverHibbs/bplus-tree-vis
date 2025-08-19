@@ -1,4 +1,3 @@
-//test strings
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
 // 1,2,3,4,5,6,7,8,9,10,11,12
 // 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100
@@ -25,7 +24,7 @@ type OperationType = "insert" | "delete" | "insert-parent"
 
 
 /**
- * 
+ *
  * This class implements a B+tree algorithm (as described in the Database System
  * Concepts 7th edition) and generates animations for that algorithm.
  * By using this class a web UI can animate a B+tree. Each instance of
@@ -328,17 +327,11 @@ export class AlgoVisualizer {
             //generate animations for adding new text to the leaf node
             if (value < targetNode.keys[0] || targetNode.keys.length == 0) {
                 //animate shifting keys to the right
-                let animePos = "<<"
-                targetNodeTextSelection.nodes().forEach((element, i) => {
-                    if (i == 0) {
-                        animePos = "<"
-                    } else {
-                        animePos = "<<"
-                    }
+                targetNodeTextSelection.nodes().forEach((element) => {
                     timeline.add(element,
                         {
                             x: String(Number(element.getAttribute("x")) + this.keyRectWidth + this.pointerRectWidth)
-                        }, animePos
+                        }, "<<"
                     )
                 })
 
@@ -1226,13 +1219,9 @@ export class AlgoVisualizer {
             return
         }
 
-        const moveSudoCodeRectangle = this.createSudoCodeRectangleObj(timeline, "insert")
-        moveSudoCodeRectangle(1)
-        moveSudoCodeRectangle(2)
         let targetNode: bPlusTreeNode
         if (this.bPlusTreeRoot.keys.length == 0) { //empty tree
             targetNode = this.bPlusTreeRoot
-            moveSudoCodeRectangle(3)
 
             //First create the new node for the root and then animate the new root node
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot,
@@ -1274,7 +1263,6 @@ export class AlgoVisualizer {
                 }
             )
         } else {
-            moveSudoCodeRectangle(4)
             const { found, node } = this.find(value)
 
             if (found) {
@@ -1284,16 +1272,13 @@ export class AlgoVisualizer {
             }
         }
 
-        moveSudoCodeRectangle(5)
         // targetNode is ready to have the value inserted into it.
         if (targetNode == null || targetNode.keys.filter(element => typeof element == "number").length < (this.n - 1)) {
-            moveSudoCodeRectangle(6)
             //get the HTML element that corresponds to the targetNode
             const targetNodeElement = select<SVGGElement, HierarchyPointNode<bPlusTreeNode>>("#" + targetNode.id).node()
             if (targetNodeElement === null) throw new Error("target node element was null, bad state")
             insertInLeaf(targetNode, value, targetNodeElement)
         } else { //leaf node targetNode has n - 1 key values already, split it
-            moveSudoCodeRectangle(7)
             const rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
             const nodeSelection = select(this.mainSvgId)
                 .selectAll<SVGGElement, d3.HierarchyPointNode<bPlusTreeNode>>(this.nodeSelector)
@@ -1608,8 +1593,6 @@ export class AlgoVisualizer {
 
             insertInParent(targetNode, newNode.keys[0], newNode)
         }
-        moveSudoCodeRectangle(10)
-        moveSudoCodeRectangle(10, true)
 
         //bind the data to the DOM at the end just to get the proper exit selections for cleanup of temp nodes
         //old edges and text.
@@ -2465,110 +2448,5 @@ export class AlgoVisualizer {
         }
 
         return newGElementsSelection.nodes()[0]
-    }
-
-    /**
-     *
-     * Represents the sudo code rectangle that is used to provide a visual
-     * indication of where the animation is currently at in the sudo code. And
-     * displays the sudo code that corresponds to the operationType params value.
-     * @param timeline the timeline to add the animations to
-     * @param operationType the type of operation that the sudo code rectangle
-     * is being used for.
-     * @dependency The specific css and html sudo code divs located in the
-     * index.html file and the style.css files.
-     * @sideEffect edits the DOM structure of the sudo code div
-     * @returns A function used to move the sudo code rectangle to a specific line
-     */
-    private createSudoCodeRectangleObj(timeline: Timeline, operationType: OperationType) {
-        const sudoCodeLineHeight = "1lh"
-        const style = getComputedStyle(document.body)
-        const sudoCodeRectWidth = style.getPropertyValue("--sudo-code-rectangle-width")
-        //We need this so that we can compute the width of the rectangle
-        //The width is stored in em units so we need to convert it to pixels.
-        const sudoCodeRectWidthFloat = parseFloat(sudoCodeRectWidth)
-        const sudoCodeLineHeightFloat = parseFloat(sudoCodeLineHeight)
-        const sudoCodeRectangle = document.querySelector("#" + operationType + "-cursor") // id defined in the index.html file
-        const insertSudoCodeDiv = document.querySelector("#insert-sudo-code")
-        const insertParentSudoCodeDiv = document.querySelector("#insert-parent-sudo-code")
-        let divArray = [insertSudoCodeDiv, insertParentSudoCodeDiv]
-        if (!insertSudoCodeDiv || !insertParentSudoCodeDiv || !sudoCodeRectangle) {
-            throw new Error("incorrect html DOM structure")
-        }
-        if (!timeline) {
-            throw new Error("bad timeline object passed in")
-        }
-        let divToReveal: null | Element = null
-        if (operationType == "insert") {
-            divToReveal = insertSudoCodeDiv
-        } else if (operationType == "insert-parent") {
-            divToReveal = insertParentSudoCodeDiv
-        }
-        divArray = divArray.filter((div) => {
-            div !== divToReveal
-        })
-        if (divToReveal == null) {
-            throw new Error("bad HTML structure or bad query selector string")
-        }
-        // this will be used to convert em units to pixels
-        const fontSize = parseFloat(window.getComputedStyle(divToReveal).fontSize)
-
-        timeline.add(divToReveal, {
-            opacity: 1,
-        })
-        // hide all the other sudo code that isn't being used
-        divArray.forEach((div) => {
-            if (div !== null) {
-                timeline.set(div, {
-                    opacity: 0
-                }, "<<")
-            }
-        })
-
-        /**
-         *
-         * Add sudo code rectangle animations to the timeline
-         * @param sudoCodeLineGoal the line number of the sudo code that the rectangle
-         * should be moved to
-         * @param end If true the rectangle will be moved back to its starting position and
-         * sudoCodeLineGoal will be ignored.
-         * @returns Timeline the modified timeline
-         * @sideEffect adds animations to the given timeline
-         */
-        const moveSudoCodeRectangle = (sudoCodeLineGoal: number, end = false) => {
-            const sudoCodeLineGoalElement = document.querySelector("#" + operationType + "-line" + String(sudoCodeLineGoal))
-            if (!sudoCodeLineGoalElement) {
-                throw new Error("bad HTML structure or bad query selector string")
-            }
-            // The width of the rectangle hast to be added to the offset with because
-            // padding of the parent element is used to position the rectangle. This extra
-            // width needs to be accounted for.
-            const widthToAnimate = (sudoCodeLineGoalElement as HTMLElement).offsetWidth + (sudoCodeRectWidthFloat * fontSize)
-            // Since the rectangle starts at the first line we don't need to move it there first.
-            // This is defined in the index.html file
-            if (end) {
-                timeline.add(sudoCodeRectangle, {
-                    width: sudoCodeRectWidth,
-                }).add(sudoCodeRectangle, {
-                    top: ((sudoCodeLineHeightFloat * 1) - 1) + "lh",
-                })
-            } else if (sudoCodeLineGoal == 1) {
-                timeline.add(sudoCodeRectangle, {
-                    width: widthToAnimate + "px",
-                })
-            } else {
-                timeline.add(sudoCodeRectangle, {
-                    width: sudoCodeRectWidth,
-                }).add(sudoCodeRectangle, {
-                    top: ((sudoCodeLineHeightFloat * sudoCodeLineGoal) - 1) + "lh",
-                }).add(sudoCodeRectangle, {
-                    width: widthToAnimate + "px",
-                })
-            }
-
-            return timeline
-        }
-
-        return moveSudoCodeRectangle
     }
 }

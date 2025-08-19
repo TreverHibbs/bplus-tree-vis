@@ -45,6 +45,7 @@ body {
   align-items: stretch;
   align-content: stretch;
   margin: 0.5em;
+  border: 0.5em solid black;
 }
 
 .main-svg {
