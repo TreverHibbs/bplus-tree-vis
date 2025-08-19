@@ -659,6 +659,8 @@ export class AlgoVisualizer {
                         }, animationPos)
                 })
 
+                //TODO add animation for moving existing key text to make room for new text
+                //animate adding key value to parent node
                 const parentNodeElement: SVGGElement | null = document.querySelector(`#${parentNode.id}`)
                 if (parentNodeElement == null) throw new Error("parent node SVG element not found bad DOM state")
                 const newTextElement = this.createNewNodeText(value, leftNodeIndex)
@@ -719,6 +721,10 @@ export class AlgoVisualizer {
                     }, "<")
 
             } else { // split
+                // when splitting make every DOM element of the B+ tree
+                // transparent so that all that the user sees are the nodes being split
+                // this way hopefully things don't get so confusing.
+
                 // set this for d3 callback functions
                 const self = this
 
@@ -754,6 +760,15 @@ export class AlgoVisualizer {
                 const parentNodePointerEdges = edgeSelectionEnterUpdate.filter(function(edgeData) {
                     return (edgeData.source.data.id == parentNode.id)
                 })
+
+                //first make all other B+ Tree DOM elements transparent
+                // const otherNodeSelection = nodeSelection.filter(function() {
+                //     return (this !== parentNodeElement)
+                // })
+                // timeline.add(otherNodeSelection.nodes(),
+                //     { opacity: 0.25 }, "<")
+                // timeline.add([...edgeSelection.nodes(), ...edgeSelection.enter().nodes(), ...edgeSelection.exit().nodes()],
+                //     { opacity: 0.25 }, "<")
 
                 // generate animations for adding the temp node and new node
                 // and moving the parent nodes text into the temp node
@@ -896,7 +911,7 @@ export class AlgoVisualizer {
                 // ** End Of Animation Section ** //
                 parentNode.keys = []
                 parentNode.pointers.forEach((_, i) => {
-                    parentNode.removeNodeFromPointer(i)
+                    parentNode.removeNodeFromPointers(i)
                 })
 
                 tempNode.pointers.splice(leftNodeIndex + 1, 0, rightNode)

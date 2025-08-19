@@ -782,11 +782,6 @@ export class AlgoVisualizer {
                 // ** animation section ** //
                 //get the necessary data and elements for the following animation
                 let rootHierarchyNode = this.d3TreeLayout(hierarchy<bPlusTreeNode>(this.bPlusTreeRoot, this.bPlusTreeChildrenDefinition))
-                //TODO the bad data in the current test case seem to be coming from here
-                //figure out if it is a wrong tree that this data is being generated from
-                //I have determined that this is indeed where the bad data is coming from. Therefore,
-                //remove the bind of data here. Get the selection but don't bind new data. I just want the
-                //data that is already bound to the elements.
                 let edgeSelectionEnterUpdate = select(this.mainSvgId)
                     .selectAll<SVGPathElement, d3.HierarchyPointLink<bPlusTreeNode>>("path." + this.edgeClassName)
                     .data(rootHierarchyNode.links(), function(d) {
@@ -950,7 +945,7 @@ export class AlgoVisualizer {
 
                 //TODO: this animation doesn't work because when we create the animation the target paths
                 //do not actually at the place where we want to animate them from. This is because we are
-                //animating paths from there starting point to another point then back to their starting point.
+                //animating paths from their starting point to another point then back to their starting point.
                 //We generate these animations at their starting points therefore they will appear to jump
                 //to the end point when animated because the animating that we are generating has the same
                 //start and end point. I do not know how we will solve this with this library. This library is
