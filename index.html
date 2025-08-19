@@ -19,7 +19,7 @@
   javascript component to function properly.
 -->
   <div class="container">
-    <div class="middle">
+    <div class="controls">
       <div id="operations" class="controls">
         <button id="insert-button" class="operation">insert</button>
         <input type="checkbox" id="animation-toggle">
@@ -36,91 +36,25 @@
         <!-- 6,4,5,2,8,9,10,11,12,13 -->
         <!-- 7,4,5 -->
       </div>
-      <div class="sudo-code"> <!-- Used by the createSudoCodeRectangleObj method in algoVisualizer.ts -->
-      </div>
-      <div id="insert-sudo-code" class="operation-sudo-code sudo-code">
-        <div id="insert-cursor" class="sudo-code-rectangle">
+      <div class="Animation-Controls">
+        <button id="play-button">play</button>
+        <input type="range" id="timeline-input" name="timeline-input" min="0" max="1" value="0" step="0.01">
+        <div>
+          <input type="checkbox" name="speed" value="2" id="2x-checkbox">
+          <label for="2x-checkbox">2x</label>
         </div>
-        <span id="insert-line1" class="sudo-code-line"><b>procedure</b> insert(value K, pointer P)<br></span>
-        <span id="insert-line2" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (tree is empty)<br></span>
-        <span id="insert-line3" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;create an
-          empty leaf node <i>L</i>, which is also the root<br></span>
-        <span id="insert-line4" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>else</b> Find the leaf node L that
-          should contain key value
-          K<br></span>
-        <span id="insert-line5" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (L has less than <math
-            display="inline">
-            <mn>n</mn>
-            <mo>-</mo>
-            <mi>1</mi>
-          </math>. key values)<br></span>
-        <span id="insert-line6" class="sudo-code-line">&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> Insert in leaf node
-          L<br></span>
-        <span id="insert-line7" class="sudo-code-line">
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> L has <math display="inline">
-            <mn>n</mn>
-            <mo>-</mo>
-            <mi>1</mi>
-          </math> already, split it into L and L'<br>
-        </span>
-        <span id="insert-line8" class="sudo-code-line">
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let K'
-          be the smallest key-value in L'<br>
-        </span>
-        <span id="insert-line9" class="sudo-code-line">
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(L,
-          K', L')<br>
-        </span>
-        <span id="insert-line10" class="sudo-code-line">
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
-        </span>
-      </div>
-      <div id="insert-parent-sudo-code" class="operation-sudo-code sudo-code">
-        <div id="insert-parent-cursor" class="sudo-code-rectangle">
+        <div>
+          <input type="checkbox" name="speed" value="4" id="4x-checkbox">
+          <label for="4x-checkbox">4x</label>
         </div>
-        <b>procedure</b> insert_in_parent(node N, value K', node N')<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (N is the root of the tree)<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then begin</b><br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create a new node R containing N, K',
-        N' /* N
-        and N' are pointers */<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Make R the root of the tree<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>return</b><br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
-        &nbsp;&nbsp;&nbsp;&nbsp;Let <math display="inline">
-          <mi>P</mi>
-          <mo>=</mo>
-          <mi>parent(N)</mi>
-        </math><br>
-        &nbsp;&nbsp;&nbsp;&nbsp;<b>if</b> (P has less than n pointers)<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>then</b> insert (K', N') in P just after N<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>else begin</b> Split P into
-        P and P'<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let
-        K'' be the smallest key-value in P'<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert_in_parent(P,
-        K'', P')<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>end</b><br>
-      </div>
-    </div>
-    <div class="Animation-Controls">
-      <button id="play-button">play</button>
-      <input type="range" id="timeline-input" name="timeline-input" min="0" max="1" value="0" step="0.01">
-      <div>
-        <input type="checkbox" name="speed" value="2" id="2x-checkbox">
-        <label for="2x-checkbox">2x</label>
-      </div>
-      <div>
-        <input type="checkbox" name="speed" value="4" id="4x-checkbox">
-        <label for="4x-checkbox">4x</label>
-      </div>
-      <div>
-        <input type="checkbox" name="speed" value="8" id="8x-checkbox">
-        <label for="8x-checkbox">8x</label>
-      </div>
-      <div>
-        <input type="checkbox" name="speed" value="1000" id="instant-checkbox">
-        <label for="8x-checkbox">instant</label>
+        <div>
+          <input type="checkbox" name="speed" value="8" id="8x-checkbox">
+          <label for="8x-checkbox">8x</label>
+        </div>
+        <div>
+          <input type="checkbox" name="speed" value="1000" id="instant-checkbox">
+          <label for="8x-checkbox">instant</label>
+        </div>
       </div>
     </div>
     <svg id="main-svg" class="main-svg" viewBox="-500 -50 1000 1000" viewport="" xmlns="http://www.w3.org/2000/svg">
