@@ -2225,20 +2225,6 @@ export class AlgoVisualizer {
         }
     }
 
-    /**
-     * 
-     * Returns the string that represents the svg transform attribute for a
-     * B+ Tree node. This function exists to keep the logic for calculating a
-     * nodes placement in one spot.
-     * @param x The x coordinate of the node
-     * @param y The y coordinate of the node
-     * @dependency this.nodeWidth The width of a bplus tree node
-     * @return String The string meant to be used as the transform attribute
-     */
-    private getNodeTransformString = (x: number, y: number) => {
-        return "translate(" + String(x - this.nodeWidth / 2) + "," + String(y) + ")"
-    }
-
 
     /**
      * Create a svg path element and insert it into the DOM so that it can be used
