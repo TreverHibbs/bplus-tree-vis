@@ -1,6 +1,6 @@
 <div align="center">
 
-# WIP B+ Tree Visualization
+# B+ Tree Visualization
 ##### Helping you understand the data structure and its algorithms.
 
 </div>
@@ -18,12 +18,3 @@ share B+ tree examples as easily as you share text over the internet.
 ## ⇁ The Solutions
 1. An animated interactive B+ tree visualization with a smooth timeline control.
 2. The ability to use plain text coma delimited lists of numbers as an input value.
-
-## ⇁ The Demo
-This project is still WIP so all I can offer now is some videos of the current build.
-<div align="center">
-<img alt="basic demo" height="350" src="/assets/basicDemo.gif" /><br>
-    inserting numbers one at a time and timeline control<br><br><br> 
-<img alt="second demo" height="350" src="/assets/secondDemo.gif" /><br>
-    using comma delimited list as input<br>
-</div>
