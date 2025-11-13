@@ -18,3 +18,5 @@ share B+ tree examples as easily as you share text over the internet.
 ## ⇁ The Solutions
 1. An animated interactive B+ tree visualization with a smooth timeline control.
 2. The ability to use plain text coma delimited lists of numbers as an input value.
+
+Link to demo: https://treverhibbs.github.io/bplus-tree-vis/
